@@ -8,9 +8,19 @@ import { Badge } from '@/components/ui/badge';
 import { Video, VideoOff, Mic, MicOff, ArrowLeft, Settings, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
 import { User } from '@/types/user';
+import { useConvex } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { toast } from 'sonner';
 
 interface VideoSessionProps {
   user: User;
+}
+
+interface TavusConversation {
+  conversation_id: string;
+  status: 'active' | 'ended' | 'error';
+  participant_count: number;
+  created_at: string;
 }
 
 export default function VideoSession({ user }: VideoSessionProps) {
@@ -19,7 +29,10 @@ export default function VideoSession({ user }: VideoSessionProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [tavusConversation, setTavusConversation] = useState<TavusConversation | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const convex = useConvex();
 
   useEffect(() => {
     if (isConnected) {
@@ -39,6 +52,34 @@ export default function VideoSession({ user }: VideoSessionProps) {
     };
   }, [isConnected]);
 
+  useEffect(() => {
+    // Check for existing active session
+    const checkActiveSession = async () => {
+      try {
+        const activeSession = await convex.query(api.sessions.getActiveSession, {
+          userId: user.id as any,
+          type: 'video'
+        });
+
+        if (activeSession && activeSession.metadata?.tavusSessionId) {
+          setSessionId(activeSession._id);
+          setTavusConversation({
+            conversation_id: activeSession.metadata.tavusSessionId,
+            status: 'active',
+            participant_count: 1,
+            created_at: new Date(activeSession.startTime).toISOString()
+          });
+          setIsConnected(true);
+          setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
+        }
+      } catch (error) {
+        console.error('Error checking active session:', error);
+      }
+    };
+
+    checkActiveSession();
+  }, [user.id, convex]);
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -47,16 +88,69 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
   const handleConnect = async () => {
     setIsConnecting(true);
-    // Simulate connection delay
-    setTimeout(() => {
-      setIsConnected(true);
+    
+    try {
+      const response = await fetch('/api/tavus/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'create' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTavusConversation(data.conversation);
+        setSessionId(data.sessionId);
+        setIsConnected(true);
+        toast.success('Video session started successfully!');
+      } else {
+        throw new Error(data.error || 'Failed to start session');
+      }
+    } catch (error) {
+      console.error('Error starting video session:', error);
+      toast.error('Failed to start video session. Please try again.');
+    } finally {
       setIsConnecting(false);
-    }, 3000);
+    }
   };
 
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setSessionDuration(0);
+  const handleDisconnect = async () => {
+    if (!tavusConversation) return;
+
+    try {
+      const response = await fetch('/api/tavus/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          action: 'end',
+          conversationId: tavusConversation.conversation_id 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsConnected(false);
+        setSessionDuration(0);
+        setTavusConversation(null);
+        setSessionId(null);
+        toast.success('Video session ended successfully!');
+      } else {
+        throw new Error('Failed to end session');
+      }
+    } catch (error) {
+      console.error('Error ending video session:', error);
+      toast.error('Failed to end session properly.');
+      // Still disconnect locally
+      setIsConnected(false);
+      setSessionDuration(0);
+      setTavusConversation(null);
+      setSessionId(null);
+    }
   };
 
   return (
@@ -74,12 +168,12 @@ export default function VideoSession({ user }: VideoSessionProps) {
               <div>
                 <h1 className="text-xl font-semibold">Video Therapy Session</h1>
                 <p className="text-sm text-muted-foreground">
-                  Face-to-face AI therapy with advanced avatars
+                  Face-to-face AI therapy with Tavus technology
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {isConnected && (
+              {isConnected && tavusConversation && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                   Live • {formatDuration(sessionDuration)}
                 </Badge>
@@ -117,12 +211,13 @@ export default function VideoSession({ user }: VideoSessionProps) {
                       </motion.div>
                       <h3 className="text-2xl font-semibold mb-4">Ready to Start</h3>
                       <p className="text-white/80 mb-6 max-w-md">
-                        Connect with your AI therapy companion for a personalized video session
+                        Connect with your AI therapy companion powered by Tavus technology
                       </p>
                       <Button 
                         onClick={handleConnect} 
                         size="lg" 
                         className="bg-blue-600 hover:bg-blue-700"
+                        disabled={isConnecting}
                       >
                         <Video className="h-5 w-5 mr-2" />
                         Start Video Session
@@ -135,7 +230,7 @@ export default function VideoSession({ user }: VideoSessionProps) {
                         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                         className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
                       />
-                      <h3 className="text-xl font-semibold mb-2">Connecting...</h3>
+                      <h3 className="text-xl font-semibold mb-2">Connecting to Tavus...</h3>
                       <p className="text-white/80">Setting up your secure video session</p>
                     </div>
                   ) : (
@@ -150,6 +245,7 @@ export default function VideoSession({ user }: VideoSessionProps) {
                             <span className="text-4xl">🤖</span>
                           </div>
                           <p className="text-lg font-medium">AI Therapist</p>
+                          <p className="text-sm text-white/70">Powered by Tavus</p>
                         </div>
                       </motion.div>
                       <h3 className="text-xl font-semibold mb-2">Session Active</h3>
@@ -167,7 +263,7 @@ export default function VideoSession({ user }: VideoSessionProps) {
                           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2 mx-auto">
                             <span className="text-2xl">👤</span>
                           </div>
-                          <p className="text-sm">You</p>
+                          <p className="text-sm">{user.name?.split(' ')[0] || 'You'}</p>
                         </div>
                       ) : (
                         <div className="text-center text-white/60">
@@ -236,6 +332,14 @@ export default function VideoSession({ user }: VideoSessionProps) {
                     {isConnected ? "Secure" : "Disconnected"}
                   </Badge>
                 </div>
+                {tavusConversation && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Session ID</span>
+                    <span className="text-xs font-mono">
+                      {tavusConversation.conversation_id.slice(0, 8)}...
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -264,7 +368,7 @@ export default function VideoSession({ user }: VideoSessionProps) {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Your session is being securely recorded for your personal review. 
+                  Your session is powered by Tavus AI technology and securely recorded for your personal review. 
                   All data is encrypted and private.
                 </p>
               </CardContent>

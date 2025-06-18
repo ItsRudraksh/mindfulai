@@ -47,6 +47,22 @@ export const endSession = mutation({
   },
 });
 
+export const updateSessionMetadata = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    metadata: v.object({
+      tavusSessionId: v.optional(v.string()),
+      elevenlabsConversationId: v.optional(v.string()),
+      recordingUrl: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.sessionId, {
+      metadata: args.metadata,
+    });
+  },
+});
+
 export const getUserSessions = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -74,5 +90,22 @@ export const updateSessionMood = mutation({
     return await ctx.db.patch(args.sessionId, {
       mood: args.mood,
     });
+  },
+});
+
+export const getActiveSession = query({
+  args: { 
+    userId: v.id("users"),
+    type: v.union(v.literal("video"), v.literal("voice"), v.literal("chat"))
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("sessions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.and(
+        q.eq(q.field("type"), args.type),
+        q.eq(q.field("status"), "active")
+      ))
+      .first();
   },
 });

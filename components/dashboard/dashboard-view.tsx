@@ -27,6 +27,8 @@ import QuickActions from './quick-actions';
 import RecentSessions from './recent-sessions';
 import ProgressOverview from './progress-overview';
 import { User } from '@/types/user';
+import { useConvex } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface DashboardViewProps {
   user: User;
@@ -35,6 +37,24 @@ interface DashboardViewProps {
 export default function DashboardView({ user }: DashboardViewProps) {
   const [currentMood, setCurrentMood] = useState<string | null>(null);
   const [weeklyProgress, setWeeklyProgress] = useState(65);
+  const [recentSessions, setRecentSessions] = useState([]);
+  const convex = useConvex();
+
+  useEffect(() => {
+    // Load user's recent sessions from Convex
+    const loadRecentSessions = async () => {
+      try {
+        const sessions = await convex.query(api.sessions.getUserSessions, {
+          userId: user.id as any,
+        });
+        setRecentSessions(sessions);
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+      }
+    };
+
+    loadRecentSessions();
+  }, [user.id, convex]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -67,7 +87,7 @@ export default function DashboardView({ user }: DashboardViewProps) {
           <div className="lg:col-span-2 space-y-8">
             <MoodCheckIn currentMood={currentMood} setCurrentMood={setCurrentMood} />
             <QuickActions />
-            <RecentSessions />
+            <RecentSessions sessions={recentSessions} />
           </div>
 
           {/* Right Column */}
@@ -126,7 +146,7 @@ export default function DashboardView({ user }: DashboardViewProps) {
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Sessions Completed</span>
-                    <span className="font-semibold">3/4</span>
+                    <span className="font-semibold">{recentSessions.length}/4</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Average Mood</span>

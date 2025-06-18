@@ -6,37 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { Video, Phone, MessageCircle, Clock, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function RecentSessions() {
-  const sessions = [
-    {
-      id: 1,
-      type: 'video',
-      title: 'Video Therapy Session',
-      date: 'Yesterday, 3:00 PM',
-      duration: '45 min',
-      mood: 'Better',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      type: 'chat',
-      title: 'Evening Chat Support',
-      date: '2 days ago, 8:30 PM',
-      duration: '25 min',
-      mood: 'Calm',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      type: 'voice',
-      title: 'Morning Voice Call',
-      date: '3 days ago, 9:00 AM',
-      duration: '30 min',
-      mood: 'Energized',
-      status: 'completed'
-    }
-  ];
+interface Session {
+  _id: string;
+  type: 'video' | 'voice' | 'chat';
+  status: string;
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  mood?: string;
+}
 
+interface RecentSessionsProps {
+  sessions: Session[];
+}
+
+export default function RecentSessions({ sessions }: RecentSessionsProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case 'video': return Video;
@@ -55,6 +39,35 @@ export default function RecentSessions() {
     }
   };
 
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffInHours < 48) {
+      return `Yesterday, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return `${Math.floor(diffInHours / 24)} days ago, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  };
+
+  const formatDuration = (duration?: number) => {
+    if (!duration) return 'N/A';
+    const minutes = Math.floor(duration / (1000 * 60));
+    return `${minutes} min`;
+  };
+
+  const getSessionTitle = (type: string) => {
+    switch (type) {
+      case 'video': return 'Video Therapy Session';
+      case 'voice': return 'Voice Therapy Session';
+      case 'chat': return 'Chat Therapy Session';
+      default: return 'Therapy Session';
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -70,39 +83,47 @@ export default function RecentSessions() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {sessions.map((session, index) => {
-              const Icon = getIcon(session.type);
-              return (
-                <motion.div
-                  key={session.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center`}>
-                      <Icon className={`h-5 w-5 ${getTypeColor(session.type)}`} />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{session.title}</h4>
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{session.date}</span>
-                        <span>•</span>
-                        <span>{session.duration}</span>
+            {sessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No sessions yet. Start your first therapy session!</p>
+              </div>
+            ) : (
+              sessions.slice(0, 3).map((session, index) => {
+                const Icon = getIcon(session.type);
+                return (
+                  <motion.div
+                    key={session._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center`}>
+                        <Icon className={`h-5 w-5 ${getTypeColor(session.type)}`} />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{getSessionTitle(session.type)}</h4>
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDate(session.startTime)}</span>
+                          <span>•</span>
+                          <span>{formatDuration(session.duration)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{session.mood}</Badge>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              );
-            })}
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">
+                        {session.mood || session.status}
+                      </Badge>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>
