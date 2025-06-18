@@ -12,7 +12,7 @@ export const createOrUpdateUser = mutation({
   handler: async (ctx, args) => {
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_provider", (q) => 
+      .withIndex("by_provider", (q) =>
         q.eq("provider", args.provider).eq("providerId", args.providerId)
       )
       .first();
