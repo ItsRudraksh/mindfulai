@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 export const createUser = mutation({
   args: {
     email: v.string(),
+    hashedPassword: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     provider: v.string(),
@@ -20,6 +21,7 @@ export const createUser = mutation({
     }
 
     const now = Date.now();
+
     return await ctx.db.insert("users", {
       ...args,
       createdAt: now,
@@ -55,11 +57,13 @@ export const updateUser = mutation({
     userId: v.id("users"),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
-    preferences: v.optional(v.object({
-      notifications: v.boolean(),
-      theme: v.string(),
-      language: v.string(),
-    })),
+    preferences: v.optional(
+      v.object({
+        notifications: v.boolean(),
+        theme: v.string(),
+        language: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const { userId, ...updates } = args;

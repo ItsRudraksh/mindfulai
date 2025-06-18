@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import bcrypt from "bcryptjs";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -23,11 +24,14 @@ export const authOptions: NextAuthOptions = {
         try {
           // Check if user exists in Convex
           const existingUser = await convex.query(api.users.getUserByEmail, {
-            email: credentials.email
+            email: credentials.email,
           });
 
           // For demo purposes, allow demo credentials
-          if (credentials.email === "demo@mindfulai.com" && credentials.password === "demo123") {
+          if (
+            credentials.email === "demo@mindfulai.com" &&
+            credentials.password === "demo123"
+          ) {
             if (!existingUser) {
               // Create demo user in Convex
               const userId = await convex.mutation(api.users.createUser, {
@@ -36,7 +40,7 @@ export const authOptions: NextAuthOptions = {
                 provider: "credentials",
                 providerId: "demo-user",
               });
-              
+
               return {
                 id: userId,
                 email: credentials.email,
@@ -44,7 +48,7 @@ export const authOptions: NextAuthOptions = {
                 image: null,
               };
             }
-            
+
             return {
               id: existingUser._id,
               email: existingUser.email,
@@ -53,9 +57,26 @@ export const authOptions: NextAuthOptions = {
             };
           }
 
-          // In a real app, you would verify password hash here
-          // For now, return null for non-demo credentials
-          return null;
+          // Verify password for non-demo users
+          if (!existingUser || !existingUser.hashedPassword) {
+            return null; // User not found or no password set
+          }
+
+          const passwordMatch = await bcrypt.compare(
+            credentials.password,
+            existingUser.hashedPassword
+          );
+
+          if (!passwordMatch) {
+            return null; // Passwords do not match
+          }
+
+          return {
+            id: existingUser._id,
+            email: existingUser.email,
+            name: existingUser.name || null,
+            image: existingUser.image || null,
+          };
         } catch (error) {
           console.error("Auth error:", error);
           return null;
@@ -79,8 +100,8 @@ export const authOptions: NextAuthOptions = {
           // Create or update user in Convex for OAuth providers
           await convex.mutation(api.auth.createOrUpdateUser, {
             email: user.email!,
-            name: user.name,
-            image: user.image,
+            name: user.name ?? undefined,
+            image: user.image ?? undefined,
             provider: account.provider,
             providerId: account.providerAccountId!,
           });
@@ -109,7 +130,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
   },
   session: {
     strategy: "jwt",

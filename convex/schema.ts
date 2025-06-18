@@ -4,22 +4,27 @@ import { v } from "convex/values";
 export default defineSchema({
   users: defineTable({
     email: v.string(),
+    hashedPassword: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     provider: v.string(),
     providerId: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    subscription: v.optional(v.object({
-      plan: v.string(),
-      status: v.string(),
-      currentPeriodEnd: v.number(),
-    })),
-    preferences: v.optional(v.object({
-      notifications: v.boolean(),
-      theme: v.string(),
-      language: v.string(),
-    })),
+    subscription: v.optional(
+      v.object({
+        plan: v.string(),
+        status: v.string(),
+        currentPeriodEnd: v.number(),
+      })
+    ),
+    preferences: v.optional(
+      v.object({
+        notifications: v.boolean(),
+        theme: v.string(),
+        language: v.string(),
+      })
+    ),
   })
     .index("by_email", ["email"])
     .index("by_provider", ["provider", "providerId"]),
@@ -39,11 +44,13 @@ export default defineSchema({
     mood: v.optional(v.string()),
     notes: v.optional(v.string()),
     rating: v.optional(v.number()),
-    metadata: v.optional(v.object({
-      tavusSessionId: v.optional(v.string()),
-      elevenlabsConversationId: v.optional(v.string()),
-      recordingUrl: v.optional(v.string()),
-    })),
+    metadata: v.optional(
+      v.object({
+        tavusSessionId: v.optional(v.string()),
+        elevenlabsConversationId: v.optional(v.string()),
+        recordingUrl: v.optional(v.string()),
+      })
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
@@ -55,11 +62,13 @@ export default defineSchema({
     content: v.string(),
     sender: v.union(v.literal("user"), v.literal("ai")),
     timestamp: v.number(),
-    metadata: v.optional(v.object({
-      mood: v.optional(v.string()),
-      sentiment: v.optional(v.string()),
-      confidence: v.optional(v.number()),
-    })),
+    metadata: v.optional(
+      v.object({
+        mood: v.optional(v.string()),
+        sentiment: v.optional(v.string()),
+        confidence: v.optional(v.number()),
+      })
+    ),
   })
     .index("by_session", ["sessionId"])
     .index("by_user", ["userId"])
@@ -103,11 +112,15 @@ export default defineSchema({
       v.literal("cancelled")
     ),
     progress: v.number(),
-    milestones: v.optional(v.array(v.object({
-      title: v.string(),
-      completed: v.boolean(),
-      completedAt: v.optional(v.number()),
-    }))),
+    milestones: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          completed: v.boolean(),
+          completedAt: v.optional(v.number()),
+        })
+      )
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -122,6 +135,5 @@ export default defineSchema({
     email: v.optional(v.string()),
     isPrimary: v.boolean(),
     createdAt: v.number(),
-  })
-    .index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]),
 });
