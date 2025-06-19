@@ -5,12 +5,18 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, VideoOff, Mic, MicOff, ArrowLeft, Settings, MoreVertical } from 'lucide-react';
+import { Video, ArrowLeft, MoreVertical, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { User } from '@/types/user';
 import { useConvex } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface VideoSessionProps {
   user: User;
@@ -21,17 +27,20 @@ interface TavusConversation {
   status: 'active' | 'ended' | 'error';
   participant_count: number;
   created_at: string;
+  conversation_url: string; // Add conversation_url back to interface
 }
 
 export default function VideoSession({ user }: VideoSessionProps) {
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [conversationUrl, setConversationUrl] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [sessionDuration, setSessionDuration] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [tavusConversation, setTavusConversation] = useState<TavusConversation | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionDuration, setSessionDuration] = useState(0);
+  const [showEmbeddedVideo, setShowEmbeddedVideo] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const convex = useConvex();
 
   useEffect(() => {
@@ -45,15 +54,52 @@ export default function VideoSession({ user }: VideoSessionProps) {
       }
     }
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    // Handle fullscreen exit event
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // User exited fullscreen, so hide the embedded video
+        setShowEmbeddedVideo(false);
       }
     };
-  }, [isConnected]);
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isConnected && tavusConversation?.conversation_id) {
+        // Do not end Tavus conversation automatically on unload
+        // event.preventDefault();
+        // event.returnValue = '';
+        // fetch('/api/tavus/conversation', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ action: 'end', conversationId: tavusConversation.conversation_id }),
+        //   keepalive: true,
+        // }).catch(error => console.error('Error ending conversation on unload:', error));
+      }
+    };
+
+    // Attach event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup function for component unmount
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Do not end Tavus conversation automatically on unmount
+      // if (isConnected && tavusConversation?.conversation_id) {
+      //   fetch('/api/tavus/conversation', {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({ action: 'end', conversationId: tavusConversation.conversation_id }),
+      //   }).catch(error => console.error('Error ending conversation on unmount:', error));
+      // }
+      if (intervalRef.current) { // Clear interval on unmount
+        clearInterval(intervalRef.current);
+      }
+      document.removeEventListener('fullscreenchange', handleFullscreenChange); // Cleanup event listener
+    };
+  }, [isConnected, tavusConversation]);
 
   useEffect(() => {
-    // Check for existing active session
     const checkActiveSession = async () => {
       try {
         const activeSession = await convex.query(api.sessions.getActiveSession, {
@@ -62,18 +108,47 @@ export default function VideoSession({ user }: VideoSessionProps) {
         });
 
         if (activeSession && activeSession.metadata?.tavusSessionId) {
-          setSessionId(activeSession._id);
-          setTavusConversation({
-            conversation_id: activeSession.metadata.tavusSessionId,
-            status: 'active',
-            participant_count: 1,
-            created_at: new Date(activeSession.startTime).toISOString()
-          });
-          setIsConnected(true);
-          setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
+          try {
+            // Fetch the actual Tavus conversation status and URL
+            const response = await fetch('/api/tavus/conversation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'status', conversationId: activeSession.metadata.tavusSessionId }),
+            });
+            const data = await response.json();
+
+            if (data.conversation && data.conversation.status === 'active') {
+              setSessionId(activeSession._id);
+              setTavusConversation(data.conversation); // Use the full Tavus conversation object
+              setConversationUrl(data.conversation.conversation_url);
+              setConversationId(data.conversation.conversation_id);
+              setIsConnected(true);
+              setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
+            } else {
+              // Tavus conversation is no longer active, or not found. Clear local state.
+              console.log("Tavus conversation not active or not found, clearing local state.");
+              setSessionId(null);
+              setTavusConversation(null);
+              setConversationUrl(null);
+              setConversationId(null);
+              setIsConnected(false);
+              setSessionDuration(0);
+              setShowEmbeddedVideo(false);
+            }
+          } catch (tavusError) {
+            console.error('Error fetching Tavus conversation status:', tavusError);
+            // Clear local state if we can't get Tavus status
+            setSessionId(null);
+            setTavusConversation(null);
+            setConversationUrl(null);
+            setConversationId(null);
+            setIsConnected(false);
+            setSessionDuration(0);
+            setShowEmbeddedVideo(false);
+          }
         }
       } catch (error) {
-        console.error('Error checking active session:', error);
+        console.error('Error checking active Convex session:', error);
       }
     };
 
@@ -87,8 +162,14 @@ export default function VideoSession({ user }: VideoSessionProps) {
   };
 
   const handleConnect = async () => {
-    setIsConnecting(true);
-    
+    setIsGeneratingLink(true);
+    setConversationUrl(null);
+    setIsConnected(false);
+    setTavusConversation(null);
+    setSessionId(null);
+    setSessionDuration(0);
+    setShowEmbeddedVideo(false);
+
     try {
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
@@ -102,42 +183,66 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
       if (data.success) {
         setTavusConversation(data.conversation);
+        setConversationUrl(data.conversation.conversation_url);
+        setConversationId(data.conversation.conversation_id);
         setSessionId(data.sessionId);
         setIsConnected(true);
-        toast.success('Video session started successfully!');
+        setShowEmbeddedVideo(false);
+        toast.success('Conversation link generated successfully!');
       } else {
-        throw new Error(data.error || 'Failed to start session');
+        throw new Error(data.error || 'Failed to generate conversation link');
       }
     } catch (error) {
-      console.error('Error starting video session:', error);
-      toast.error('Failed to start video session. Please try again.');
+      console.error('Error generating conversation link:', error);
+      toast.error('Failed to generate conversation link. Please try again.');
     } finally {
-      setIsConnecting(false);
+      setIsGeneratingLink(false);
     }
   };
 
   const handleDisconnect = async () => {
-    if (!tavusConversation) return;
+    if (!tavusConversation?.conversation_id) {
+      console.warn('No active Tavus conversation to end.');
+      toast.info('No active session to end.');
+      return;
+    }
 
+    if (!sessionId) {
+      console.warn('No Convex session ID to end.');
+      toast.error('No corresponding session record found.');
+      return;
+    }
+
+    console.log('Attempting to end Tavus conversation with ID:', tavusConversation.conversation_id);
+    console.log('Attempting to end Convex session with ID:', sessionId);
     try {
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           action: 'end',
-          conversationId: tavusConversation.conversation_id 
+          conversationId: tavusConversation.conversation_id,
+          sessionId: sessionId,
         }),
       });
 
       const data = await response.json();
+      console.log('End session API response:', data);
 
       if (data.success) {
         setIsConnected(false);
-        setSessionDuration(0);
+        setConversationUrl(null);
+        setConversationId(null);
         setTavusConversation(null);
         setSessionId(null);
+        setSessionDuration(0);
+        setShowEmbeddedVideo(false);
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        }
         toast.success('Video session ended successfully!');
       } else {
         throw new Error('Failed to end session');
@@ -145,17 +250,29 @@ export default function VideoSession({ user }: VideoSessionProps) {
     } catch (error) {
       console.error('Error ending video session:', error);
       toast.error('Failed to end session properly.');
-      // Still disconnect locally
       setIsConnected(false);
-      setSessionDuration(0);
+      setConversationUrl(null);
+      setConversationId(null);
       setTavusConversation(null);
       setSessionId(null);
+      setSessionDuration(0);
+      setShowEmbeddedVideo(false);
+      // Exit fullscreen if active (fallback)
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (conversationUrl) {
+      navigator.clipboard.writeText(conversationUrl);
+      toast.info('Conversation link copied to clipboard!');
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -168,19 +285,24 @@ export default function VideoSession({ user }: VideoSessionProps) {
               <div>
                 <h1 className="text-xl font-semibold">Video Therapy Session</h1>
                 <p className="text-sm text-muted-foreground">
-                  Face-to-face AI therapy with Tavus technology
+                  Generate a Tavus conversation link
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {isConnected && tavusConversation && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  Live • {formatDuration(sessionDuration)}
+              {isGeneratingLink && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                  Generating Link...
                 </Badge>
               )}
-              {isConnecting && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                  Connecting...
+              {conversationUrl && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  Link Generated
+                </Badge>
+              )}
+              {isConnected && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  Active
                 </Badge>
               )}
               <Button variant="ghost" size="icon">
@@ -191,168 +313,174 @@ export default function VideoSession({ user }: VideoSessionProps) {
         </div>
       </header>
 
-      {/* Main Video Interface */}
       <div className="container mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
-          {/* Main Video Area */}
           <div className="lg:col-span-3">
             <Card className="overflow-hidden">
-              <div className="relative aspect-video bg-gradient-to-br from-blue-900 to-purple-900">
-                {/* AI Therapist Video */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {!isConnected && !isConnecting ? (
-                    <div className="text-center text-white">
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto"
-                      >
-                        <Video className="h-16 w-16" />
-                      </motion.div>
-                      <h3 className="text-2xl font-semibold mb-4">Ready to Start</h3>
-                      <p className="text-white/80 mb-6 max-w-md">
-                        Connect with your AI therapy companion powered by Tavus technology
-                      </p>
-                      <Button 
-                        onClick={handleConnect} 
-                        size="lg" 
-                        className="bg-blue-600 hover:bg-blue-700"
-                        disabled={isConnecting}
-                      >
-                        <Video className="h-5 w-5 mr-2" />
-                        Start Video Session
-                      </Button>
-                    </div>
-                  ) : isConnecting ? (
-                    <div className="text-center text-white">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
-                      />
-                      <h3 className="text-xl font-semibold mb-2">Connecting to Tavus...</h3>
-                      <p className="text-white/80">Setting up your secure video session</p>
-                    </div>
-                  ) : (
-                    <div className="text-center text-white">
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="w-48 h-48 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto"
-                      >
-                        <div className="text-center">
-                          <div className="w-24 h-24 bg-white/30 rounded-full flex items-center justify-center mb-4 mx-auto">
-                            <span className="text-4xl">🤖</span>
-                          </div>
-                          <p className="text-lg font-medium">AI Therapist</p>
-                          <p className="text-sm text-white/70">Powered by Tavus</p>
-                        </div>
-                      </motion.div>
-                      <h3 className="text-xl font-semibold mb-2">Session Active</h3>
-                      <p className="text-white/80">Your AI companion is ready to help</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* User Video (Picture-in-Picture) */}
-                {isConnected && (
-                  <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-white/20">
-                    <div className="w-full h-full flex items-center justify-center">
-                      {isVideoOn ? (
-                        <div className="text-center text-white">
-                          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2 mx-auto">
-                            <span className="text-2xl">👤</span>
-                          </div>
-                          <p className="text-sm">{user.name?.split(' ')[0] || 'You'}</p>
-                        </div>
-                      ) : (
-                        <div className="text-center text-white/60">
-                          <VideoOff className="h-8 w-8 mx-auto mb-2" />
-                          <p className="text-xs">Video Off</p>
-                        </div>
-                      )}
-                    </div>
+              <div className="relative aspect-video bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
+                {!conversationUrl && !isGeneratingLink ? (
+                  <div className="text-center text-white">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto"
+                    >
+                      <Video className="h-16 w-16" />
+                    </motion.div>
+                    <h3 className="text-2xl font-semibold mb-4">Ready to Generate Conversation Link</h3>
+                    <p className="text-white/80 mb-6 max-w-md">
+                      Click the button below to generate a unique video conversation link with Tavus AI.
+                    </p>
+                    <Button
+                      onClick={handleConnect}
+                      size="lg"
+                      className="bg-blue-600 hover:bg-blue-700"
+                      disabled={isGeneratingLink}
+                    >
+                      <Video className="h-5 w-5 mr-2" />
+                      Generate Link
+                    </Button>
                   </div>
-                )}
-
-                {/* Video Controls */}
-                {isConnected && (
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                    <div className="flex space-x-4 bg-black/50 backdrop-blur-sm rounded-full px-6 py-3">
+                ) : isGeneratingLink ? (
+                  <div className="text-center text-white">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
+                    />
+                    <h3 className="text-xl font-semibold mb-2">Generating Link...</h3>
+                    <p className="text-white/80">Please wait while we create your conversation link.</p>
+                  </div>
+                ) : (
+                  <div className="text-center text-white p-4">
+                    {showEmbeddedVideo ? (
+                      <iframe
+                        src={conversationUrl!}
+                        title="Tavus Conversation"
+                        className="w-full aspect-video rounded-lg mb-6"
+                        allow="camera; microphone; display-capture"
+                        ref={iframeRef}
+                      ></iframe>
+                    ) : (
+                      <>
+                        <h3 className="text-2xl font-semibold mb-4">Conversation Link Generated!</h3>
+                        <p className="text-white/80 mb-6 max-w-xl break-all">
+                          {conversationUrl}
+                        </p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="lg"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Join Session
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56">
+                            <DropdownMenuItem onSelect={() => window.open(conversationUrl!, '_blank')}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              <span>Open in New Tab</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => {
+                              setShowEmbeddedVideo(true);
+                              // Request fullscreen on the iframe after it renders
+                              setTimeout(() => {
+                                if (iframeRef.current) {
+                                  iframeRef.current.requestFullscreen().catch(err => {
+                                    console.error("Error attempting to enable full-screen mode:", err);
+                                  });
+                                }
+                              }, 100); // Small delay to ensure iframe is in DOM
+                            }}>
+                              <Video className="mr-2 h-4 w-4" />
+                              <span>Join Here</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                    <Button
+                      onClick={() => {
+                        setConversationUrl(null);
+                        setConversationId(null);
+                        setTavusConversation(null);
+                        setIsConnected(false);
+                        setSessionId(null);
+                        setSessionDuration(0);
+                        setShowEmbeddedVideo(false);
+                      }}
+                      size="lg"
+                      variant="outline"
+                      className="ml-4 border-white text-white hover:bg-white/20"
+                    >
+                      Generate New Link
+                    </Button>
+                    {isConnected && (
                       <Button
-                        variant={isMuted ? "destructive" : "secondary"}
-                        size="icon"
-                        onClick={() => setIsMuted(!isMuted)}
-                        className="rounded-full"
-                      >
-                        {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                      </Button>
-                      <Button
-                        variant={!isVideoOn ? "destructive" : "secondary"}
-                        size="icon"
-                        onClick={() => setIsVideoOn(!isVideoOn)}
-                        className="rounded-full"
-                      >
-                        {isVideoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
                         onClick={handleDisconnect}
-                        className="rounded-full"
+                        size="lg"
+                        variant="destructive"
+                        className="ml-4"
                       >
-                        <ArrowLeft className="h-5 w-5" />
+                        End Session
                       </Button>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Session Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Session Details</CardTitle>
+                <CardTitle className="text-lg">Link Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Duration</span>
-                  <span className="font-medium">{formatDuration(sessionDuration)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Quality</span>
-                  <Badge variant="outline">HD 1080p</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Connection</span>
-                  <Badge variant={isConnected ? "default" : "secondary"}>
-                    {isConnected ? "Secure" : "Disconnected"}
+                  <span className="text-sm text-muted-foreground">Status</span>
+                  <Badge variant={conversationUrl ? "default" : "secondary"}>
+                    {conversationUrl ? "Generated" : "Pending"}
                   </Badge>
                 </div>
-                {tavusConversation && (
+                {conversationId && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Session ID</span>
+                    <span className="text-sm text-muted-foreground">Conversation ID</span>
                     <span className="text-xs font-mono">
-                      {tavusConversation.conversation_id.slice(0, 8)}...
+                      {conversationId.slice(0, 8)}...
                     </span>
+                  </div>
+                )}
+                {sessionId && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Convex Session ID</span>
+                    <span className="text-xs font-mono">
+                      {sessionId.slice(0, 8)}...
+                    </span>
+                  </div>
+                )}
+                {isConnected && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Connection</span>
+                    <Badge variant="default">
+                      Active
+                    </Badge>
+                  </div>
+                )}
+                {isConnected && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Duration</span>
+                    <span className="font-medium">{formatDuration(sessionDuration)}</span>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Video Settings
-                </Button>
                 <Button variant="outline" size="sm" className="w-full justify-start" asChild>
                   <Link href="/emergency">
                     Emergency Help
@@ -361,15 +489,15 @@ export default function VideoSession({ user }: VideoSessionProps) {
               </CardContent>
             </Card>
 
-            {/* Session Notes */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Session Notes</CardTitle>
+                <CardTitle className="text-lg">Important Note</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Your session is powered by Tavus AI technology and securely recorded for your personal review. 
-                  All data is encrypted and private.
+                  This page now generates a direct Tavus conversation link. You can share this link for a video session.
+                  The session will automatically end if you navigate away from this page or close the tab.
+                  Session data is now saved to your Convex database for statistics and user data.
                 </p>
               </CardContent>
             </Card>
