@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { tavusClient } from "@/lib/tavus";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
@@ -8,12 +7,6 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from request headers
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { action, conversationId, sessionId } = await request.json();
 
     console.log(
@@ -36,7 +29,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create session record in Convex using the auth token
+      // Create session record in Convex without auth (using public mutation)
       const newSessionId = await convex.mutation(api.sessions.createSession, {
         type: "video",
         startTime: Date.now(),
