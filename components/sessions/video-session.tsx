@@ -38,6 +38,9 @@ export default function VideoSession() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "video" });
+  const createSession = useMutation(api.sessions.createSession);
+  const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
+  const endSession = useMutation(api.sessions.endSession);
 
   useEffect(() => {
     if (isConnected) {
@@ -134,6 +137,7 @@ export default function VideoSession() {
     setShowEmbeddedVideo(false);
 
     try {
+      // First create the Tavus conversation
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
         headers: {
@@ -145,10 +149,24 @@ export default function VideoSession() {
       const data = await response.json();
 
       if (data.success) {
+        // Create session record in Convex
+        const newSessionId = await createSession({
+          type: "video",
+          startTime: Date.now(),
+        });
+
+        // Update session with Tavus conversation ID
+        await updateSessionMetadata({
+          sessionId: newSessionId,
+          metadata: {
+            tavusSessionId: data.conversation.conversation_id,
+          },
+        });
+
         setTavusConversation(data.conversation);
         setConversationUrl(data.conversation.conversation_url);
         setConversationId(data.conversation.conversation_id);
-        setSessionId(data.sessionId);
+        setSessionId(newSessionId);
         setIsConnected(true);
         setShowEmbeddedVideo(false);
         toast.success('Conversation link generated successfully!');
@@ -177,6 +195,7 @@ export default function VideoSession() {
     }
 
     try {
+      // End Tavus conversation
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
         headers: {
@@ -185,13 +204,18 @@ export default function VideoSession() {
         body: JSON.stringify({
           action: 'end',
           conversationId: tavusConversation.conversation_id,
-          sessionId: sessionId,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
+        // End session in Convex
+        await endSession({
+          sessionId: sessionId,
+          endTime: Date.now(),
+        });
+
         setIsConnected(false);
         setConversationUrl(null);
         setConversationId(null);

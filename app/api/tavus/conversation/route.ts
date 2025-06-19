@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tavusClient } from "@/lib/tavus";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, conversationId, sessionId } = await request.json();
+    const { action, conversationId, sessionId, authToken } = await request.json();
 
     console.log(
       "Received action:",
@@ -29,24 +25,10 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create session record in Convex without auth (using public mutation)
-      const newSessionId = await convex.mutation(api.sessions.createSession, {
-        type: "video",
-        startTime: Date.now(),
-      });
-
-      // Update session with Tavus conversation ID
-      await convex.mutation(api.sessions.updateSessionMetadata, {
-        sessionId: newSessionId,
-        metadata: {
-          tavusSessionId: conversation.conversation_id,
-        },
-      });
-
+      // Return the conversation data - let the client handle Convex session creation
       return NextResponse.json({
         success: true,
         conversation: conversation,
-        sessionId: newSessionId,
       });
     }
 
@@ -66,15 +48,6 @@ export async function POST(request: NextRequest) {
           "Tavus conversation ended successfully for ID:",
           conversationId
         );
-
-        if (sessionId) {
-          // Update session in Convex
-          await convex.mutation(api.sessions.endSession, {
-            sessionId: sessionId,
-            endTime: Date.now(),
-          });
-          console.log("Convex session updated to ended for ID:", sessionId);
-        }
 
         return NextResponse.json({ success: true });
       } catch (endError) {
