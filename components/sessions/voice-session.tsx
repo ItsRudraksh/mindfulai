@@ -98,7 +98,7 @@ export default function VoiceSession() {
               <CardHeader className="text-center">
                 <CardTitle>AI Voice Companion</CardTitle>
                 <p className="text-muted-foreground">
-                  {isConnected 
+                  {isConnected
                     ? "You're connected! Start speaking to begin your therapy session."
                     : "Click the connect button to start your voice therapy session."
                   }
@@ -108,17 +108,15 @@ export default function VoiceSession() {
                 {/* Voice Visualization */}
                 <div className="relative">
                   <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center ${
-                      isConnected ? 'bg-green-100 dark:bg-green-950/20' : 'bg-muted'
-                    }`}
+                    className={`w-32 h-32 rounded-full flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-950/20' : 'bg-muted'
+                      }`}
                     animate={isConnected ? { scale: [1, 1.1, 1] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Phone className={`h-16 w-16 ${
-                      isConnected ? 'text-green-600' : 'text-muted-foreground'
-                    }`} />
+                    <Phone className={`h-16 w-16 ${isConnected ? 'text-green-600' : 'text-muted-foreground'
+                      }`} />
                   </motion.div>
-                  
+
                   {isConnected && (
                     <motion.div
                       className="absolute inset-0 rounded-full border-4 border-green-300"
@@ -158,9 +156,9 @@ export default function VoiceSession() {
                       <p className="text-muted-foreground mb-4">
                         Your AI companion is listening and ready to help
                       </p>
-                      <Button 
-                        onClick={handleDisconnect} 
-                        variant="destructive" 
+                      <Button
+                        onClick={handleDisconnect}
+                        variant="destructive"
                         size="lg"
                       >
                         <PhoneOff className="h-5 w-5 mr-2" />

@@ -28,11 +28,13 @@ export const endSession = mutation({
     endTime: v.number(),
     notes: v.optional(v.string()),
     rating: v.optional(v.number()),
-    metadata: v.optional(v.object({
-      tavusSessionId: v.optional(v.string()),
-      elevenlabsConversationId: v.optional(v.string()),
-      recordingUrl: v.optional(v.string()),
-    })),
+    metadata: v.optional(
+      v.object({
+        tavusSessionId: v.optional(v.string()),
+        elevenlabsConversationId: v.optional(v.string()),
+        recordingUrl: v.optional(v.string()),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -42,13 +44,13 @@ export const endSession = mutation({
 
     const { sessionId, endTime, ...updates } = args;
     const session = await ctx.db.get(sessionId);
-    
+
     if (!session || session.userId !== userId) {
       throw new Error("Session not found or unauthorized");
     }
 
     const duration = endTime - session.startTime;
-    
+
     return await ctx.db.patch(sessionId, {
       ...updates,
       endTime,
@@ -140,8 +142,8 @@ export const updateSessionMood = mutation({
 });
 
 export const getActiveSession = query({
-  args: { 
-    type: v.union(v.literal("video"), v.literal("voice"), v.literal("chat"))
+  args: {
+    type: v.union(v.literal("video"), v.literal("voice"), v.literal("chat")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -152,10 +154,12 @@ export const getActiveSession = query({
     return await ctx.db
       .query("sessions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .filter((q) => q.and(
-        q.eq(q.field("type"), args.type),
-        q.eq(q.field("status"), "active")
-      ))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), args.type),
+          q.eq(q.field("status"), "active")
+        )
+      )
       .first();
   },
 });

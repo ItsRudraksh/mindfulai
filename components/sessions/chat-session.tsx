@@ -146,9 +146,8 @@ export default function ChatSession() {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex items-start space-x-3 max-w-[80%] ${
-                  message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                }`}>
+                <div className={`flex items-start space-x-3 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                  }`}>
                   <Avatar className="w-8 h-8 flex-shrink-0">
                     <AvatarFallback>
                       {message.sender === 'user' ? (
@@ -158,23 +157,22 @@ export default function ChatSession() {
                       )}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={`rounded-lg p-4 ${
-                    message.sender === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
+                  <div className={`rounded-lg p-4 ${message.sender === 'user'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground'
-                  }`}>
+                    }`}>
                     <p className="text-sm leading-relaxed">{message.content}</p>
                     <p className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })}
                     </p>
                   </div>
                 </div>
               </motion.div>
             ))}
-            
+
             {isTyping && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -211,8 +209,8 @@ export default function ChatSession() {
                 className="flex-1"
                 disabled={isTyping}
               />
-              <Button 
-                onClick={handleSendMessage} 
+              <Button
+                onClick={handleSendMessage}
                 disabled={!newMessage.trim() || isTyping}
                 size="icon"
               >

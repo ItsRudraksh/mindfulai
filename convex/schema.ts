@@ -4,7 +4,7 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
-  
+
   users: defineTable({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
@@ -13,8 +13,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     subscription: v.optional(
       v.object({
         plan: v.string(),
@@ -29,8 +29,7 @@ export default defineSchema({
         language: v.string(),
       })
     ),
-  })
-    .index("email", ["email"]),
+  }).index("email", ["email"]),
 
   sessions: defineTable({
     userId: v.id("users"),

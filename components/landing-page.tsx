@@ -52,7 +52,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="relative">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-2"
@@ -62,8 +62,8 @@ export default function LandingPage() {
               MindfulAI
             </span>
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="space-x-4"

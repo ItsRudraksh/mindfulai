@@ -91,7 +91,7 @@ export default function EmergencyResources() {
           <Alert className="mb-8 border-red-200 bg-red-50">
             <Heart className="h-5 w-5 text-red-600" />
             <AlertDescription className="text-red-800 font-medium">
-              If you are in immediate danger or having thoughts of self-harm, please contact emergency services (911) 
+              If you are in immediate danger or having thoughts of self-harm, please contact emergency services (911)
               or the National Suicide Prevention Lifeline (988) immediately.
             </AlertDescription>
           </Alert>
@@ -115,32 +115,28 @@ export default function EmergencyResources() {
               >
                 <Card className="h-full hover:shadow-lg transition-all duration-300">
                   <CardHeader className="text-center">
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${
-                      contact.type === 'emergency' ? 'bg-red-100' : 
-                      contact.type === 'text' ? 'bg-blue-100' : 'bg-green-100'
-                    }`}>
+                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${contact.type === 'emergency' ? 'bg-red-100' :
+                        contact.type === 'text' ? 'bg-blue-100' : 'bg-green-100'
+                      }`}>
                       {contact.type === 'text' ? (
-                        <MessageCircle className={`h-8 w-8 ${
-                          contact.type === 'emergency' ? 'text-red-600' : 
-                          contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
-                        }`} />
+                        <MessageCircle className={`h-8 w-8 ${contact.type === 'emergency' ? 'text-red-600' :
+                            contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
+                          }`} />
                       ) : (
-                        <Phone className={`h-8 w-8 ${
-                          contact.type === 'emergency' ? 'text-red-600' : 
-                          contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
-                        }`} />
+                        <Phone className={`h-8 w-8 ${contact.type === 'emergency' ? 'text-red-600' :
+                            contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
+                          }`} />
                       )}
                     </div>
                     <CardTitle className="text-lg">{contact.name}</CardTitle>
                     <CardDescription>{contact.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="text-center">
-                    <Button 
-                      size="lg" 
-                      className={`w-full text-lg font-bold ${
-                        contact.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' : 
-                        contact.type === 'text' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
-                      }`}
+                    <Button
+                      size="lg"
+                      className={`w-full text-lg font-bold ${contact.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' :
+                          contact.type === 'text' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+                        }`}
                       asChild
                     >
                       <a href={contact.type === 'text' ? 'sms:741741' : `tel:${contact.number.replace(/\D/g, '')}`}>

@@ -23,7 +23,7 @@ export default function Home() {
 
 function RedirectToDashboard() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/dashboard');
   }, [router]);
