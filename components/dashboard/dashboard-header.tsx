@@ -2,24 +2,26 @@
 
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Heart, Bell, Settings, LogOut } from 'lucide-react';
+import { Heart, Bell, Settings, LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
-import { User } from '@/types/user';
+import { User as UserType } from '@/types/user';
 
 interface DashboardHeaderProps {
-  user: User;
+  user: UserType;
 }
 
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
-    <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
+    <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
         <Link href="/dashboard" className="flex items-center space-x-2">
           <Heart className="h-8 w-8 text-primary" />
@@ -32,9 +34,29 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <div className="flex items-center justify-between px-2 py-2">
+                <span className="text-sm font-medium">Theme</span>
+                <ThemeToggle />
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Notifications</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -48,6 +70,13 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
+              <div className="flex flex-col space-y-1 p-2">
+                <p className="text-sm font-medium leading-none">{user.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => signOut()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign out</span>

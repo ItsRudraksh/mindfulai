@@ -13,11 +13,11 @@ interface MoodCheckInProps {
 
 export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckInProps) {
   const moods = [
-    { id: 'great', icon: Smile, label: 'Great', color: 'text-green-500', bg: 'bg-green-50' },
-    { id: 'good', icon: Smile, label: 'Good', color: 'text-blue-500', bg: 'bg-blue-50' },
-    { id: 'okay', icon: Meh, label: 'Okay', color: 'text-yellow-500', bg: 'bg-yellow-50' },
-    { id: 'down', icon: Frown, label: 'Down', color: 'text-orange-500', bg: 'bg-orange-50' },
-    { id: 'struggling', icon: Frown, label: 'Struggling', color: 'text-red-500', bg: 'bg-red-50' },
+    { id: 'great', icon: Smile, label: 'Great', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20' },
+    { id: 'good', icon: Smile, label: 'Good', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+    { id: 'okay', icon: Meh, label: 'Okay', color: 'text-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+    { id: 'down', icon: Frown, label: 'Down', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950/20' },
+    { id: 'struggling', icon: Frown, label: 'Struggling', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/20' },
   ];
 
   return (
@@ -49,7 +49,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                   flex flex-col items-center p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105
                   ${currentMood === mood.id 
                     ? 'border-primary bg-primary/10' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-border hover:border-muted-foreground'
                   }
                 `}
               >

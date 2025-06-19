@@ -57,7 +57,7 @@ export default function DashboardView({ user }: DashboardViewProps) {
   }, [user.id, convex]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-background">
       <DashboardHeader user={user} />
       
       <main className="container mx-auto px-6 py-8 space-y-8">
@@ -108,14 +108,14 @@ export default function DashboardView({ user }: DashboardViewProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                     <div>
                       <p className="font-medium">Video Therapy</p>
                       <p className="text-sm text-muted-foreground">Today, 3:00 PM</p>
                     </div>
                     <Badge variant="outline">Scheduled</Badge>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                     <div>
                       <p className="font-medium">Voice Session</p>
                       <p className="text-sm text-muted-foreground">Tomorrow, 10:00 AM</p>

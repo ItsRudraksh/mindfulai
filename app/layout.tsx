@@ -25,9 +25,9 @@ export default function RootLayout({
           <ConvexProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="light"
-              enableSystem
-              disableTransitionOnChange
+              defaultTheme="dark"
+              enableSystem={false}
+              disableTransitionOnChange={false}
             >
               {children}
               <Toaster />

@@ -27,7 +27,7 @@ interface TavusConversation {
   status: 'active' | 'ended' | 'error';
   participant_count: number;
   created_at: string;
-  conversation_url: string; // Add conversation_url back to interface
+  conversation_url: string;
 }
 
 export default function VideoSession({ user }: VideoSessionProps) {
@@ -54,10 +54,8 @@ export default function VideoSession({ user }: VideoSessionProps) {
       }
     }
 
-    // Handle fullscreen exit event
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        // User exited fullscreen, so hide the embedded video
         setShowEmbeddedVideo(false);
       }
     };
@@ -66,36 +64,18 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isConnected && tavusConversation?.conversation_id) {
-        // Do not end Tavus conversation automatically on unload
-        // event.preventDefault();
-        // event.returnValue = '';
-        // fetch('/api/tavus/conversation', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ action: 'end', conversationId: tavusConversation.conversation_id }),
-        //   keepalive: true,
-        // }).catch(error => console.error('Error ending conversation on unload:', error));
+        // Handle cleanup if needed
       }
     };
 
-    // Attach event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Cleanup function for component unmount
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Do not end Tavus conversation automatically on unmount
-      // if (isConnected && tavusConversation?.conversation_id) {
-      //   fetch('/api/tavus/conversation', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({ action: 'end', conversationId: tavusConversation.conversation_id }),
-      //   }).catch(error => console.error('Error ending conversation on unmount:', error));
-      // }
-      if (intervalRef.current) { // Clear interval on unmount
+      if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      document.removeEventListener('fullscreenchange', handleFullscreenChange); // Cleanup event listener
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [isConnected, tavusConversation]);
 
@@ -109,7 +89,6 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
         if (activeSession && activeSession.metadata?.tavusSessionId) {
           try {
-            // Fetch the actual Tavus conversation status and URL
             const response = await fetch('/api/tavus/conversation', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -119,14 +98,12 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
             if (data.conversation && data.conversation.status === 'active') {
               setSessionId(activeSession._id);
-              setTavusConversation(data.conversation); // Use the full Tavus conversation object
+              setTavusConversation(data.conversation);
               setConversationUrl(data.conversation.conversation_url);
               setConversationId(data.conversation.conversation_id);
               setIsConnected(true);
               setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
             } else {
-              // Tavus conversation is no longer active, or not found. Clear local state.
-              console.log("Tavus conversation not active or not found, clearing local state.");
               setSessionId(null);
               setTavusConversation(null);
               setConversationUrl(null);
@@ -137,7 +114,6 @@ export default function VideoSession({ user }: VideoSessionProps) {
             }
           } catch (tavusError) {
             console.error('Error fetching Tavus conversation status:', tavusError);
-            // Clear local state if we can't get Tavus status
             setSessionId(null);
             setTavusConversation(null);
             setConversationUrl(null);
@@ -213,8 +189,6 @@ export default function VideoSession({ user }: VideoSessionProps) {
       return;
     }
 
-    console.log('Attempting to end Tavus conversation with ID:', tavusConversation.conversation_id);
-    console.log('Attempting to end Convex session with ID:', sessionId);
     try {
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
@@ -229,7 +203,6 @@ export default function VideoSession({ user }: VideoSessionProps) {
       });
 
       const data = await response.json();
-      console.log('End session API response:', data);
 
       if (data.success) {
         setIsConnected(false);
@@ -239,7 +212,6 @@ export default function VideoSession({ user }: VideoSessionProps) {
         setSessionId(null);
         setSessionDuration(0);
         setShowEmbeddedVideo(false);
-        // Exit fullscreen if active
         if (document.fullscreenElement) {
           document.exitFullscreen();
         }
@@ -257,23 +229,15 @@ export default function VideoSession({ user }: VideoSessionProps) {
       setSessionId(null);
       setSessionDuration(0);
       setShowEmbeddedVideo(false);
-      // Exit fullscreen if active (fallback)
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
     }
   };
 
-  const handleCopyLink = () => {
-    if (conversationUrl) {
-      navigator.clipboard.writeText(conversationUrl);
-      toast.info('Conversation link copied to clipboard!');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
+    <div className="min-h-screen bg-background">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -291,17 +255,17 @@ export default function VideoSession({ user }: VideoSessionProps) {
             </div>
             <div className="flex items-center space-x-2">
               {isGeneratingLink && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
                   Generating Link...
                 </Badge>
               )}
               {conversationUrl && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200">
                   Link Generated
                 </Badge>
               )}
               {isConnected && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200">
                   Active
                 </Badge>
               )}
@@ -383,14 +347,13 @@ export default function VideoSession({ user }: VideoSessionProps) {
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => {
                               setShowEmbeddedVideo(true);
-                              // Request fullscreen on the iframe after it renders
                               setTimeout(() => {
                                 if (iframeRef.current) {
                                   iframeRef.current.requestFullscreen().catch(err => {
                                     console.error("Error attempting to enable full-screen mode:", err);
                                   });
                                 }
-                              }, 100); // Small delay to ensure iframe is in DOM
+                              }, 100);
                             }}>
                               <Video className="mr-2 h-4 w-4" />
                               <span>Join Here</span>
@@ -495,9 +458,8 @@ export default function VideoSession({ user }: VideoSessionProps) {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  This page now generates a direct Tavus conversation link. You can share this link for a video session.
-                  The session will automatically end if you navigate away from this page or close the tab.
-                  Session data is now saved to your Convex database for statistics and user data.
+                  This page generates a direct Tavus conversation link. You can share this link for a video session.
+                  Session data is saved to your Convex database for statistics and user data.
                 </p>
               </CardContent>
             </Card>

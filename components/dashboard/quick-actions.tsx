@@ -14,7 +14,7 @@ export default function QuickActions() {
       description: 'Connect with AI therapist via video',
       href: '/sessions/video',
       color: 'text-blue-500',
-      bg: 'bg-blue-50'
+      bg: 'bg-blue-50 dark:bg-blue-950/20'
     },
     {
       icon: Phone,
@@ -22,7 +22,7 @@ export default function QuickActions() {
       description: 'Talk with AI companion',
       href: '/sessions/voice',
       color: 'text-green-500',
-      bg: 'bg-green-50'
+      bg: 'bg-green-50 dark:bg-green-950/20'
     },
     {
       icon: MessageCircle,
@@ -30,7 +30,7 @@ export default function QuickActions() {
       description: 'Text-based therapy session',
       href: '/sessions/chat',
       color: 'text-purple-500',
-      bg: 'bg-purple-50'
+      bg: 'bg-purple-50 dark:bg-purple-950/20'
     },
     {
       icon: Calendar,
@@ -38,7 +38,7 @@ export default function QuickActions() {
       description: 'Book your next appointment',
       href: '/schedule',
       color: 'text-orange-500',
-      bg: 'bg-orange-50'
+      bg: 'bg-orange-50 dark:bg-orange-950/20'
     },
     {
       icon: Brain,
@@ -46,7 +46,7 @@ export default function QuickActions() {
       description: 'Guided mindfulness exercises',
       href: '/meditation',
       color: 'text-indigo-500',
-      bg: 'bg-indigo-50'
+      bg: 'bg-indigo-50 dark:bg-indigo-950/20'
     },
     {
       icon: Heart,
@@ -54,7 +54,7 @@ export default function QuickActions() {
       description: 'Write about your thoughts',
       href: '/journal',
       color: 'text-pink-500',
-      bg: 'bg-pink-50'
+      bg: 'bg-pink-50 dark:bg-pink-950/20'
     }
   ];
 
@@ -83,7 +83,7 @@ export default function QuickActions() {
                 <Button
                   variant="ghost"
                   asChild
-                  className="h-auto p-4 flex flex-col items-start text-left w-full hover:bg-gray-50"
+                  className="h-auto p-4 flex flex-col items-start text-left w-full hover:bg-muted"
                 >
                   <Link href={action.href}>
                     <div className={`w-10 h-10 rounded-lg ${action.bg} flex items-center justify-center mb-3`}>

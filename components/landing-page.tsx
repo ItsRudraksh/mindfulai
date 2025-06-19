@@ -48,7 +48,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="relative">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -135,9 +135,9 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
             >
-              <Card className="h-full hover:shadow-lg transition-all duration-300 border-0 bg-white/60 backdrop-blur-sm">
+              <Card className="h-full hover:shadow-lg transition-all duration-300 border-0 bg-card/60 backdrop-blur-sm">
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-4`}>
+                  <div className={`w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4`}>
                     <feature.icon className={`h-6 w-6 ${feature.color}`} />
                   </div>
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
@@ -154,7 +154,7 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-white/50 backdrop-blur-sm py-20">
+      <section className="bg-muted/50 backdrop-blur-sm py-20">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             {[
@@ -196,7 +196,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 py-12">
+      <footer className="bg-muted py-12">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
