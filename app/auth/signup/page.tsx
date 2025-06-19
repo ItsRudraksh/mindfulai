@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -9,53 +9,51 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, Mail, Lock, User, Github } from 'lucide-react';
 import Link from 'next/link';
-import { useAction, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { toast } from 'sonner';
 
 export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuthActions();
   const router = useRouter();
-  const signUp = useAction(api.auth.signUpAction);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Call the signUpAction to create the user account in Convex
-      await signUp({
+      await signIn("password", { 
+        email, 
+        password, 
         name,
-        email,
-        password,
-        provider: "credentials",
-        providerId: email, // Using email as providerId for credentials
+        flow: "signUp" 
       });
-
-      // After successful signup, redirect to sign in
-      router.push('/auth/signin');
+      router.push('/dashboard');
+      toast.success('Account created successfully!');
     } catch (error) {
       console.error('Sign up error:', error);
+      toast.error('Failed to create account');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSocialSignIn = async (provider: string) => {
+  const handleSocialSignIn = async (provider: "github" | "google") => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl: '/dashboard' });
+      await signIn(provider);
     } catch (error) {
       console.error('Social sign in error:', error);
+      toast.error('Social sign in failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

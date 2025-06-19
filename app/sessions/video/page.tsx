@@ -1,14 +1,31 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+"use client";
+
+import { Authenticated, Unauthenticated } from "convex/react";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import VideoSession from '@/components/sessions/video-session';
 
-export default async function VideoSessionPage() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect('/auth/signin');
-  }
+export default function VideoSessionPage() {
+  const router = useRouter();
 
-  return <VideoSession user={session.user} />;
+  return (
+    <>
+      <Authenticated>
+        <VideoSession />
+      </Authenticated>
+      <Unauthenticated>
+        <RedirectToSignIn />
+      </Unauthenticated>
+    </>
+  );
+}
+
+function RedirectToSignIn() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.push('/auth/signin');
+  }, [router]);
+
+  return null;
 }

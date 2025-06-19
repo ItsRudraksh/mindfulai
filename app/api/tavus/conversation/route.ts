@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { tavusClient } from "@/lib/tavus";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
@@ -9,9 +8,9 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    // Get auth token from request headers
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -37,9 +36,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create session record in Convex
+      // Create session record in Convex using the auth token
       const newSessionId = await convex.mutation(api.sessions.createSession, {
-        userId: session.user.id as any,
         type: "video",
         startTime: Date.now(),
       });
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         conversation: conversation,
-        sessionId: newSessionId, // Return the Convex sessionId
+        sessionId: newSessionId,
       });
     }
 
@@ -77,7 +75,6 @@ export async function POST(request: NextRequest) {
         );
 
         if (sessionId) {
-          // Only update Convex session if sessionId is provided
           // Update session in Convex
           await convex.mutation(api.sessions.endSession, {
             sessionId: sessionId,

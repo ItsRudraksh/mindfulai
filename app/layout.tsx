@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ConvexProvider } from '@/components/convex-provider';
-import { SessionProvider } from '@/components/session-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,19 +20,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <SessionProvider>
-          <ConvexProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem={false}
-              disableTransitionOnChange={false}
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
-          </ConvexProvider>
-        </SessionProvider>
+        <ConvexProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange={false}
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </ConvexProvider>
       </body>
     </html>
   );

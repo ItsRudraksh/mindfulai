@@ -1,14 +1,31 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+"use client";
+
+import { Authenticated, Unauthenticated } from "convex/react";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import ChatSession from '@/components/sessions/chat-session';
 
-export default async function ChatSessionPage() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect('/auth/signin');
-  }
+export default function ChatSessionPage() {
+  const router = useRouter();
 
-  return <ChatSession user={session.user} />;
+  return (
+    <>
+      <Authenticated>
+        <ChatSession />
+      </Authenticated>
+      <Unauthenticated>
+        <RedirectToSignIn />
+      </Unauthenticated>
+    </>
+  );
+}
+
+function RedirectToSignIn() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.push('/auth/signin');
+  }, [router]);
+
+  return null;
 }

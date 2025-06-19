@@ -9,11 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Send, Bot, User as UserIcon, ArrowLeft, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
-import { User } from '@/types/user';
-
-interface ChatSessionProps {
-  user: User;
-}
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface Message {
   id: string;
@@ -23,18 +20,25 @@ interface Message {
   mood?: string;
 }
 
-export default function ChatSession({ user }: ChatSessionProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: `Hello ${user.name?.split(' ')[0] || 'there'}! I'm your AI therapy companion. I'm here to listen and support you through whatever you're experiencing today. How are you feeling right now?`,
-      sender: 'ai',
-      timestamp: new Date(),
-    }
-  ]);
+export default function ChatSession() {
+  const user = useQuery(api.users.current);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      setMessages([
+        {
+          id: '1',
+          content: `Hello ${user.name?.split(' ')[0] || 'there'}! I'm your AI therapy companion. I'm here to listen and support you through whatever you're experiencing today. How are you feeling right now?`,
+          sender: 'ai',
+          timestamp: new Date(),
+        }
+      ]);
+    }
+  }, [user]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,10 +87,18 @@ export default function ChatSession({ user }: ChatSessionProps) {
     return responses[Math.floor(Math.random() * responses.length)];
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -149,7 +161,7 @@ export default function ChatSession({ user }: ChatSessionProps) {
                   <div className={`rounded-lg p-4 ${
                     message.sender === 'user' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-gray-100 text-gray-900'
+                      : 'bg-muted text-foreground'
                   }`}>
                     <p className="text-sm leading-relaxed">{message.content}</p>
                     <p className="text-xs opacity-70 mt-2">
@@ -175,11 +187,11 @@ export default function ChatSession({ user }: ChatSessionProps) {
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-gray-100 rounded-lg p-4">
+                  <div className="bg-muted rounded-lg p-4">
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </div>
                 </div>

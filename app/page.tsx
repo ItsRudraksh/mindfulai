@@ -1,14 +1,32 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+"use client";
+
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Authenticated, Unauthenticated } from "convex/react";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import LandingPage from '@/components/landing-page';
 
-export default async function Home() {
-  const session = await getServerSession(authOptions);
-  
-  if (session) {
-    redirect('/dashboard');
-  }
+export default function Home() {
+  const router = useRouter();
 
-  return <LandingPage />;
+  return (
+    <>
+      <Authenticated>
+        <RedirectToDashboard />
+      </Authenticated>
+      <Unauthenticated>
+        <LandingPage />
+      </Unauthenticated>
+    </>
+  );
+}
+
+function RedirectToDashboard() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.push('/dashboard');
+  }, [router]);
+
+  return null;
 }

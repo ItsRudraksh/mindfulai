@@ -1,62 +1,61 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
-export const createUser = mutation({
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return null;
+    }
+    return await ctx.db.get(userId);
+  },
+});
+
+export const createUserProfile = mutation({
   args: {
-    email: v.string(),
-    hashedPassword: v.optional(v.string()),
     name: v.optional(v.string()),
-    image: v.optional(v.string()),
-    provider: v.string(),
-    providerId: v.string(),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (existingUser) {
-      return existingUser._id;
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
     }
 
-    const now = Date.now();
+    const existingUser = await ctx.db.get(userId);
+    if (existingUser) {
+      // Update existing user
+      await ctx.db.patch(userId, {
+        name: args.name,
+        email: args.email,
+        updatedAt: Date.now(),
+      });
+      return userId;
+    }
 
-    return await ctx.db.insert("users", {
-      ...args,
+    // This shouldn't happen with Convex Auth, but just in case
+    const now = Date.now();
+    await ctx.db.patch(userId, {
+      name: args.name,
+      email: args.email,
       createdAt: now,
       updatedAt: now,
       preferences: {
         notifications: true,
-        theme: "light",
+        theme: "dark",
         language: "en",
       },
     });
+
+    return userId;
   },
 });
 
-export const getUserByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-  },
-});
-
-export const getUserById = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.userId);
-  },
-});
-
-export const updateUser = mutation({
+export const updateProfile = mutation({
   args: {
-    userId: v.id("users"),
     name: v.optional(v.string()),
-    image: v.optional(v.string()),
     preferences: v.optional(
       v.object({
         notifications: v.boolean(),
@@ -66,9 +65,13 @@ export const updateUser = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { userId, ...updates } = args;
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.db.patch(userId, {
-      ...updates,
+      ...args,
       updatedAt: Date.now(),
     });
   },
@@ -76,7 +79,6 @@ export const updateUser = mutation({
 
 export const updateSubscription = mutation({
   args: {
-    userId: v.id("users"),
     subscription: v.object({
       plan: v.string(),
       status: v.string(),
@@ -84,9 +86,13 @@ export const updateSubscription = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const { userId, subscription } = args;
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.db.patch(userId, {
-      subscription,
+      subscription: args.subscription,
       updatedAt: Date.now(),
     });
   },

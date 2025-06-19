@@ -1,14 +1,31 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+"use client";
+
+import { Authenticated, Unauthenticated } from "convex/react";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import VoiceSession from '@/components/sessions/voice-session';
 
-export default async function VoiceSessionPage() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect('/auth/signin');
-  }
+export default function VoiceSessionPage() {
+  const router = useRouter();
 
-  return <VoiceSession user={session.user} />;
+  return (
+    <>
+      <Authenticated>
+        <VoiceSession />
+      </Authenticated>
+      <Unauthenticated>
+        <RedirectToSignIn />
+      </Unauthenticated>
+    </>
+  );
+}
+
+function RedirectToSignIn() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.push('/auth/signin');
+  }, [router]);
+
+  return null;
 }

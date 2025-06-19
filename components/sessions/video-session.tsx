@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Video, ArrowLeft, MoreVertical, Copy } from 'lucide-react';
 import Link from 'next/link';
-import { User } from '@/types/user';
-import { useConvex } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import {
@@ -18,10 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface VideoSessionProps {
-  user: User;
-}
-
 interface TavusConversation {
   conversation_id: string;
   status: 'active' | 'ended' | 'error';
@@ -30,7 +25,7 @@ interface TavusConversation {
   conversation_url: string;
 }
 
-export default function VideoSession({ user }: VideoSessionProps) {
+export default function VideoSession() {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [conversationUrl, setConversationUrl] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -41,7 +36,8 @@ export default function VideoSession({ user }: VideoSessionProps) {
   const [showEmbeddedVideo, setShowEmbeddedVideo] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const convex = useConvex();
+
+  const activeSession = useQuery(api.sessions.getActiveSession, { type: "video" });
 
   useEffect(() => {
     if (isConnected) {
@@ -81,39 +77,23 @@ export default function VideoSession({ user }: VideoSessionProps) {
 
   useEffect(() => {
     const checkActiveSession = async () => {
-      try {
-        const activeSession = await convex.query(api.sessions.getActiveSession, {
-          userId: user.id as any,
-          type: 'video'
-        });
+      if (activeSession && activeSession.metadata?.tavusSessionId) {
+        try {
+          const response = await fetch('/api/tavus/conversation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'status', conversationId: activeSession.metadata.tavusSessionId }),
+          });
+          const data = await response.json();
 
-        if (activeSession && activeSession.metadata?.tavusSessionId) {
-          try {
-            const response = await fetch('/api/tavus/conversation', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'status', conversationId: activeSession.metadata.tavusSessionId }),
-            });
-            const data = await response.json();
-
-            if (data.conversation && data.conversation.status === 'active') {
-              setSessionId(activeSession._id);
-              setTavusConversation(data.conversation);
-              setConversationUrl(data.conversation.conversation_url);
-              setConversationId(data.conversation.conversation_id);
-              setIsConnected(true);
-              setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
-            } else {
-              setSessionId(null);
-              setTavusConversation(null);
-              setConversationUrl(null);
-              setConversationId(null);
-              setIsConnected(false);
-              setSessionDuration(0);
-              setShowEmbeddedVideo(false);
-            }
-          } catch (tavusError) {
-            console.error('Error fetching Tavus conversation status:', tavusError);
+          if (data.conversation && data.conversation.status === 'active') {
+            setSessionId(activeSession._id);
+            setTavusConversation(data.conversation);
+            setConversationUrl(data.conversation.conversation_url);
+            setConversationId(data.conversation.conversation_id);
+            setIsConnected(true);
+            setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
+          } else {
             setSessionId(null);
             setTavusConversation(null);
             setConversationUrl(null);
@@ -122,14 +102,21 @@ export default function VideoSession({ user }: VideoSessionProps) {
             setSessionDuration(0);
             setShowEmbeddedVideo(false);
           }
+        } catch (tavusError) {
+          console.error('Error fetching Tavus conversation status:', tavusError);
+          setSessionId(null);
+          setTavusConversation(null);
+          setConversationUrl(null);
+          setConversationId(null);
+          setIsConnected(false);
+          setSessionDuration(0);
+          setShowEmbeddedVideo(false);
         }
-      } catch (error) {
-        console.error('Error checking active Convex session:', error);
       }
     };
 
     checkActiveSession();
-  }, [user.id, convex]);
+  }, [activeSession]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -397,7 +384,7 @@ export default function VideoSession({ user }: VideoSessionProps) {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Link Details</CardTitle>
+                <CardTitle className="text-lg">Session Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
@@ -416,18 +403,10 @@ export default function VideoSession({ user }: VideoSessionProps) {
                 )}
                 {sessionId && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Convex Session ID</span>
+                    <span className="text-sm text-muted-foreground">Session ID</span>
                     <span className="text-xs font-mono">
                       {sessionId.slice(0, 8)}...
                     </span>
-                  </div>
-                )}
-                {isConnected && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Connection</span>
-                    <Badge variant="default">
-                      Active
-                    </Badge>
                   </div>
                 )}
                 {isConnected && (

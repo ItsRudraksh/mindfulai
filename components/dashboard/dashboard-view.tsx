@@ -2,59 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Heart, 
-  Video, 
-  Phone, 
-  MessageCircle, 
-  Calendar, 
-  TrendingUp, 
-  Brain,
-  Smile,
-  Meh,
-  Frown,
-  Settings,
-  Bell
-} from 'lucide-react';
-import Link from 'next/link';
 import DashboardHeader from './dashboard-header';
 import MoodCheckIn from './mood-check-in';
 import QuickActions from './quick-actions';
 import RecentSessions from './recent-sessions';
 import ProgressOverview from './progress-overview';
-import { User } from '@/types/user';
-import { useConvex } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
-interface DashboardViewProps {
-  user: User;
-}
-
-export default function DashboardView({ user }: DashboardViewProps) {
+export default function DashboardView() {
   const [currentMood, setCurrentMood] = useState<string | null>(null);
   const [weeklyProgress, setWeeklyProgress] = useState(65);
-  const [recentSessions, setRecentSessions] = useState([]);
-  const convex = useConvex();
+  const user = useQuery(api.users.current);
+  const recentSessions = useQuery(api.sessions.getUserSessions) || [];
 
-  useEffect(() => {
-    // Load user's recent sessions from Convex
-    const loadRecentSessions = async () => {
-      try {
-        const sessions = await convex.query(api.sessions.getUserSessions, {
-          userId: user.id as any,
-        });
-        setRecentSessions(sessions);
-      } catch (error) {
-        console.error('Error loading sessions:', error);
-      }
-    };
-
-    loadRecentSessions();
-  }, [user.id, convex]);
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,34 +69,7 @@ export default function DashboardView({ user }: DashboardViewProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Upcoming Sessions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                    <div>
-                      <p className="font-medium">Video Therapy</p>
-                      <p className="text-sm text-muted-foreground">Today, 3:00 PM</p>
-                    </div>
-                    <Badge variant="outline">Scheduled</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                    <div>
-                      <p className="font-medium">Voice Session</p>
-                      <p className="text-sm text-muted-foreground">Tomorrow, 10:00 AM</p>
-                    </div>
-                    <Badge variant="outline">Scheduled</Badge>
-                  </div>
-                  <Button variant="outline" className="w-full">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Schedule New Session
-                  </Button>
-                </CardContent>
-              </Card>
+              {/* Upcoming sessions content */}
             </motion.div>
 
             {/* Quick Stats */}
@@ -136,35 +78,7 @@ export default function DashboardView({ user }: DashboardViewProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
             >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    This Week
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Sessions Completed</span>
-                    <span className="font-semibold">{recentSessions.length}/4</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Average Mood</span>
-                    <div className="flex items-center gap-1">
-                      <Smile className="h-4 w-4 text-green-500" />
-                      <span className="font-semibold">Good</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Streak</span>
-                    <span className="font-semibold">12 days</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Journal Entries</span>
-                    <span className="font-semibold">5</span>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Quick stats content */}
             </motion.div>
           </div>
         </div>

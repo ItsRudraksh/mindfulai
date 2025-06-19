@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn, getSession } from 'next-auth/react';
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, Mail, Lock, Github } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuthActions();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,37 +23,31 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.ok) {
-        router.push('/dashboard');
-      } else {
-        console.error('Sign in failed');
-      }
+      await signIn("password", { email, password, flow: "signIn" });
+      router.push('/dashboard');
+      toast.success('Welcome back!');
     } catch (error) {
       console.error('Sign in error:', error);
+      toast.error('Invalid email or password');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSocialSignIn = async (provider: string) => {
+  const handleSocialSignIn = async (provider: "github" | "google") => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl: '/dashboard' });
+      await signIn(provider);
     } catch (error) {
       console.error('Social sign in error:', error);
+      toast.error('Social sign in failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -145,12 +141,6 @@ export default function SignInPage() {
               <Link href="/auth/signup" className="text-primary hover:underline">
                 Sign up
               </Link>
-            </div>
-
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Demo credentials: demo@mindfulai.com / demo123
-              </p>
             </div>
           </CardContent>
         </Card>

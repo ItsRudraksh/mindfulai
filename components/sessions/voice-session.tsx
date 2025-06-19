@@ -7,13 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Phone, PhoneOff, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
-import { User } from '@/types/user';
 
-interface VoiceSessionProps {
-  user: User;
-}
-
-export default function VoiceSession({ user }: VoiceSessionProps) {
+export default function VoiceSession() {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
@@ -60,9 +55,9 @@ export default function VoiceSession({ user }: VoiceSessionProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -80,12 +75,12 @@ export default function VoiceSession({ user }: VoiceSessionProps) {
             </div>
             <div className="flex items-center space-x-2">
               {isConnected && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200">
                   Connected • {formatDuration(sessionDuration)}
                 </Badge>
               )}
               {isConnecting && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
                   Connecting...
                 </Badge>
               )}
@@ -114,13 +109,13 @@ export default function VoiceSession({ user }: VoiceSessionProps) {
                 <div className="relative">
                   <motion.div
                     className={`w-32 h-32 rounded-full flex items-center justify-center ${
-                      isConnected ? 'bg-green-100' : 'bg-gray-100'
+                      isConnected ? 'bg-green-100 dark:bg-green-950/20' : 'bg-muted'
                     }`}
                     animate={isConnected ? { scale: [1, 1.1, 1] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
                     <Phone className={`h-16 w-16 ${
-                      isConnected ? 'text-green-600' : 'text-gray-400'
+                      isConnected ? 'text-green-600' : 'text-muted-foreground'
                     }`} />
                   </motion.div>
                   

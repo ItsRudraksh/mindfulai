@@ -1,14 +1,31 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+"use client";
+
+import { Authenticated, Unauthenticated } from "convex/react";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import DashboardView from '@/components/dashboard/dashboard-view';
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect('/auth/signin');
-  }
+export default function DashboardPage() {
+  const router = useRouter();
 
-  return <DashboardView user={session.user} />;
+  return (
+    <>
+      <Authenticated>
+        <DashboardView />
+      </Authenticated>
+      <Unauthenticated>
+        <RedirectToSignIn />
+      </Unauthenticated>
+    </>
+  );
+}
+
+function RedirectToSignIn() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.push('/auth/signin');
+  }, [router]);
+
+  return null;
 }
