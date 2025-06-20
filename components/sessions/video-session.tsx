@@ -166,7 +166,8 @@ export default function VideoSession() {
         },
         body: JSON.stringify({
           action: 'create',
-          conversational_context: conversationalContext
+          conversational_context: conversationalContext,
+          firstName: firstName
         }),
       });
 
@@ -439,7 +440,7 @@ export default function VideoSession() {
                       }}
                       size="lg"
                       variant="outline"
-                      className="ml-4 border-white text-white hover:bg-white/20"
+                      className="ml-4 border-white text-white hover:bg-white/10 dark:hover:bg-white/20"
                     >
                       Generate New Link
                     </Button>

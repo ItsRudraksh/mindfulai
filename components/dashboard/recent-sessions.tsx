@@ -96,10 +96,10 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors"
                   >
                     <div className="flex items-center space-x-4">
-                      <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center`}>
+                      <div className={`w-10 h-10 rounded-lg bg-muted/50 dark:bg-muted/20 flex items-center justify-center`}>
                         <Icon className={`h-5 w-5 ${getTypeColor(session.type)}`} />
                       </div>
                       <div>

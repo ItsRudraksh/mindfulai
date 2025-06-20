@@ -3,7 +3,7 @@ import { tavusClient } from "@/lib/tavus";
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, conversationId, conversational_context } =
+    const { action, conversationId, conversational_context, firstName } =
       await request.json();
 
     console.log(
@@ -16,11 +16,15 @@ export async function POST(request: NextRequest) {
     );
 
     if (action === "create") {
-      // Create new Tavus conversation with conversational context
+      // Create custom greeting
+      const customGreeting = `Hey there ${firstName || 'there'} how are you today?`;
+
+      // Create new Tavus conversation with conversational context and custom greeting
       const conversationRequest: any = {
         replica_id: process.env.TAVUS_REPLICA_ID!,
         persona_id: process.env.TAVUS_PERSONA_ID!,
         conversational_context: conversational_context,
+        custom_greeting: customGreeting,
         conversation_name: `Therapy Session - ${new Date().toISOString()}`,
         properties: {
           enable_recording: true,
