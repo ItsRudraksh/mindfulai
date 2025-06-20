@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Video, ArrowLeft, MoreVertical, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
@@ -34,9 +36,11 @@ export default function VideoSession() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [showEmbeddedVideo, setShowEmbeddedVideo] = useState(false);
+  const [stateDescription, setStateDescription] = useState('');
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const user = useQuery(api.users.current);
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "video" });
   const createSession = useMutation(api.sessions.createSession);
   const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
@@ -128,6 +132,16 @@ export default function VideoSession() {
   };
 
   const handleConnect = async () => {
+    if (!stateDescription.trim()) {
+      toast.error('Please describe your current state before starting the session');
+      return;
+    }
+
+    if (!user) {
+      toast.error('User not found');
+      return;
+    }
+
     setIsGeneratingLink(true);
     setConversationUrl(null);
     setIsConnected(false);
@@ -137,13 +151,22 @@ export default function VideoSession() {
     setShowEmbeddedVideo(false);
 
     try {
-      // First create the Tavus conversation
+      // Get user's first name
+      const firstName = user.name?.split(' ')[0] || 'there';
+      
+      // Create conversational context
+      const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
+
+      // First create the Tavus conversation with conversational context
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'create' }),
+        body: JSON.stringify({ 
+          action: 'create',
+          conversational_context: conversationalContext
+        }),
       });
 
       const data = await response.json();
@@ -153,6 +176,7 @@ export default function VideoSession() {
         const newSessionId = await createSession({
           type: "video",
           startTime: Date.now(),
+          mood: stateDescription.trim(),
         });
 
         // Update session with Tavus conversation ID
@@ -223,6 +247,7 @@ export default function VideoSession() {
         setSessionId(null);
         setSessionDuration(0);
         setShowEmbeddedVideo(false);
+        setStateDescription('');
         if (document.fullscreenElement) {
           document.exitFullscreen();
         }
@@ -240,11 +265,20 @@ export default function VideoSession() {
       setSessionId(null);
       setSessionDuration(0);
       setShowEmbeddedVideo(false);
+      setStateDescription('');
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -260,7 +294,7 @@ export default function VideoSession() {
               <div>
                 <h1 className="text-xl font-semibold">Video Therapy Session</h1>
                 <p className="text-sm text-muted-foreground">
-                  Generate a Tavus conversation link
+                  AI-powered video therapy with personalized context
                 </p>
               </div>
             </div>
@@ -294,7 +328,7 @@ export default function VideoSession() {
             <Card className="overflow-hidden">
               <div className="relative aspect-video bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
                 {!conversationUrl && !isGeneratingLink ? (
-                  <div className="text-center text-white">
+                  <div className="text-center text-white p-8 max-w-2xl">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -302,18 +336,36 @@ export default function VideoSession() {
                     >
                       <Video className="h-16 w-16" />
                     </motion.div>
-                    <h3 className="text-2xl font-semibold mb-4">Ready to Generate Conversation Link</h3>
-                    <p className="text-white/80 mb-6 max-w-md">
-                      Click the button below to generate a unique video conversation link with Tavus AI.
+                    <h3 className="text-2xl font-semibold mb-4">Ready to Start Your Session</h3>
+                    <p className="text-white/80 mb-6">
+                      Before we begin, please describe your current mental state to help personalize your therapy session.
                     </p>
+                    
+                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
+                      <Label htmlFor="stateDescription" className="text-white text-left block mb-3 font-medium">
+                        How are you feeling right now? *
+                      </Label>
+                      <Textarea
+                        id="stateDescription"
+                        value={stateDescription}
+                        onChange={(e) => setStateDescription(e.target.value)}
+                        placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
+                        className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none"
+                        required
+                      />
+                      <p className="text-white/60 text-sm mt-2">
+                        This helps our AI therapist understand your current state and provide better support.
+                      </p>
+                    </div>
+
                     <Button
                       onClick={handleConnect}
                       size="lg"
                       className="bg-blue-600 hover:bg-blue-700"
-                      disabled={isGeneratingLink}
+                      disabled={isGeneratingLink || !stateDescription.trim()}
                     >
                       <Video className="h-5 w-5 mr-2" />
-                      Generate Link
+                      Generate Session Link
                     </Button>
                   </div>
                 ) : isGeneratingLink ? (
@@ -323,8 +375,8 @@ export default function VideoSession() {
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                       className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
                     />
-                    <h3 className="text-xl font-semibold mb-2">Generating Link...</h3>
-                    <p className="text-white/80">Please wait while we create your conversation link.</p>
+                    <h3 className="text-xl font-semibold mb-2">Generating Personalized Session...</h3>
+                    <p className="text-white/80">Creating your conversation link with personalized context.</p>
                   </div>
                 ) : (
                   <div className="text-center text-white p-4">
@@ -338,7 +390,7 @@ export default function VideoSession() {
                       ></iframe>
                     ) : (
                       <>
-                        <h3 className="text-2xl font-semibold mb-4">Conversation Link Generated!</h3>
+                        <h3 className="text-2xl font-semibold mb-4">Your Session is Ready!</h3>
                         <p className="text-white/80 mb-6 max-w-xl break-all">
                           {conversationUrl}
                         </p>
@@ -382,6 +434,7 @@ export default function VideoSession() {
                         setSessionId(null);
                         setSessionDuration(0);
                         setShowEmbeddedVideo(false);
+                        setStateDescription('');
                       }}
                       size="lg"
                       variant="outline"
@@ -439,6 +492,14 @@ export default function VideoSession() {
                     <span className="font-medium">{formatDuration(sessionDuration)}</span>
                   </div>
                 )}
+                {stateDescription && (
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Current State</span>
+                    <p className="text-xs bg-muted p-2 rounded text-muted-foreground">
+                      {stateDescription}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -457,12 +518,11 @@ export default function VideoSession() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Important Note</CardTitle>
+                <CardTitle className="text-lg">Session Context</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  This page generates a direct Tavus conversation link. You can share this link for a video session.
-                  Session data is saved to your Convex database for statistics and user data.
+                  Your state description helps the AI therapist understand your current mindset and provide more personalized support during the video session.
                 </p>
               </CardContent>
             </Card>
