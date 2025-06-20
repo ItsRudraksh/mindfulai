@@ -3,7 +3,8 @@ import { tavusClient } from "@/lib/tavus";
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, conversationId, conversational_context } = await request.json();
+    const { action, conversationId, conversational_context } =
+      await request.json();
 
     console.log(
       "Received action:",
@@ -19,18 +20,15 @@ export async function POST(request: NextRequest) {
       const conversationRequest: any = {
         replica_id: process.env.TAVUS_REPLICA_ID!,
         persona_id: process.env.TAVUS_PERSONA_ID!,
+        conversational_context: conversational_context,
         conversation_name: `Therapy Session - ${new Date().toISOString()}`,
         properties: {
           enable_recording: true,
         },
       };
 
-      // Add conversational context if provided
-      if (conversational_context) {
-        conversationRequest.conversational_context = conversational_context;
-      }
-
-      const conversation = await tavusClient.createConversation(conversationRequest);
+      const conversation =
+        await tavusClient.createConversation(conversationRequest);
 
       // Return the conversation data
       return NextResponse.json({

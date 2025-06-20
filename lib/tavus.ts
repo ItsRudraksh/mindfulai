@@ -14,6 +14,7 @@ interface TavusConversationRequest {
   replica_id: string;
   persona_id: string;
   conversation_name?: string;
+  conversational_context: string;
   callback_url?: string;
   properties?: {
     enable_recording?: boolean;

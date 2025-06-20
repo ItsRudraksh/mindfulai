@@ -25,6 +25,7 @@ interface TavusConversation {
   participant_count: number;
   created_at: string;
   conversation_url: string;
+  conversational_context: string;
 }
 
 export default function VideoSession() {
@@ -153,7 +154,7 @@ export default function VideoSession() {
     try {
       // Get user's first name
       const firstName = user.name?.split(' ')[0] || 'there';
-      
+
       // Create conversational context
       const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
 
@@ -163,7 +164,7 @@ export default function VideoSession() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           action: 'create',
           conversational_context: conversationalContext
         }),
@@ -340,7 +341,7 @@ export default function VideoSession() {
                     <p className="text-white/80 mb-6">
                       Before we begin, please describe your current mental state to help personalize your therapy session.
                     </p>
-                    
+
                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
                       <Label htmlFor="stateDescription" className="text-white text-left block mb-3 font-medium">
                         How are you feeling right now? *
