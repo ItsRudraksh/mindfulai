@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Video, ArrowLeft, MoreVertical, Copy } from 'lucide-react';
+import { Video, ArrowLeft, MoreVertical, Copy, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
+import { useVideoSession } from '@/contexts/video-session-context';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,56 +20,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface TavusConversation {
-  conversation_id: string;
-  status: 'active' | 'ended' | 'error';
-  participant_count: number;
-  created_at: string;
-  conversation_url: string;
-  conversational_context: string;
-}
-
 export default function VideoSession() {
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-  const [conversationUrl, setConversationUrl] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [tavusConversation, setTavusConversation] = useState<TavusConversation | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [sessionDuration, setSessionDuration] = useState(0);
-  const [showEmbeddedVideo, setShowEmbeddedVideo] = useState(false);
-  const [stateDescription, setStateDescription] = useState('');
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { state, dispatch, createSession, endSession, restoreSession } = useVideoSession();
+  const user = useQuery(api.users.current);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const user = useQuery(api.users.current);
-  const activeSession = useQuery(api.sessions.getActiveSession, { type: "video" });
-  const createSession = useMutation(api.sessions.createSession);
-  const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
-  const endSession = useMutation(api.sessions.endSession);
-
   useEffect(() => {
-    if (isConnected) {
-      intervalRef.current = setInterval(() => {
-        setSessionDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        setShowEmbeddedVideo(false);
+        dispatch({ type: 'SET_SHOW_EMBEDDED_VIDEO', payload: false });
       }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isConnected && tavusConversation?.conversation_id) {
-        // Handle cleanup if needed
+      if (state.isConnected && state.tavusConversation?.conversation_id) {
+        event.preventDefault();
+        event.returnValue = 'You have an active video session. Are you sure you want to leave?';
       }
     };
 
@@ -76,55 +45,9 @@ export default function VideoSession() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [isConnected, tavusConversation]);
-
-  useEffect(() => {
-    const checkActiveSession = async () => {
-      if (activeSession && activeSession.metadata?.tavusSessionId) {
-        try {
-          const response = await fetch('/api/tavus/conversation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'status', conversationId: activeSession.metadata.tavusSessionId }),
-          });
-          const data = await response.json();
-
-          if (data.conversation && data.conversation.status === 'active') {
-            setSessionId(activeSession._id);
-            setTavusConversation(data.conversation);
-            setConversationUrl(data.conversation.conversation_url);
-            setConversationId(data.conversation.conversation_id);
-            setIsConnected(true);
-            setSessionDuration(Math.floor((Date.now() - activeSession.startTime) / 1000));
-          } else {
-            setSessionId(null);
-            setTavusConversation(null);
-            setConversationUrl(null);
-            setConversationId(null);
-            setIsConnected(false);
-            setSessionDuration(0);
-            setShowEmbeddedVideo(false);
-          }
-        } catch (tavusError) {
-          console.error('Error fetching Tavus conversation status:', tavusError);
-          setSessionId(null);
-          setTavusConversation(null);
-          setConversationUrl(null);
-          setConversationId(null);
-          setIsConnected(false);
-          setSessionDuration(0);
-          setShowEmbeddedVideo(false);
-        }
-      }
-    };
-
-    checkActiveSession();
-  }, [activeSession]);
+  }, [state.isConnected, state.tavusConversation, dispatch]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -133,7 +56,7 @@ export default function VideoSession() {
   };
 
   const handleConnect = async () => {
-    if (!stateDescription.trim()) {
+    if (!state.stateDescription.trim()) {
       toast.error('Please describe your current state before starting the session');
       return;
     }
@@ -143,134 +66,30 @@ export default function VideoSession() {
       return;
     }
 
-    setIsGeneratingLink(true);
-    setConversationUrl(null);
-    setIsConnected(false);
-    setTavusConversation(null);
-    setSessionId(null);
-    setSessionDuration(0);
-    setShowEmbeddedVideo(false);
-
     try {
-      // Get user's first name
       const firstName = user.name?.split(' ')[0] || 'there';
-
-      // Create conversational context
-      const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
-
-      // First create the Tavus conversation with conversational context
-      const response = await fetch('/api/tavus/conversation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'create',
-          conversational_context: conversationalContext,
-          firstName: firstName
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Create session record in Convex
-        const newSessionId = await createSession({
-          type: "video",
-          startTime: Date.now(),
-          mood: stateDescription.trim(),
-        });
-
-        // Update session with Tavus conversation ID
-        await updateSessionMetadata({
-          sessionId: newSessionId,
-          metadata: {
-            tavusSessionId: data.conversation.conversation_id,
-          },
-        });
-
-        setTavusConversation(data.conversation);
-        setConversationUrl(data.conversation.conversation_url);
-        setConversationId(data.conversation.conversation_id);
-        setSessionId(newSessionId);
-        setIsConnected(true);
-        setShowEmbeddedVideo(false);
-        toast.success('Conversation link generated successfully!');
-      } else {
-        throw new Error(data.error || 'Failed to generate conversation link');
-      }
+      await createSession(state.stateDescription, firstName);
+      toast.success('Session created successfully!');
     } catch (error) {
-      console.error('Error generating conversation link:', error);
-      toast.error('Failed to generate conversation link. Please try again.');
-    } finally {
-      setIsGeneratingLink(false);
+      toast.error('Failed to create session. Please try again.');
     }
   };
 
   const handleDisconnect = async () => {
-    if (!tavusConversation?.conversation_id) {
-      console.warn('No active Tavus conversation to end.');
-      toast.info('No active session to end.');
-      return;
-    }
-
-    if (!sessionId) {
-      console.warn('No Convex session ID to end.');
-      toast.error('No corresponding session record found.');
-      return;
-    }
-
     try {
-      // End Tavus conversation
-      const response = await fetch('/api/tavus/conversation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'end',
-          conversationId: tavusConversation.conversation_id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // End session in Convex
-        await endSession({
-          sessionId: sessionId,
-          endTime: Date.now(),
-        });
-
-        setIsConnected(false);
-        setConversationUrl(null);
-        setConversationId(null);
-        setTavusConversation(null);
-        setSessionId(null);
-        setSessionDuration(0);
-        setShowEmbeddedVideo(false);
-        setStateDescription('');
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        }
-        toast.success('Video session ended successfully!');
-      } else {
-        throw new Error('Failed to end session');
-      }
+      await endSession();
+      toast.success('Video session ended successfully!');
     } catch (error) {
-      console.error('Error ending video session:', error);
       toast.error('Failed to end session properly.');
-      setIsConnected(false);
-      setConversationUrl(null);
-      setConversationId(null);
-      setTavusConversation(null);
-      setSessionId(null);
-      setSessionDuration(0);
-      setShowEmbeddedVideo(false);
-      setStateDescription('');
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      }
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await restoreSession();
+      toast.success('Session restored successfully!');
+    } catch (error) {
+      toast.error('Failed to restore session.');
     }
   };
 
@@ -278,6 +97,17 @@ export default function VideoSession() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Restoring your session...</p>
+        </div>
       </div>
     );
   }
@@ -301,20 +131,26 @@ export default function VideoSession() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {isGeneratingLink && (
+              {state.isGeneratingLink && (
                 <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
                   Generating Link...
                 </Badge>
               )}
-              {conversationUrl && (
+              {state.conversationUrl && (
                 <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200">
                   Link Generated
                 </Badge>
               )}
-              {isConnected && (
+              {state.isConnected && (
                 <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200">
-                  Active
+                  Active • {formatDuration(state.sessionDuration)}
                 </Badge>
+              )}
+              {state.error && (
+                <Button variant="outline" size="sm" onClick={handleRestore}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Restore
+                </Button>
               )}
               <Button variant="ghost" size="icon">
                 <MoreVertical className="h-5 w-5" />
@@ -329,7 +165,7 @@ export default function VideoSession() {
           <div className="lg:col-span-3">
             <Card className="overflow-hidden">
               <div className="relative aspect-video bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
-                {!conversationUrl && !isGeneratingLink ? (
+                {!state.conversationUrl && !state.isGeneratingLink ? (
                   <div className="text-center text-white p-8 max-w-2xl">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -349,8 +185,8 @@ export default function VideoSession() {
                       </Label>
                       <Textarea
                         id="stateDescription"
-                        value={stateDescription}
-                        onChange={(e) => setStateDescription(e.target.value)}
+                        value={state.stateDescription}
+                        onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
                         placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
                         className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none"
                         required
@@ -364,13 +200,13 @@ export default function VideoSession() {
                       onClick={handleConnect}
                       size="lg"
                       className="bg-blue-600 hover:bg-blue-700"
-                      disabled={isGeneratingLink || !stateDescription.trim()}
+                      disabled={state.isGeneratingLink || !state.stateDescription.trim()}
                     >
                       <Video className="h-5 w-5 mr-2" />
                       Generate Session Link
                     </Button>
                   </div>
-                ) : isGeneratingLink ? (
+                ) : state.isGeneratingLink ? (
                   <div className="text-center text-white">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -382,9 +218,9 @@ export default function VideoSession() {
                   </div>
                 ) : (
                   <div className="text-center text-white p-4">
-                    {showEmbeddedVideo ? (
+                    {state.showEmbeddedVideo ? (
                       <iframe
-                        src={conversationUrl!}
+                        src={state.conversationUrl!}
                         title="Tavus Conversation"
                         className="w-full aspect-video rounded-lg mb-6"
                         allow="camera; microphone; display-capture"
@@ -394,7 +230,7 @@ export default function VideoSession() {
                       <>
                         <h3 className="text-2xl font-semibold mb-4">Your Session is Ready!</h3>
                         <p className="text-white/80 mb-6 max-w-xl break-all">
-                          {conversationUrl}
+                          {state.conversationUrl}
                         </p>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -406,12 +242,12 @@ export default function VideoSession() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-56">
-                            <DropdownMenuItem onSelect={() => window.open(conversationUrl!, '_blank')}>
+                            <DropdownMenuItem onSelect={() => window.open(state.conversationUrl!, '_blank')}>
                               <Copy className="mr-2 h-4 w-4" />
                               <span>Open in New Tab</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => {
-                              setShowEmbeddedVideo(true);
+                              dispatch({ type: 'SET_SHOW_EMBEDDED_VIDEO', payload: true });
                               setTimeout(() => {
                                 if (iframeRef.current) {
                                   iframeRef.current.requestFullscreen().catch(err => {
@@ -429,14 +265,7 @@ export default function VideoSession() {
                     )}
                     <Button
                       onClick={() => {
-                        setConversationUrl(null);
-                        setConversationId(null);
-                        setTavusConversation(null);
-                        setIsConnected(false);
-                        setSessionId(null);
-                        setSessionDuration(0);
-                        setShowEmbeddedVideo(false);
-                        setStateDescription('');
+                        dispatch({ type: 'RESET_SESSION' });
                       }}
                       size="lg"
                       variant="outline"
@@ -444,7 +273,7 @@ export default function VideoSession() {
                     >
                       Generate New Link
                     </Button>
-                    {isConnected && (
+                    {state.isConnected && (
                       <Button
                         onClick={handleDisconnect}
                         size="lg"
@@ -468,37 +297,37 @@ export default function VideoSession() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={conversationUrl ? "default" : "secondary"}>
-                    {conversationUrl ? "Generated" : "Pending"}
+                  <Badge variant={state.conversationUrl ? "default" : "secondary"}>
+                    {state.conversationUrl ? "Generated" : "Pending"}
                   </Badge>
                 </div>
-                {conversationId && (
+                {state.conversationId && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Conversation ID</span>
                     <span className="text-xs font-mono">
-                      {conversationId.slice(0, 8)}...
+                      {state.conversationId.slice(0, 8)}...
                     </span>
                   </div>
                 )}
-                {sessionId && (
+                {state.sessionId && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Session ID</span>
                     <span className="text-xs font-mono">
-                      {sessionId.slice(0, 8)}...
+                      {state.sessionId.slice(0, 8)}...
                     </span>
                   </div>
                 )}
-                {isConnected && (
+                {state.isConnected && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Duration</span>
-                    <span className="font-medium">{formatDuration(sessionDuration)}</span>
+                    <span className="font-medium">{formatDuration(state.sessionDuration)}</span>
                   </div>
                 )}
-                {stateDescription && (
+                {state.stateDescription && (
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">Current State</span>
                     <p className="text-xs bg-muted p-2 rounded text-muted-foreground">
-                      {stateDescription}
+                      {state.stateDescription}
                     </p>
                   </div>
                 )}
@@ -515,6 +344,12 @@ export default function VideoSession() {
                     Emergency Help
                   </Link>
                 </Button>
+                {state.error && (
+                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleRestore}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Restore Session
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -524,7 +359,7 @@ export default function VideoSession() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Your state description helps the AI therapist understand your current mindset and provide more personalized support during the video session.
+                  Your state description helps the AI therapist understand your current mindset and provide more personalized support during the video session. Session data is automatically saved and restored.
                 </p>
               </CardContent>
             </Card>
