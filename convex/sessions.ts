@@ -18,6 +18,7 @@ export const createSession = mutation({
       userId,
       ...args,
       status: "active",
+      metadata: {},
     });
   },
 });
@@ -65,7 +66,6 @@ export const updateSessionMetadata = mutation({
     sessionId: v.id("sessions"),
     metadata: v.object({
       tavusSessionId: v.optional(v.string()),
-      elevenlabsConversationId: v.optional(v.string()),
       recordingUrl: v.optional(v.string()),
     }),
   },
@@ -80,9 +80,48 @@ export const updateSessionMetadata = mutation({
       throw new Error("Session not found or unauthorized");
     }
 
+    // Merge new metadata with existing metadata
+    const existingMetadata = session.metadata || {};
+    const newMetadata = {
+      ...existingMetadata,
+      ...args.metadata,
+    };
+
     return await ctx.db.patch(args.sessionId, {
-      metadata: args.metadata,
+      metadata: newMetadata,
     });
+  },
+});
+
+export const updateElevenLabsSessionIds = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    elevenlabsConversationId: v.optional(v.string()),
+    elevenlabsCallSid: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Session not found or unauthorized");
+    }
+
+    const updates: {
+      elevenlabsConversationId?: string;
+      elevenlabsCallSid?: string;
+    } = {};
+    if (args.elevenlabsConversationId !== undefined) {
+      updates.elevenlabsConversationId = args.elevenlabsConversationId;
+    }
+    if (args.elevenlabsCallSid !== undefined) {
+      updates.elevenlabsCallSid = args.elevenlabsCallSid;
+    }
+
+    return await ctx.db.patch(args.sessionId, updates);
   },
 });
 

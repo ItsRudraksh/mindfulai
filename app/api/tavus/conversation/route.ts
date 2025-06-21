@@ -6,18 +6,9 @@ export async function POST(request: NextRequest) {
     const { action, conversationId, conversational_context, firstName } =
       await request.json();
 
-    console.log(
-      "Received action:",
-      action,
-      "with conversationId:",
-      conversationId,
-      "and conversational_context:",
-      conversational_context
-    );
-
     if (action === "create") {
       // Create custom greeting
-      const customGreeting = `Hey there ${firstName || 'there'} how are you today?`;
+      const customGreeting = `Hey there ${firstName || "there"} how are you today?`;
 
       // Create new Tavus conversation with conversational context and custom greeting
       const conversationRequest: any = {
@@ -42,21 +33,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "end" && conversationId) {
-      console.log(
-        "Attempting to end Tavus conversation via API for ID:",
-        conversationId
-      );
       try {
-        console.log(
-          "Calling tavusClient.endConversation for ID:",
-          conversationId
-        );
         // End Tavus conversation
         await tavusClient.endConversation(conversationId);
-        console.log(
-          "Tavus conversation ended successfully for ID:",
-          conversationId
-        );
 
         return NextResponse.json({ success: true });
       } catch (endError) {

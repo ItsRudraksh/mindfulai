@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -106,7 +106,7 @@ interface VoiceSessionContextType {
   dispatch: React.Dispatch<VoiceSessionAction>;
   initiateCall: (phoneNumber: string, stateDescription: string, firstName: string) => Promise<void>;
   restoreSession: () => Promise<void>;
-  checkCallStatus: () => Promise<void>;
+  checkCallStatus: (initialConversationId?: string) => Promise<void>;
 }
 
 const VoiceSessionContext = createContext<VoiceSessionContextType | undefined>(undefined);
@@ -115,11 +115,12 @@ const STORAGE_KEY = 'mindfulai_voice_session';
 
 export function VoiceSessionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(voiceSessionReducer, initialState);
-  
+
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
   const createSessionMutation = useMutation(api.sessions.createSession);
   const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
   const endSessionMutation = useMutation(api.sessions.endSession);
+  const updateElevenLabsSessionIdsMutation = useMutation(api.sessions.updateElevenLabsSessionIds);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -134,7 +135,7 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       isConnected: state.isConnected,
       lastStatusCheck: state.lastStatusCheck,
     };
-    
+
     if (state.sessionId || state.conversationId) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } else {
@@ -159,29 +160,27 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
   // Duration timer
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    
+
     if (state.isConnected && (state.callStatus === "in-progress" || state.callStatus === "processing")) {
       interval = setInterval(() => {
         dispatch({ type: 'INCREMENT_DURATION' });
       }, 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [state.isConnected, state.callStatus]);
 
   // Status checking function - now uses conversation ID from database
-  const checkCallStatus = async () => {
+  const checkCallStatus = useCallback(async (initialConversationId?: string) => {
     // Get conversation ID from active session in database
-    const conversationId = activeSession?.metadata?.elevenlabsConversationId || state.conversationId;
-    
+    const conversationId = initialConversationId || activeSession?.elevenlabsConversationId || state.conversationId;
+
     if (!conversationId) {
-      console.log('No conversation ID available for status check');
       return;
     }
 
-    console.log('Checking call status for conversation:', conversationId);
     dispatch({ type: 'SET_LAST_STATUS_CHECK', payload: Date.now() });
 
     try {
@@ -198,16 +197,12 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       }
 
       const data = await response.json();
-      console.log('Status check response:', data);
 
       if (data.success && data.data) {
         const conversationData = data.data;
-        const newStatus = conversationData.status;
-        
-        console.log('Current status:', state.callStatus, '-> New status:', newStatus);
-        
+
         // Update call status
-        dispatch({ type: 'SET_CALL_STATUS', payload: newStatus });
+        dispatch({ type: 'SET_CALL_STATUS', payload: conversationData.status });
 
         // Update session duration from conversation data if available
         if (conversationData.conversation_initiation_client_data?.dynamic_variables?.system__call_duration_secs) {
@@ -216,12 +211,11 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
         }
 
         // Handle completed call
-        if (newStatus === "done") {
-          console.log('Call completed, processing final data...');
-          
+        if (conversationData.status === "done") {
+
           if (state.sessionId || activeSession?._id) {
             const sessionId = state.sessionId || activeSession!._id;
-            
+
             // End session with summary if available
             const notes = conversationData.analysis?.transcript_summary || 'Call completed';
             await endSessionMutation({
@@ -229,149 +223,109 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
               endTime: Date.now(),
               notes: notes,
             });
-
-            console.log('Session ended successfully');
           }
 
-          // Stop status checking
-          if (state.statusCheckInterval) {
-            clearInterval(state.statusCheckInterval);
-            dispatch({ type: 'SET_STATUS_CHECK_INTERVAL', payload: null });
-          }
-
+          // Stop status checking by letting the useEffect handle it
           dispatch({ type: 'SET_CONNECTED', payload: false });
         }
 
         // Handle failed call
-        if (newStatus === "failed") {
-          console.log('Call failed');
+        if (conversationData.status === "failed") {
           dispatch({ type: 'SET_ERROR', payload: 'Call failed' });
-          
+
           if (state.sessionId || activeSession?._id) {
             const sessionId = state.sessionId || activeSession!._id;
+            const notes = conversationData.analysis?.transcript_summary || 'Call failed';
             await endSessionMutation({
               sessionId: sessionId,
               endTime: Date.now(),
-              notes: 'Call failed',
+              notes: notes,
             });
           }
-          
-          if (state.statusCheckInterval) {
-            clearInterval(state.statusCheckInterval);
-            dispatch({ type: 'SET_STATUS_CHECK_INTERVAL', payload: null });
-          }
-
+          // Stop status checking by letting the useEffect handle it
           dispatch({ type: 'SET_CONNECTED', payload: false });
         }
-
-        // Update connection status for active calls
-        if (newStatus === "in-progress" || newStatus === "processing") {
-          dispatch({ type: 'SET_CONNECTED', payload: true });
-        }
-      } else {
-        console.error('Invalid status response:', data);
       }
     } catch (error) {
-      console.error('Error checking call status:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to check call status' });
+      console.error('💥 ElevenLabs conversation status error:', error);
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to check call status' });
+      // No change to call status here, as the error might be transient
     }
-  };
+  }, [activeSession, state.conversationId, state.sessionId, state.callStatus, endSessionMutation, dispatch]);
 
-  // Auto-restore session when activeSession is found
+  // New useEffect for status polling
   useEffect(() => {
-    if (activeSession && !state.sessionId) {
-      restoreSession();
-    }
-  }, [activeSession, state.sessionId]);
+    let interval: NodeJS.Timeout | null = null;
+    const currentConversationId = activeSession?.elevenlabsConversationId || state.conversationId;
 
-  // Start status checking when we have an active session with conversation ID
-  useEffect(() => {
-    const conversationId = activeSession?.metadata?.elevenlabsConversationId || state.conversationId;
-    const shouldStartChecking = conversationId && 
-                               activeSession?.status === "active" &&
-                               state.callStatus !== "done" && 
-                               state.callStatus !== "failed" && 
-                               !state.statusCheckInterval;
-    
-    if (shouldStartChecking) {
-      console.log('Starting status check interval for conversation:', conversationId);
-      
-      // Check immediately
-      checkCallStatus();
-      
-      // Then check every 5 seconds
-      const interval = setInterval(checkCallStatus, 5000);
-      dispatch({ type: 'SET_STATUS_CHECK_INTERVAL', payload: interval });
+    // Only start polling if connected and a conversation ID exists, and call is not done/failed
+    if (state.isConnected && currentConversationId && state.callStatus !== "done" && state.callStatus !== "failed") {
+      // Initial check right after setting up the interval
+      checkCallStatus(currentConversationId);
+
+      interval = setInterval(async () => {
+        await checkCallStatus(currentConversationId);
+      }, 5000); // Poll every 5 seconds
+    } else if (interval) { // If conditions are no longer met, clear the interval
+      clearInterval(interval);
+      dispatch({ type: 'SET_STATUS_CHECK_INTERVAL', payload: null });
     }
 
     return () => {
-      if (state.statusCheckInterval) {
-        clearInterval(state.statusCheckInterval);
+      if (interval) {
+        clearInterval(interval);
       }
     };
-  }, [activeSession?.metadata?.elevenlabsConversationId, activeSession?.status, state.conversationId, state.callStatus]);
-
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (state.statusCheckInterval) {
-        clearInterval(state.statusCheckInterval);
-      }
-    };
-  }, []);
+  }, [state.isConnected, state.conversationId, state.callStatus, activeSession, checkCallStatus, dispatch]);
 
   const restoreSession = async () => {
     if (!activeSession) return;
 
-    console.log('Restoring voice session:', activeSession._id);
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     try {
       // Set session ID from database
       dispatch({ type: 'SET_SESSION_ID', payload: activeSession._id });
-      
-      if (activeSession.metadata?.elevenlabsConversationId) {
+
+      if (activeSession.elevenlabsConversationId) {
         // Set conversation ID from database
-        dispatch({ type: 'SET_CONVERSATION_ID', payload: activeSession.metadata.elevenlabsConversationId });
-        
+        dispatch({ type: 'SET_CONVERSATION_ID', payload: activeSession.elevenlabsConversationId });
+
         // Check conversation status using the stored conversation ID
         const response = await fetch('/api/elevenlabs/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            conversationId: activeSession.metadata.elevenlabsConversationId 
+          body: JSON.stringify({
+            conversationId: activeSession.elevenlabsConversationId
           }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
-          
+
           if (data.success) {
             const conversationData = data.data;
             dispatch({ type: 'SET_CALL_STATUS', payload: conversationData.status });
-            
+
             if (conversationData.status === "in-progress" || conversationData.status === "processing") {
               dispatch({ type: 'SET_CONNECTED', payload: true });
             }
-            
+
             // Calculate duration from start time or use conversation data
             let duration = Math.floor((Date.now() - activeSession.startTime) / 1000);
             if (conversationData.conversation_initiation_client_data?.dynamic_variables?.system__call_duration_secs) {
               duration = conversationData.conversation_initiation_client_data.dynamic_variables.system__call_duration_secs;
             }
             dispatch({ type: 'SET_SESSION_DURATION', payload: duration });
-            
+
             // Restore state description from mood if available
             if (activeSession.mood) {
               dispatch({ type: 'SET_STATE_DESCRIPTION', payload: activeSession.mood });
             }
-
-            console.log('Voice session restored successfully');
           }
         }
       } else {
         // Session exists but no conversation ID yet - might be in process of being created
-        console.log('Session found but no conversation ID yet');
       }
     } catch (error) {
       console.error('Error restoring voice session:', error);
@@ -382,10 +336,9 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
   };
 
   const initiateCall = async (phoneNumber: string, stateDescription: string, firstName: string) => {
-    console.log('Initiating call to:', phoneNumber);
     dispatch({ type: 'SET_INITIATING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
-    
+
     try {
       // Create conversational context
       const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
@@ -397,7 +350,6 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
         mood: stateDescription.trim(),
       });
 
-      console.log('Created session:', newSessionId);
       dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
 
       // Initiate ElevenLabs call
@@ -416,28 +368,28 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       }
 
       const data = await response.json();
-      console.log('Call initiation response:', data);
 
       if (data.success) {
-        // IMMEDIATELY store the conversation ID in the database
-        await updateSessionMetadata({
+        const elevenLabsConversationId = data.conversation_id;
+        const elevenLabsCallSid = data.callSid;
+
+        // Update local state with ElevenLabs IDs immediately
+        dispatch({ type: 'SET_CONVERSATION_ID', payload: elevenLabsConversationId });
+        dispatch({ type: 'SET_CALL_SID', payload: elevenLabsCallSid });
+        dispatch({ type: 'SET_CALL_STATUS', payload: 'initiated' });
+        dispatch({ type: 'SET_CONNECTED', payload: true });
+
+        // Step 3: Update session metadata with ElevenLabs IDs in Convex
+        await updateElevenLabsSessionIdsMutation({
           sessionId: newSessionId,
-          metadata: {
-            elevenlabsConversationId: data.conversation_id,
-          },
+          elevenlabsConversationId: elevenLabsConversationId,
+          elevenlabsCallSid: elevenLabsCallSid,
         });
 
-        console.log('Stored conversation ID in database:', data.conversation_id);
+        // The useEffect for status polling will now pick this up
 
-        // Update local state
-        dispatch({ type: 'SET_CONVERSATION_ID', payload: data.conversation_id });
-        dispatch({ type: 'SET_CALL_SID', payload: data.callSid });
-        dispatch({ type: 'SET_CALL_STATUS', payload: "initiated" });
-        dispatch({ type: 'SET_CONNECTED', payload: true });
         dispatch({ type: 'SET_PHONE_NUMBER', payload: phoneNumber });
         dispatch({ type: 'SET_STATE_DESCRIPTION', payload: stateDescription });
-
-        console.log('Call initiated successfully, conversation ID stored in DB:', data.conversation_id);
       } else {
         throw new Error(data.error || 'Failed to initiate call');
       }

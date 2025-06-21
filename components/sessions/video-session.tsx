@@ -301,22 +301,6 @@ export default function VideoSession() {
                     {state.conversationUrl ? "Generated" : "Pending"}
                   </Badge>
                 </div>
-                {state.conversationId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Conversation ID</span>
-                    <span className="text-xs font-mono">
-                      {state.conversationId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-                {state.sessionId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Session ID</span>
-                    <span className="text-xs font-mono">
-                      {state.sessionId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
                 {state.isConnected && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Duration</span>

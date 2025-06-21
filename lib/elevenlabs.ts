@@ -25,7 +25,7 @@ interface VoiceCallResponse {
 
 interface ConversationStatus {
   agent_id: string;
-  conversation_id: string;
+  conversationId: string;
   status: "initiated" | "in-progress" | "processing" | "done" | "failed";
   transcript: any[];
   metadata: any;
@@ -50,7 +50,7 @@ interface ConversationStatus {
       conversationContext: string;
     };
   };
-  has_audio: boolean;
+  hasAudio: boolean;
   has_user_audio: boolean;
   has_response_audio: boolean;
 }
@@ -68,72 +68,63 @@ class ElevenLabsVoiceClient {
 
   async initiateCall(request: VoiceCallRequest): Promise<VoiceCallResponse> {
     try {
-      console.log("🔄 Initiating ElevenLabs call with request:", {
-        agentId: request.agentId,
-        agentPhoneNumberId: request.agentPhoneNumberId,
-        toNumber: request.toNumber,
-        firstName: request.conversationInitiationClientData.dynamicVariables.firstName
-      });
-
       const response = await this.client.conversationalAi.twilio.outboundCall({
         agentId: request.agentId,
         agentPhoneNumberId: request.agentPhoneNumberId,
         toNumber: request.toNumber,
-        conversationInitiationClientData: request.conversationInitiationClientData,
+        conversationInitiationClientData:
+          request.conversationInitiationClientData,
       });
 
-      console.log("✅ ElevenLabs call initiated successfully:", response);
       return response as VoiceCallResponse;
     } catch (error) {
-      console.error('💥 ElevenLabs call initiation error:', error);
-      
+      console.error("💥 ElevenLabs call initiation error:", error);
+
       // Log more details about the error
       if (error instanceof Error) {
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
       }
-      
+
       throw error;
     }
   }
 
-  async getConversationStatus(conversationId: string): Promise<ConversationStatus> {
+  async getConversationStatus(
+    conversationId: string
+  ): Promise<ConversationStatus> {
     try {
-      console.log("🔍 Getting conversation status for:", conversationId);
-      const response = await this.client.conversationalAi.conversations.get(conversationId);
-      console.log("📊 Conversation status response:", {
-        conversation_id: response.conversation_id,
-        status: response.status,
-        has_audio: response.has_audio
-      });
+      const response =
+        await this.client.conversationalAi.conversations.get(conversationId);
       return response as ConversationStatus;
     } catch (error) {
-      console.error('💥 ElevenLabs conversation status error:', error);
+      console.error("💥 ElevenLabs conversation status error:", error);
       throw error;
     }
   }
 
-  async getConversationAudio(conversationId: string): Promise<string> {
+  async getConversationAudio(conversationId: string): Promise<Response> {
     try {
-      console.log("🎵 Getting conversation audio for:", conversationId);
-      const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`, {
-        method: "GET",
-        headers: {
-          "Xi-Api-Key": this.apiKey,
-          "Api-Key": this.apiKey
-        },
-      });
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
+        {
+          method: "GET",
+          headers: {
+            "Xi-Api-Key": this.apiKey,
+            "Api-Key": this.apiKey,
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch audio: ${response.status} - ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch audio: ${response.status} - ${response.statusText}`
+        );
       }
 
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      console.log("🎵 Audio URL created successfully");
-      return audioUrl;
+      return response; // Return the raw response directly
     } catch (error) {
-      console.error('💥 ElevenLabs audio fetch error:', error);
+      console.error("💥 ElevenLabs audio fetch error:", error);
       throw error;
     }
   }

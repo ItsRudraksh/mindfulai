@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
+import { Slider } from "@/components/ui/slider";
 
 interface SessionDetailsPageProps {
   params: {
@@ -23,10 +24,52 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [transcriptSummary, setTranscriptSummary] = useState<string | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [audioVolume, setAudioVolume] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const sessionId = params.sessionId as Id<"sessions">;
   const session = useQuery(api.sessions.getSessionById, { sessionId });
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = audioVolume;
+    }
+  }, [audioVolume]);
+
+  useEffect(() => {
+    const fetchConversationDetails = async () => {
+      if (session && session.type === 'voice' && session.elevenlabsConversationId && !transcriptSummary) {
+        setIsLoadingSummary(true);
+        try {
+          const response = await fetch('/api/elevenlabs/details', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: session.elevenlabsConversationId,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data.analysis?.transcriptSummary) {
+              setTranscriptSummary(data.data.analysis.transcriptSummary);
+            } else {
+              // console.warn('Failed to fetch transcript summary or it was not available.', data);
+            }
+          } else {
+            throw new Error(`Failed to fetch conversation details: ${response.status}`);
+          }
+        } catch (error) {
+          console.error('Error fetching conversation details:', error);
+          toast.error('Failed to load session summary.');
+        } finally {
+          setIsLoadingSummary(false);
+        }
+      }
+    };
+    fetchConversationDetails();
+  }, [session, transcriptSummary]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -77,42 +120,23 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     if (!session) return;
 
     setIsLoadingAudio(true);
-    
+
     try {
-      if (session.type === 'voice' && session.metadata?.elevenlabsConversationId) {
-        // Get voice recording and transcript summary
-        const [statusResponse, audioResponse] = await Promise.all([
-          fetch('/api/elevenlabs/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversationId: session.metadata.elevenlabsConversationId,
-            }),
-          }),
-          fetch('/api/elevenlabs/audio', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversationId: session.metadata.elevenlabsConversationId,
-            }),
-          })
-        ]);
+      if (session.type === 'voice' && session.elevenlabsConversationId) {
+        // Get voice recording
+        const audioResponse = await fetch(`/api/elevenlabs/audio?conversationId=${session.elevenlabsConversationId}`, {
+          method: 'GET',
+          // No body needed for GET request
+        });
 
-        const [statusData, audioData] = await Promise.all([
-          statusResponse.json(),
-          audioResponse.json()
-        ]);
-
-        if (statusData.success && statusData.data.analysis?.transcript_summary) {
-          setTranscriptSummary(statusData.data.analysis.transcript_summary);
+        if (!audioResponse.ok) {
+          throw new Error(`Failed to fetch audio: ${audioResponse.status}`);
         }
 
-        if (audioData.success) {
-          setAudioUrl(audioData.audioUrl);
-          toast.success('Recording loaded successfully!');
-        } else {
-          throw new Error('Failed to load audio recording');
-        }
+        // The audioUrl is now the direct URL to our proxy API
+        setAudioUrl(`/api/elevenlabs/audio?conversationId=${session.elevenlabsConversationId}`);
+        toast.success('Recording loaded successfully!');
+
       } else if (session.type === 'video' && session.metadata?.tavusSessionId) {
         // For video sessions, we would implement video recording retrieval here
         toast.info('Video recording retrieval will be implemented soon');
@@ -237,180 +261,94 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
             </Card>
 
             {/* Transcript Summary */}
-            {transcriptSummary && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Session Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Session Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingSummary ? (
+                  <div className="flex items-center justify-center h-24">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="ml-3 text-muted-foreground">Loading summary...</p>
+                  </div>
+                ) : transcriptSummary ? (
                   <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 p-4 rounded-lg">
                     <p className="text-sm leading-relaxed">{transcriptSummary}</p>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground text-sm">No transcript summary available.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Audio Player */}
+            {audioUrl && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Session Recording</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <audio src={audioUrl} className="w-full mb-3" controls onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)}></audio>
+                  <div className="flex justify-end space-x-2">
+                    <Button onClick={handlePlayPause} variant="outline">
+                      {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      {isPlaying ? 'Pause' : 'Play'}
+                    </Button>
+                    <Button onClick={handleDownload} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Recording
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             )}
-
-            {/* Recording Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Session Recording</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!audioUrl ? (
-                  <div className="text-center py-8">
-                    <Volume2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground mb-4">
-                      {session.type === 'voice' 
-                        ? 'Load your voice session recording to listen and download'
-                        : session.type === 'video'
-                        ? 'Video recording retrieval coming soon'
-                        : 'No recording available for chat sessions'
-                      }
-                    </p>
-                    {session.type === 'voice' && (
-                      <Button
-                        onClick={handleGetRecording}
-                        disabled={isLoadingAudio}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isLoadingAudio ? 'Loading...' : 'Get Recording'}
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-muted/50 p-4 rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium">Audio Recording</h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownload}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                      </div>
-                      
-                      <audio
-                        ref={audioRef}
-                        src={audioUrl}
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onEnded={() => setIsPlaying(false)}
-                        className="w-full mb-3"
-                        controls
-                      />
-                      
-                      <div className="flex items-center justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handlePlayPause}
-                        >
-                          {isPlaying ? (
-                            <Pause className="h-4 w-4 mr-2" />
-                          ) : (
-                            <Play className="h-4 w-4 mr-2" />
-                          )}
-                          {isPlaying ? 'Pause' : 'Play'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Session Metadata */}
+          {/* Metadata Sidebar (or other session related info) */}
+          <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Session Details</CardTitle>
+                <CardTitle>Session Metadata</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Type</span>
-                  <Badge variant="outline">{session.type}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant="secondary" className={getStatusColor(session.status)}>
-                    {session.status}
-                  </Badge>
-                </div>
-                {session.rating && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Rating</span>
-                    <span className="text-sm font-medium">{session.rating}/5</span>
-                  </div>
-                )}
-                {session.metadata?.elevenlabsConversationId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Conversation ID</span>
-                    <span className="text-xs font-mono">
-                      {session.metadata.elevenlabsConversationId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-                {session.metadata?.tavusSessionId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Tavus Session ID</span>
-                    <span className="text-xs font-mono">
-                      {session.metadata.tavusSessionId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p><strong>Type:</strong> {session.type}</p>
+                <p><strong>Status:</strong> <Badge variant="secondary" className={getStatusColor(session.status)}>{session.status}</Badge></p>
+                {session.metadata?.tavusSessionId && <p><strong>Tavus Session ID:</strong> {session.metadata.tavusSessionId}</p>}
+                {session.metadata?.recordingUrl && <p><strong>Recording URL:</strong> <a href={session.metadata.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Link</a></p>}
+                {session.endTime && <p><strong>Ended At:</strong> {formatDate(session.endTime)}</p>}
+                {session.rating && <p><strong>Rating:</strong> {session.rating}/5</p>}
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
-            <Card>
+            <Card className="mt-6">
               <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
+                <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href={`/sessions/${session.type}`}>
-                    <SessionIcon className="h-4 w-4 mr-2" />
-                    Start New {session.type} Session
-                  </Link>
+                <Button onClick={handleGetRecording} disabled={isLoadingAudio || audioUrl !== null || session.type !== 'voice'} className="w-full">
+                  {isLoadingAudio ? 'Loading Recording...' : 'Get Recording'}
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href="/sessions">
-                    View All Sessions
-                  </Link>
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href="/emergency">
-                    Emergency Resources
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Session Tips */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Session Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm space-y-2">
-                  <p className="text-muted-foreground">
-                    Regular therapy sessions help build emotional resilience and provide consistent support for your mental health journey.
-                  </p>
-                  {session.type === 'voice' && (
-                    <p className="text-muted-foreground">
-                      Voice sessions allow for natural conversation flow and can be more comfortable for some users.
-                    </p>
-                  )}
-                  {session.type === 'video' && (
-                    <p className="text-muted-foreground">
-                      Video sessions provide visual cues and can create a more personal therapeutic connection.
-                    </p>
-                  )}
+                {audioUrl && ( // Only show controls if audio is loaded
+                  <div className="flex space-x-2">
+                    <Button onClick={handlePlayPause} variant="outline" className="flex-1">
+                      {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      {isPlaying ? 'Pause' : 'Play'}
+                    </Button>
+                    <Button onClick={handleDownload} variant="outline" className="flex-1">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                )}
+                <div className="flex items-center space-x-2 w-full">
+                  <Volume2 className="h-5 w-5 text-muted-foreground" />
+                  <Slider
+                    defaultValue={[100]}
+                    max={100}
+                    step={1}
+                    onValueChange={(value) => setAudioVolume(value[0] / 100)}
+                    className="flex-1"
+                  />
                 </div>
               </CardContent>
             </Card>

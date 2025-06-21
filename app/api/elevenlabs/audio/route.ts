@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { elevenLabsClient } from "@/lib/elevenlabs";
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { conversationId } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const conversationId = searchParams.get("conversationId");
 
     if (!conversationId) {
       return NextResponse.json(
@@ -12,14 +13,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Fetching ElevenLabs conversation audio for:", conversationId);
+    // Get conversation audio - now directly streams from ElevenLabs
+    const audioResponse =
+      await elevenLabsClient.getConversationAudio(conversationId);
 
-    // Get conversation audio
-    const audioUrl = await elevenLabsClient.getConversationAudio(conversationId);
-    
-    return NextResponse.json({
-      success: true,
-      audioUrl: audioUrl,
+    // Directly return the audio stream from ElevenLabs
+    return new NextResponse(audioResponse.body, {
+      status: audioResponse.status,
+      headers: {
+        "Content-Type":
+          audioResponse.headers.get("Content-Type") || "audio/mpeg",
+        "Cache-Control": "public, max-age=3600",
+        "Accept-Ranges": "bytes",
+        "Content-Length": audioResponse.headers.get("Content-Length") || "",
+      },
     });
   } catch (error) {
     console.error("ElevenLabs audio fetch error:", error);

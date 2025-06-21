@@ -46,10 +46,11 @@ export default defineSchema({
     mood: v.optional(v.string()),
     notes: v.optional(v.string()),
     rating: v.optional(v.number()),
+    elevenlabsConversationId: v.optional(v.string()),
+    elevenlabsCallSid: v.optional(v.string()),
     metadata: v.optional(
       v.object({
         tavusSessionId: v.optional(v.string()),
-        elevenlabsConversationId: v.optional(v.string()),
         recordingUrl: v.optional(v.string()),
       })
     ),
