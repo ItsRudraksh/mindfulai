@@ -4,7 +4,6 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { ConversationStatus } from '@/lib/elevenlabs';
 
 interface VoiceSessionState {
   isInitiating: boolean;
@@ -16,9 +15,6 @@ interface VoiceSessionState {
   sessionDuration: number;
   phoneNumber: string;
   stateDescription: string;
-  conversationData: ConversationStatus | null;
-  audioUrl: string | null;
-  transcriptSummary: string | null;
   isLoading: boolean;
   error: string | null;
   statusCheckInterval: NodeJS.Timeout | null;
@@ -35,9 +31,6 @@ type VoiceSessionAction =
   | { type: 'INCREMENT_DURATION' }
   | { type: 'SET_PHONE_NUMBER'; payload: string }
   | { type: 'SET_STATE_DESCRIPTION'; payload: string }
-  | { type: 'SET_CONVERSATION_DATA'; payload: ConversationStatus | null }
-  | { type: 'SET_AUDIO_URL'; payload: string | null }
-  | { type: 'SET_TRANSCRIPT_SUMMARY'; payload: string | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_STATUS_CHECK_INTERVAL'; payload: NodeJS.Timeout | null }
@@ -54,9 +47,6 @@ const initialState: VoiceSessionState = {
   sessionDuration: 0,
   phoneNumber: '',
   stateDescription: '',
-  conversationData: null,
-  audioUrl: null,
-  transcriptSummary: null,
   isLoading: false,
   error: null,
   statusCheckInterval: null,
@@ -84,12 +74,6 @@ function voiceSessionReducer(state: VoiceSessionState, action: VoiceSessionActio
       return { ...state, phoneNumber: action.payload };
     case 'SET_STATE_DESCRIPTION':
       return { ...state, stateDescription: action.payload };
-    case 'SET_CONVERSATION_DATA':
-      return { ...state, conversationData: action.payload };
-    case 'SET_AUDIO_URL':
-      return { ...state, audioUrl: action.payload };
-    case 'SET_TRANSCRIPT_SUMMARY':
-      return { ...state, transcriptSummary: action.payload };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
@@ -116,7 +100,6 @@ interface VoiceSessionContextType {
   state: VoiceSessionState;
   dispatch: React.Dispatch<VoiceSessionAction>;
   initiateCall: (phoneNumber: string, stateDescription: string, firstName: string) => Promise<void>;
-  endSession: () => Promise<void>;
   restoreSession: () => Promise<void>;
   checkCallStatus: () => Promise<void>;
 }
@@ -144,9 +127,6 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       stateDescription: state.stateDescription,
       callStatus: state.callStatus,
       isConnected: state.isConnected,
-      conversationData: state.conversationData,
-      audioUrl: state.audioUrl,
-      transcriptSummary: state.transcriptSummary,
     };
     
     if (state.sessionId || state.conversationId) {
@@ -190,11 +170,10 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
     if (!state.conversationId) return;
 
     try {
-      const response = await fetch('/api/elevenlabs/voice', {
+      const response = await fetch('/api/elevenlabs/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'status',
           conversationId: state.conversationId,
         }),
       });
@@ -203,7 +182,6 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
 
       if (data.success) {
         const conversationData = data.data;
-        dispatch({ type: 'SET_CONVERSATION_DATA', payload: conversationData });
         dispatch({ type: 'SET_CALL_STATUS', payload: conversationData.status });
 
         // Update session duration from conversation data if available
@@ -214,36 +192,13 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
           });
         }
 
-        // If call is done and successful, fetch audio and summary
+        // If call is done and successful, update session in database
         if (conversationData.status === "done" && conversationData.analysis?.call_successful === "success") {
-          dispatch({ type: 'SET_TRANSCRIPT_SUMMARY', payload: conversationData.analysis.transcript_summary });
-          
-          // Fetch audio
-          try {
-            const audioResponse = await fetch('/api/elevenlabs/voice', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'audio',
-                conversationId: state.conversationId,
-              }),
-            });
-
-            const audioData = await audioResponse.json();
-            if (audioData.success) {
-              dispatch({ type: 'SET_AUDIO_URL', payload: audioData.audioUrl });
-            }
-          } catch (audioError) {
-            console.error('Error fetching audio:', audioError);
-          }
-
-          // Update session in database
           if (state.sessionId) {
             await updateSessionMetadata({
               sessionId: state.sessionId,
               metadata: {
                 elevenlabsConversationId: state.conversationId,
-                recordingUrl: state.audioUrl || undefined,
               },
             });
 
@@ -312,11 +267,10 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
     try {
       if (activeSession.metadata?.elevenlabsConversationId) {
         // Check conversation status
-        const response = await fetch('/api/elevenlabs/voice', {
+        const response = await fetch('/api/elevenlabs/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            action: 'status', 
             conversationId: activeSession.metadata.elevenlabsConversationId 
           }),
         });
@@ -327,7 +281,6 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
           const conversationData = data.data;
           dispatch({ type: 'SET_SESSION_ID', payload: activeSession._id });
           dispatch({ type: 'SET_CONVERSATION_ID', payload: conversationData.conversation_id });
-          dispatch({ type: 'SET_CONVERSATION_DATA', payload: conversationData });
           dispatch({ type: 'SET_CALL_STATUS', payload: conversationData.status });
           
           if (conversationData.status === "in-progress" || conversationData.status === "processing") {
@@ -344,15 +297,6 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
           // Restore state description from mood if available
           if (activeSession.mood) {
             dispatch({ type: 'SET_STATE_DESCRIPTION', payload: activeSession.mood });
-          }
-
-          // If call is done, get summary and audio
-          if (conversationData.status === "done" && conversationData.analysis?.transcript_summary) {
-            dispatch({ type: 'SET_TRANSCRIPT_SUMMARY', payload: conversationData.analysis.transcript_summary });
-            
-            if (activeSession.metadata.recordingUrl) {
-              dispatch({ type: 'SET_AUDIO_URL', payload: activeSession.metadata.recordingUrl });
-            }
           }
         }
       }
@@ -380,11 +324,10 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       });
 
       // Initiate ElevenLabs call
-      const response = await fetch('/api/elevenlabs/voice', {
+      const response = await fetch('/api/elevenlabs/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'initiate',
           phoneNumber: phoneNumber,
           firstName: firstName,
           conversationContext: conversationalContext,
@@ -398,13 +341,13 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
         await updateSessionMetadata({
           sessionId: newSessionId,
           metadata: {
-            elevenlabsConversationId: data.data.conversation_id,
+            elevenlabsConversationId: data.conversation_id,
           },
         });
 
         dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
-        dispatch({ type: 'SET_CONVERSATION_ID', payload: data.data.conversation_id });
-        dispatch({ type: 'SET_CALL_SID', payload: data.data.callSid });
+        dispatch({ type: 'SET_CONVERSATION_ID', payload: data.conversation_id });
+        dispatch({ type: 'SET_CALL_SID', payload: data.callSid });
         dispatch({ type: 'SET_CALL_STATUS', payload: "initiated" });
         dispatch({ type: 'SET_CONNECTED', payload: true });
         dispatch({ type: 'SET_PHONE_NUMBER', payload: phoneNumber });
@@ -421,31 +364,10 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  const endSession = async () => {
-    try {
-      if (state.sessionId && state.callStatus !== "done") {
-        await endSessionMutation({
-          sessionId: state.sessionId,
-          endTime: Date.now(),
-          notes: state.transcriptSummary || 'Session ended manually',
-        });
-      }
-    } catch (error) {
-      console.error('Error ending session:', error);
-    } finally {
-      if (state.statusCheckInterval) {
-        clearInterval(state.statusCheckInterval);
-      }
-      dispatch({ type: 'RESET_SESSION' });
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  };
-
   const contextValue: VoiceSessionContextType = {
     state,
     dispatch,
     initiateCall,
-    endSession,
     restoreSession,
     checkCallStatus,
   };

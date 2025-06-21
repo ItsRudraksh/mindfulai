@@ -8,17 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, ArrowLeft, Volume2, RefreshCw, Download, Play, Pause } from 'lucide-react';
+import { Phone, PhoneOff, ArrowLeft, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { useVoiceSession } from '@/contexts/voice-session-context';
 
 export default function VoiceSession() {
-  const { state, dispatch, initiateCall, endSession, restoreSession } = useVoiceSession();
+  const { state, dispatch, initiateCall, restoreSession } = useVoiceSession();
   const user = useQuery(api.users.current);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -87,15 +86,6 @@ export default function VoiceSession() {
       toast.success('Call initiated successfully! You should receive a call shortly.');
     } catch (error) {
       toast.error('Failed to initiate call. Please try again.');
-    }
-  };
-
-  const handleEndSession = async () => {
-    try {
-      await endSession();
-      toast.success('Voice session ended successfully!');
-    } catch (error) {
-      toast.error('Failed to end session properly.');
     }
   };
 
@@ -336,12 +326,19 @@ export default function VoiceSession() {
                           Your call is being processed. Analysis and summary will be available shortly.
                         </p>
                       )}
-                      {state.callStatus === "done" && state.transcriptSummary && (
-                        <div className="bg-muted/50 p-4 rounded-lg text-left max-w-2xl">
-                          <h4 className="font-medium mb-2">Session Summary:</h4>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {state.transcriptSummary}
+                      {state.callStatus === "done" && (
+                        <div className="space-y-4">
+                          <p className="text-muted-foreground">
+                            Your therapy session has been completed successfully.
                           </p>
+                          <Button
+                            variant="outline"
+                            asChild
+                          >
+                            <Link href={`/sessions/${state.sessionId}`}>
+                              View Session Details
+                            </Link>
+                          </Button>
                         </div>
                       )}
                       {state.callStatus === "failed" && (
@@ -351,48 +348,8 @@ export default function VoiceSession() {
                       )}
                     </div>
 
-                    {/* Audio Player */}
-                    {state.audioUrl && state.callStatus === "done" && (
-                      <div className="bg-muted/50 p-4 rounded-lg">
-                        <h4 className="font-medium mb-3">Session Recording:</h4>
-                        <audio
-                          ref={audioRef}
-                          controls
-                          className="w-full"
-                          src={state.audioUrl}
-                        >
-                          Your browser does not support the audio element.
-                        </audio>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = state.audioUrl!;
-                            link.download = `therapy-session-${new Date().toISOString().split('T')[0]}.mp3`;
-                            link.click();
-                          }}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Recording
-                        </Button>
-                      </div>
-                    )}
-
                     {/* Action Buttons */}
                     <div className="flex gap-4 justify-center">
-                      {(state.callStatus === "initiated" || state.callStatus === "in-progress" || state.callStatus === "processing") && (
-                        <Button
-                          onClick={handleEndSession}
-                          variant="destructive"
-                          size="lg"
-                        >
-                          <PhoneOff className="h-5 w-5 mr-2" />
-                          End Session
-                        </Button>
-                      )}
-                      
                       {(state.callStatus === "done" || state.callStatus === "failed") && (
                         <Button
                           onClick={() => dispatch({ type: 'RESET_SESSION' })}
