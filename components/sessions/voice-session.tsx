@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, ArrowLeft, RefreshCw, Activity } from 'lucide-react';
+import { Phone, PhoneOff, ArrowLeft, RefreshCw, Activity, Database } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -18,6 +18,7 @@ import { useVoiceSession } from '@/contexts/voice-session-context';
 export default function VoiceSession() {
   const { state, dispatch, initiateCall, restoreSession, checkCallStatus } = useVoiceSession();
   const user = useQuery(api.users.current);
+  const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -187,6 +188,12 @@ export default function VoiceSession() {
                   {(state.callStatus === "in-progress" || state.callStatus === "processing") && 
                     ` • ${formatDuration(state.sessionDuration)}`
                   }
+                </Badge>
+              )}
+              {activeSession?.metadata?.elevenlabsConversationId && (
+                <Badge variant="outline" className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300">
+                  <Database className="h-3 w-3 mr-1" />
+                  Stored in DB
                 </Badge>
               )}
               {state.conversationId && state.callStatus !== "done" && state.callStatus !== "failed" && (
@@ -415,11 +422,11 @@ export default function VoiceSession() {
                     <span className="text-sm font-mono">{state.phoneNumber}</span>
                   </div>
                 )}
-                {state.conversationId && (
+                {(state.conversationId || activeSession?.metadata?.elevenlabsConversationId) && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Conversation ID</span>
                     <span className="text-xs font-mono">
-                      {state.conversationId.slice(0, 8)}...
+                      {(activeSession?.metadata?.elevenlabsConversationId || state.conversationId)?.slice(0, 8)}...
                     </span>
                   </div>
                 )}
