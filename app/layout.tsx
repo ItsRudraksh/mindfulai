@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ConvexProvider } from '@/components/convex-provider';
 import { VideoSessionProvider } from '@/contexts/video-session-context';
+import { VoiceSessionProvider } from '@/contexts/voice-session-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,15 +24,17 @@ export default function RootLayout({
       <body className={inter.className}>
         <ConvexProvider>
           <VideoSessionProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem={false}
-              disableTransitionOnChange={false}
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
+            <VoiceSessionProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="dark"
+                enableSystem={false}
+                disableTransitionOnChange={false}
+              >
+                {children}
+                <Toaster />
+              </ThemeProvider>
+            </VoiceSessionProvider>
           </VideoSessionProvider>
         </ConvexProvider>
       </body>

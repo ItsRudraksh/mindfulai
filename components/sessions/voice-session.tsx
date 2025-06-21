@@ -1,38 +1,39 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Phone, PhoneOff, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Phone, PhoneOff, ArrowLeft, Volume2, RefreshCw, Download, Play, Pause } from 'lucide-react';
 import Link from 'next/link';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { toast } from 'sonner';
+import { useVoiceSession } from '@/contexts/voice-session-context';
 
 export default function VoiceSession() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
-  const [sessionDuration, setSessionDuration] = useState(0);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { state, dispatch, initiateCall, endSession, restoreSession } = useVoiceSession();
+  const user = useQuery(api.users.current);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (isConnected) {
-      intervalRef.current = setInterval(() => {
-        setSessionDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (state.isConnected && (state.callStatus === "initiated" || state.callStatus === "in-progress")) {
+        event.preventDefault();
+        event.returnValue = 'You have an active voice call. Are you sure you want to leave?';
       }
     };
-  }, [isConnected]);
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [state.isConnected, state.callStatus]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -40,19 +41,113 @@ export default function VoiceSession() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleConnect = async () => {
-    setIsConnecting(true);
-    // Simulate connection delay
-    setTimeout(() => {
-      setIsConnected(true);
-      setIsConnecting(false);
-    }, 2000);
+  const formatPhoneNumber = (phone: string) => {
+    // Remove any non-digit characters except +
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // If it doesn't start with +, add it
+    if (!cleaned.startsWith('+')) {
+      return '+' + cleaned;
+    }
+    
+    return cleaned;
   };
 
-  const handleDisconnect = () => {
-    setIsConnected(false);
-    setSessionDuration(0);
+  const validatePhoneNumber = (phone: string) => {
+    const cleaned = formatPhoneNumber(phone);
+    // Basic validation: should start with + and have at least 10 digits
+    return /^\+\d{10,15}$/.test(cleaned);
   };
+
+  const handleInitiateCall = async () => {
+    if (!state.stateDescription.trim()) {
+      toast.error('Please describe your current state before starting the call');
+      return;
+    }
+
+    if (!state.phoneNumber.trim()) {
+      toast.error('Please enter your phone number');
+      return;
+    }
+
+    const formattedPhone = formatPhoneNumber(state.phoneNumber);
+    if (!validatePhoneNumber(formattedPhone)) {
+      toast.error('Please enter a valid phone number with country code (e.g., +1234567890)');
+      return;
+    }
+
+    if (!user) {
+      toast.error('User not found');
+      return;
+    }
+
+    try {
+      const firstName = user.name?.split(' ')[0] || 'there';
+      await initiateCall(formattedPhone, state.stateDescription, firstName);
+      toast.success('Call initiated successfully! You should receive a call shortly.');
+    } catch (error) {
+      toast.error('Failed to initiate call. Please try again.');
+    }
+  };
+
+  const handleEndSession = async () => {
+    try {
+      await endSession();
+      toast.success('Voice session ended successfully!');
+    } catch (error) {
+      toast.error('Failed to end session properly.');
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await restoreSession();
+      toast.success('Session restored successfully!');
+    } catch (error) {
+      toast.error('Failed to restore session.');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'initiated': return 'bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200';
+      case 'in-progress': return 'bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200';
+      case 'processing': return 'bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200';
+      case 'done': return 'bg-gray-100 dark:bg-gray-950/20 text-gray-800 dark:text-gray-200';
+      case 'failed': return 'bg-red-100 dark:bg-red-950/20 text-red-800 dark:text-red-200';
+      default: return 'bg-gray-100 dark:bg-gray-950/20 text-gray-800 dark:text-gray-200';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'initiated': return 'Call Initiated';
+      case 'in-progress': return 'Call In Progress';
+      case 'processing': return 'Processing Call';
+      case 'done': return 'Call Completed';
+      case 'failed': return 'Call Failed';
+      default: return 'Ready';
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (state.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Restoring your voice session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,20 +164,29 @@ export default function VoiceSession() {
               <div>
                 <h1 className="text-xl font-semibold">Voice Therapy Session</h1>
                 <p className="text-sm text-muted-foreground">
-                  AI-powered voice conversation therapy
+                  AI-powered voice conversation therapy via phone call
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {isConnected && (
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200">
-                  Connected • {formatDuration(sessionDuration)}
+              {state.isInitiating && (
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
+                  Initiating Call...
                 </Badge>
               )}
-              {isConnecting && (
-                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
-                  Connecting...
+              {state.callStatus !== "idle" && (
+                <Badge variant="secondary" className={getStatusColor(state.callStatus)}>
+                  {getStatusText(state.callStatus)}
+                  {(state.callStatus === "in-progress" || state.callStatus === "processing") && 
+                    ` • ${formatDuration(state.sessionDuration)}`
+                  }
                 </Badge>
+              )}
+              {state.error && (
+                <Button variant="outline" size="sm" onClick={handleRestore}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Restore
+                </Button>
               )}
             </div>
           </div>
@@ -90,17 +194,25 @@ export default function VoiceSession() {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8 max-w-4xl">
+      <div className="container mx-auto px-6 py-8 max-w-6xl">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Voice Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-[500px] flex flex-col">
+            <Card className="h-[600px] flex flex-col">
               <CardHeader className="text-center">
                 <CardTitle>AI Voice Companion</CardTitle>
                 <p className="text-muted-foreground">
-                  {isConnected
-                    ? "You're connected! Start speaking to begin your therapy session."
-                    : "Click the connect button to start your voice therapy session."
+                  {state.callStatus === "idle"
+                    ? "Enter your details below to start your voice therapy session."
+                    : state.callStatus === "initiated"
+                    ? "Your call is being initiated. You should receive a call shortly."
+                    : state.callStatus === "in-progress"
+                    ? "You're connected! Continue your therapy conversation."
+                    : state.callStatus === "processing"
+                    ? "Your call is being processed. Please wait..."
+                    : state.callStatus === "done"
+                    ? "Your therapy session has been completed successfully."
+                    : "Call failed. Please try again."
                   }
                 </p>
               </CardHeader>
@@ -108,83 +220,190 @@ export default function VoiceSession() {
                 {/* Voice Visualization */}
                 <div className="relative">
                   <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center ${isConnected ? 'bg-green-100 dark:bg-green-950/20' : 'bg-muted'
-                      }`}
-                    animate={isConnected ? { scale: [1, 1.1, 1] } : {}}
+                    className={`w-32 h-32 rounded-full flex items-center justify-center ${
+                      state.callStatus === "in-progress" 
+                        ? 'bg-green-100 dark:bg-green-950/20' 
+                        : state.callStatus === "initiated" || state.callStatus === "processing"
+                        ? 'bg-yellow-100 dark:bg-yellow-950/20'
+                        : state.callStatus === "done"
+                        ? 'bg-blue-100 dark:bg-blue-950/20'
+                        : state.callStatus === "failed"
+                        ? 'bg-red-100 dark:bg-red-950/20'
+                        : 'bg-muted'
+                    }`}
+                    animate={
+                      state.callStatus === "in-progress" 
+                        ? { scale: [1, 1.1, 1] } 
+                        : state.callStatus === "initiated" || state.callStatus === "processing"
+                        ? { scale: [1, 1.05, 1] }
+                        : {}
+                    }
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Phone className={`h-16 w-16 ${isConnected ? 'text-green-600' : 'text-muted-foreground'
-                      }`} />
+                    <Phone className={`h-16 w-16 ${
+                      state.callStatus === "in-progress" 
+                        ? 'text-green-600' 
+                        : state.callStatus === "initiated" || state.callStatus === "processing"
+                        ? 'text-yellow-600'
+                        : state.callStatus === "done"
+                        ? 'text-blue-600'
+                        : state.callStatus === "failed"
+                        ? 'text-red-600'
+                        : 'text-muted-foreground'
+                    }`} />
                   </motion.div>
 
-                  {isConnected && (
+                  {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
                     <motion.div
-                      className="absolute inset-0 rounded-full border-4 border-green-300"
+                      className={`absolute inset-0 rounded-full border-4 ${
+                        state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
+                      }`}
                       animate={{ scale: [1, 1.5], opacity: [1, 0] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
                   )}
                 </div>
 
-                {/* Connection Status */}
-                <div className="text-center">
-                  {!isConnected && !isConnecting && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Ready to Connect</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Start a voice conversation with your AI therapy companion
-                      </p>
-                      <Button onClick={handleConnect} size="lg" className="bg-green-600 hover:bg-green-700">
-                        <Phone className="h-5 w-5 mr-2" />
-                        Start Voice Session
-                      </Button>
-                    </div>
-                  )}
+                {/* Call Setup Form */}
+                {state.callStatus === "idle" && (
+                  <div className="w-full max-w-md space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="phoneNumber" className="text-left block mb-2 font-medium">
+                          Your Phone Number *
+                        </Label>
+                        <Input
+                          id="phoneNumber"
+                          type="tel"
+                          value={state.phoneNumber}
+                          onChange={(e) => dispatch({ type: 'SET_PHONE_NUMBER', payload: e.target.value })}
+                          placeholder="+1234567890"
+                          className="text-center text-lg"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Include country code (e.g., +1 for US, +91 for India)
+                        </p>
+                      </div>
 
-                  {isConnecting && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Connecting...</h3>
-                      <p className="text-muted-foreground">
-                        Setting up your secure voice connection
-                      </p>
+                      <div>
+                        <Label htmlFor="stateDescription" className="text-left block mb-2 font-medium">
+                          How are you feeling right now? *
+                        </Label>
+                        <Textarea
+                          id="stateDescription"
+                          value={state.stateDescription}
+                          onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
+                          placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
+                          className="min-h-[100px] resize-none"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This helps our AI therapist understand your current state and provide better support.
+                        </p>
+                      </div>
                     </div>
-                  )}
 
-                  {isConnected && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Connected</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Your AI companion is listening and ready to help
-                      </p>
-                      <Button
-                        onClick={handleDisconnect}
-                        variant="destructive"
-                        size="lg"
-                      >
-                        <PhoneOff className="h-5 w-5 mr-2" />
-                        End Session
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Voice Controls */}
-                {isConnected && (
-                  <div className="flex space-x-4">
                     <Button
-                      variant={isMuted ? "destructive" : "outline"}
-                      size="icon"
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={handleInitiateCall}
+                      size="lg"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={state.isInitiating || !state.phoneNumber.trim() || !state.stateDescription.trim()}
                     >
-                      {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      <Phone className="h-5 w-5 mr-2" />
+                      {state.isInitiating ? 'Initiating Call...' : 'Start Voice Session'}
                     </Button>
-                    <Button
-                      variant={!isSpeakerOn ? "destructive" : "outline"}
-                      size="icon"
-                      onClick={() => setIsSpeakerOn(!isSpeakerOn)}
-                    >
-                      {isSpeakerOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-                    </Button>
+                  </div>
+                )}
+
+                {/* Call Status Display */}
+                {state.callStatus !== "idle" && (
+                  <div className="text-center space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">{getStatusText(state.callStatus)}</h3>
+                      {state.callStatus === "initiated" && (
+                        <p className="text-muted-foreground">
+                          Please answer your phone when it rings. The AI therapist will begin the conversation.
+                        </p>
+                      )}
+                      {state.callStatus === "in-progress" && (
+                        <p className="text-muted-foreground">
+                          Your therapy session is active. Speak naturally with the AI companion.
+                        </p>
+                      )}
+                      {state.callStatus === "processing" && (
+                        <p className="text-muted-foreground">
+                          Your call is being processed. Analysis and summary will be available shortly.
+                        </p>
+                      )}
+                      {state.callStatus === "done" && state.transcriptSummary && (
+                        <div className="bg-muted/50 p-4 rounded-lg text-left max-w-2xl">
+                          <h4 className="font-medium mb-2">Session Summary:</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {state.transcriptSummary}
+                          </p>
+                        </div>
+                      )}
+                      {state.callStatus === "failed" && (
+                        <p className="text-red-600">
+                          The call could not be completed. Please check your phone number and try again.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Audio Player */}
+                    {state.audioUrl && state.callStatus === "done" && (
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <h4 className="font-medium mb-3">Session Recording:</h4>
+                        <audio
+                          ref={audioRef}
+                          controls
+                          className="w-full"
+                          src={state.audioUrl}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = state.audioUrl!;
+                            link.download = `therapy-session-${new Date().toISOString().split('T')[0]}.mp3`;
+                            link.click();
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Recording
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-4 justify-center">
+                      {(state.callStatus === "initiated" || state.callStatus === "in-progress" || state.callStatus === "processing") && (
+                        <Button
+                          onClick={handleEndSession}
+                          variant="destructive"
+                          size="lg"
+                        >
+                          <PhoneOff className="h-5 w-5 mr-2" />
+                          End Session
+                        </Button>
+                      )}
+                      
+                      {(state.callStatus === "done" || state.callStatus === "failed") && (
+                        <Button
+                          onClick={() => dispatch({ type: 'RESET_SESSION' })}
+                          size="lg"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Phone className="h-5 w-5 mr-2" />
+                          Start New Session
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -199,15 +418,39 @@ export default function VoiceSession() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Duration</span>
-                  <span className="font-medium">{formatDuration(sessionDuration)}</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={isConnected ? "default" : "secondary"}>
-                    {isConnected ? "Active" : "Inactive"}
+                  <Badge variant="secondary" className={getStatusColor(state.callStatus)}>
+                    {getStatusText(state.callStatus)}
                   </Badge>
                 </div>
+                {state.sessionDuration > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Duration</span>
+                    <span className="font-medium">{formatDuration(state.sessionDuration)}</span>
+                  </div>
+                )}
+                {state.phoneNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Phone Number</span>
+                    <span className="text-sm font-mono">{state.phoneNumber}</span>
+                  </div>
+                )}
+                {state.conversationId && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Conversation ID</span>
+                    <span className="text-xs font-mono">
+                      {state.conversationId.slice(0, 8)}...
+                    </span>
+                  </div>
+                )}
+                {state.callSid && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Call SID</span>
+                    <span className="text-xs font-mono">
+                      {state.callSid.slice(0, 8)}...
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Audio Quality</span>
                   <span className="text-sm">HD Voice</span>
@@ -219,6 +462,19 @@ export default function VoiceSession() {
               </CardContent>
             </Card>
 
+            {state.stateDescription && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Current State</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {state.stateDescription}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Voice Tips</CardTitle>
@@ -227,6 +483,7 @@ export default function VoiceSession() {
                 <div className="text-sm">
                   <h4 className="font-medium mb-1">For best experience:</h4>
                   <ul className="text-muted-foreground space-y-1">
+                    <li>• Ensure good phone signal</li>
                     <li>• Use a quiet environment</li>
                     <li>• Speak clearly and naturally</li>
                     <li>• Take pauses when needed</li>
@@ -247,6 +504,12 @@ export default function VoiceSession() {
                 <Button variant="outline" size="sm" asChild className="w-full">
                   <Link href="/emergency">Emergency Resources</Link>
                 </Button>
+                {state.error && (
+                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleRestore}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Restore Session
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
