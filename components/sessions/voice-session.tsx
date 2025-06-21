@@ -44,12 +44,12 @@ export default function VoiceSession() {
   const formatPhoneNumber = (phone: string) => {
     // Remove any non-digit characters except +
     const cleaned = phone.replace(/[^\d+]/g, '');
-    
+
     // If it doesn't start with +, add it
     if (!cleaned.startsWith('+')) {
       return '+' + cleaned;
     }
-    
+
     return cleaned;
   };
 
@@ -185,15 +185,9 @@ export default function VoiceSession() {
               {state.callStatus !== "idle" && (
                 <Badge variant="secondary" className={getStatusColor(state.callStatus)}>
                   {getStatusText(state.callStatus)}
-                  {(state.callStatus === "in-progress" || state.callStatus === "processing") && 
+                  {(state.callStatus === "in-progress" || state.callStatus === "processing") &&
                     ` • ${formatDuration(state.sessionDuration)}`
                   }
-                </Badge>
-              )}
-              {activeSession?.metadata?.elevenlabsConversationId && (
-                <Badge variant="outline" className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300">
-                  <Database className="h-3 w-3 mr-1" />
-                  Stored in DB
                 </Badge>
               )}
               {state.conversationId && state.callStatus !== "done" && state.callStatus !== "failed" && (
@@ -225,14 +219,14 @@ export default function VoiceSession() {
                   {state.callStatus === "idle"
                     ? "Enter your details below to start your voice therapy session."
                     : state.callStatus === "initiated"
-                    ? "Your call is being initiated. You should receive a call shortly."
-                    : state.callStatus === "in-progress"
-                    ? "You're connected! Continue your therapy conversation."
-                    : state.callStatus === "processing"
-                    ? "Your call is being processed. Please wait..."
-                    : state.callStatus === "done"
-                    ? "Your therapy session has been completed successfully."
-                    : "Call failed. Please try again."
+                      ? "Your call is being initiated. You should receive a call shortly."
+                      : state.callStatus === "in-progress"
+                        ? "You're connected! Continue your therapy conversation."
+                        : state.callStatus === "processing"
+                          ? "Your call is being processed. Please wait..."
+                          : state.callStatus === "done"
+                            ? "Your therapy session has been completed successfully."
+                            : "Call failed. Please try again."
                   }
                 </p>
               </CardHeader>
@@ -240,44 +234,41 @@ export default function VoiceSession() {
                 {/* Voice Visualization */}
                 <div className="relative">
                   <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center ${
-                      state.callStatus === "in-progress" 
-                        ? 'bg-green-100 dark:bg-green-950/20' 
+                    className={`w-32 h-32 rounded-full flex items-center justify-center ${state.callStatus === "in-progress"
+                        ? 'bg-green-100 dark:bg-green-950/20'
                         : state.callStatus === "initiated" || state.callStatus === "processing"
-                        ? 'bg-yellow-100 dark:bg-yellow-950/20'
-                        : state.callStatus === "done"
-                        ? 'bg-blue-100 dark:bg-blue-950/20'
-                        : state.callStatus === "failed"
-                        ? 'bg-red-100 dark:bg-red-950/20'
-                        : 'bg-muted'
-                    }`}
+                          ? 'bg-yellow-100 dark:bg-yellow-950/20'
+                          : state.callStatus === "done"
+                            ? 'bg-blue-100 dark:bg-blue-950/20'
+                            : state.callStatus === "failed"
+                              ? 'bg-red-100 dark:bg-red-950/20'
+                              : 'bg-muted'
+                      }`}
                     animate={
-                      state.callStatus === "in-progress" 
-                        ? { scale: [1, 1.1, 1] } 
+                      state.callStatus === "in-progress"
+                        ? { scale: [1, 1.1, 1] }
                         : state.callStatus === "initiated" || state.callStatus === "processing"
-                        ? { scale: [1, 1.05, 1] }
-                        : {}
+                          ? { scale: [1, 1.05, 1] }
+                          : {}
                     }
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Phone className={`h-16 w-16 ${
-                      state.callStatus === "in-progress" 
-                        ? 'text-green-600' 
+                    <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
+                        ? 'text-green-600'
                         : state.callStatus === "initiated" || state.callStatus === "processing"
-                        ? 'text-yellow-600'
-                        : state.callStatus === "done"
-                        ? 'text-blue-600'
-                        : state.callStatus === "failed"
-                        ? 'text-red-600'
-                        : 'text-muted-foreground'
-                    }`} />
+                          ? 'text-yellow-600'
+                          : state.callStatus === "done"
+                            ? 'text-blue-600'
+                            : state.callStatus === "failed"
+                              ? 'text-red-600'
+                              : 'text-muted-foreground'
+                      }`} />
                   </motion.div>
 
                   {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
                     <motion.div
-                      className={`absolute inset-0 rounded-full border-4 ${
-                        state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
-                      }`}
+                      className={`absolute inset-0 rounded-full border-4 ${state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
+                        }`}
                       animate={{ scale: [1, 1.5], opacity: [1, 0] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
