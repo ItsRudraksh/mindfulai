@@ -43,8 +43,8 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
 
           if (response.ok) {
             const data = await response.json();
-            if (data.success && data.data.analysis?.transcript_summary) {
-              setTranscriptSummary(data.data.analysis.transcript_summary);
+            if (data.success && data.data.analysis?.transcriptSummary) {
+              setTranscriptSummary(data.data.analysis.transcriptSummary);
             }
           } else {
             throw new Error(`Failed to fetch conversation details: ${response.status}`);
