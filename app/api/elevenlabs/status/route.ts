@@ -17,6 +17,14 @@ export async function POST(request: NextRequest) {
     // Get conversation status
     const status = await elevenLabsClient.getConversationStatus(conversationId);
     
+    console.log("ElevenLabs status response:", {
+      conversation_id: status.conversation_id,
+      status: status.status,
+      has_audio: status.has_audio,
+      call_successful: status.analysis?.call_successful,
+      transcript_summary: status.analysis?.transcript_summary ? 'Present' : 'Not available'
+    });
+    
     return NextResponse.json({
       success: true,
       data: status,

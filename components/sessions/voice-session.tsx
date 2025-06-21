@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Phone, PhoneOff, ArrowLeft, RefreshCw, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { useVoiceSession } from '@/contexts/voice-session-context';
 
 export default function VoiceSession() {
-  const { state, dispatch, initiateCall, restoreSession } = useVoiceSession();
+  const { state, dispatch, initiateCall, restoreSession, checkCallStatus } = useVoiceSession();
   const user = useQuery(api.users.current);
 
   useEffect(() => {
@@ -98,6 +98,15 @@ export default function VoiceSession() {
     }
   };
 
+  const handleManualStatusCheck = async () => {
+    try {
+      await checkCallStatus();
+      toast.success('Status updated!');
+    } catch (error) {
+      toast.error('Failed to check status.');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'initiated': return 'bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200';
@@ -118,6 +127,14 @@ export default function VoiceSession() {
       case 'failed': return 'Call Failed';
       default: return 'Ready';
     }
+  };
+
+  const formatLastStatusCheck = (timestamp: number) => {
+    if (!timestamp) return 'Never';
+    const now = Date.now();
+    const diff = Math.floor((now - timestamp) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    return `${Math.floor(diff / 60)}m ago`;
   };
 
   if (!user) {
@@ -171,6 +188,12 @@ export default function VoiceSession() {
                     ` • ${formatDuration(state.sessionDuration)}`
                   }
                 </Badge>
+              )}
+              {state.conversationId && state.callStatus !== "done" && state.callStatus !== "failed" && (
+                <Button variant="outline" size="sm" onClick={handleManualStatusCheck}>
+                  <Activity className="h-4 w-4 mr-2" />
+                  Check Status
+                </Button>
               )}
               {state.error && (
                 <Button variant="outline" size="sm" onClick={handleRestore}>
@@ -406,6 +429,12 @@ export default function VoiceSession() {
                     <span className="text-xs font-mono">
                       {state.callSid.slice(0, 8)}...
                     </span>
+                  </div>
+                )}
+                {state.lastStatusCheck > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Last Check</span>
+                    <span className="text-xs">{formatLastStatusCheck(state.lastStatusCheck)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
