@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { GooeyText } from '@/components/ui/gooey-text';
-import { GlowingEffect } from '@/components/ui/glowing-effect';
-import { Heart, Video, Phone, MessageCircle, Brain, Shield, Clock, Award, Zap, Users } from 'lucide-react';
+import { Heart, Video, Phone, MessageCircle, Brain, Shield, Clock, Award } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
@@ -22,80 +21,40 @@ export default function LandingPage() {
     {
       icon: Video,
       title: "AI Video Therapy",
-      description: "Real-time therapy sessions with advanced AI avatars using Tavus technology for personalized mental health support",
-      color: "text-blue-500",
-      gradient: "from-blue-500/20 to-purple-500/20",
-      size: "large" // Takes 2 columns
+      description: "Real-time therapy sessions with advanced AI avatars using Tavus technology",
+      color: "text-blue-500"
     },
     {
       icon: Phone,
       title: "Voice Conversations",
       description: "Natural voice therapy sessions powered by ElevenLabs conversational AI",
-      color: "text-green-500",
-      gradient: "from-green-500/20 to-teal-500/20",
-      size: "medium"
+      color: "text-green-500"
     },
     {
       icon: MessageCircle,
       title: "Text Chat Support",
       description: "24/7 text-based therapy with GPT-4 powered intelligent responses",
-      color: "text-purple-500",
-      gradient: "from-purple-500/20 to-pink-500/20",
-      size: "medium"
+      color: "text-purple-500"
     },
     {
       icon: Brain,
       title: "Mood Tracking",
-      description: "Advanced analytics to track your mental health progress over time with detailed insights",
-      color: "text-orange-500",
-      gradient: "from-orange-500/20 to-red-500/20",
-      size: "large" // Takes 2 columns
+      description: "Advanced analytics to track your mental health progress over time",
+      color: "text-orange-500"
     },
     {
       icon: Shield,
       title: "Privacy First",
       description: "End-to-end encryption and HIPAA compliant data protection",
-      color: "text-red-500",
-      gradient: "from-red-500/20 to-pink-500/20",
-      size: "small"
+      color: "text-red-500"
     },
     {
       icon: Clock,
       title: "Available 24/7",
       description: "Mental health support whenever you need it, day or night",
-      color: "text-teal-500",
-      gradient: "from-teal-500/20 to-blue-500/20",
-      size: "small"
-    },
-    {
-      icon: Zap,
-      title: "Instant Response",
-      description: "Get immediate support and guidance when you need it most",
-      color: "text-yellow-500",
-      gradient: "from-yellow-500/20 to-orange-500/20",
-      size: "small"
-    },
-    {
-      icon: Users,
-      title: "Community Support",
-      description: "Connect with others on similar mental health journeys in a safe environment",
-      color: "text-indigo-500",
-      gradient: "from-indigo-500/20 to-purple-500/20",
-      size: "small"
+      color: "text-teal-500"
     }
   ];
-
-  const getGridClasses = (size: string, index: number) => {
-    switch (size) {
-      case 'large':
-        return 'md:col-span-2 md:row-span-2';
-      case 'medium':
-        return 'md:col-span-1 md:row-span-2';
-      case 'small':
-      default:
-        return 'md:col-span-1 md:row-span-1';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/40 via-white/60 to-green-50/40 dark:from-blue-950/40 dark:via-gray-900/60 dark:to-green-950/40 backdrop-blur-therapeutic">
@@ -177,7 +136,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Bento Grid Section */}
+      {/* Features Section */}
       <section className="container mx-auto px-6 py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -191,77 +150,30 @@ export default function LandingPage() {
           </p>
         </motion.div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className={`relative group ${getGridClasses(feature.size, index)}`}
+              whileHover={{ scale: 1.02 }}
             >
-              <Card className={`h-full glass-card floating-card therapeutic-hover relative overflow-hidden ${
-                feature.size === 'large' ? 'p-8' : feature.size === 'medium' ? 'p-6' : 'p-4'
-              }`}>
-                {/* Glowing Effect */}
-                <GlowingEffect
-                  proximity={100}
-                  spread={30}
-                  blur={2}
-                  movementDuration={1.5}
-                  className="opacity-60 group-hover:opacity-100 transition-opacity duration-500"
-                />
-                
-                {/* Background Gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg`} />
-                
-                <CardHeader className="relative z-10">
+              <Card className="h-full glass-card floating-card therapeutic-hover">
+                <CardHeader>
                   <motion.div 
-                    className={`${
-                      feature.size === 'large' ? 'w-16 h-16' : 'w-12 h-12'
-                    } rounded-lg bg-muted/50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center mb-4`}
                     whileHover={{ rotate: 5 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <feature.icon className={`${
-                      feature.size === 'large' ? 'h-8 w-8' : 'h-6 w-6'
-                    } ${feature.color} group-hover:scale-110 transition-transform duration-300`} />
+                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
                   </motion.div>
-                  <CardTitle className={`${
-                    feature.size === 'large' ? 'text-2xl' : 'text-xl'
-                  } group-hover:text-primary transition-colors duration-300`}>
-                    {feature.title}
-                  </CardTitle>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="relative z-10">
-                  <CardDescription className={`${
-                    feature.size === 'large' ? 'text-base' : 'text-sm'
-                  } leading-relaxed group-hover:text-foreground transition-colors duration-300`}>
+                <CardContent>
+                  <CardDescription className="text-base leading-relaxed">
                     {feature.description}
                   </CardDescription>
-                  
-                  {/* Call to Action for larger cards */}
-                  {feature.size === 'large' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      whileHover={{ opacity: 1, y: 0 }}
-                      className="mt-4 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                    >
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="therapeutic-hover"
-                        asChild
-                      >
-                        <Link href={feature.title.includes('Video') ? '/sessions/video' : 
-                                   feature.title.includes('Voice') ? '/sessions/voice' :
-                                   feature.title.includes('Chat') ? '/sessions/chat' : '/dashboard'}>
-                          Try Now
-                        </Link>
-                      </Button>
-                    </motion.div>
-                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -285,16 +197,10 @@ export default function LandingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 whileHover={{ scale: 1.05 }}
-                className="therapeutic-hover p-4 rounded-lg relative group"
+                className="therapeutic-hover p-4 rounded-lg"
               >
-                <GlowingEffect
-                  proximity={50}
-                  spread={20}
-                  blur={1}
-                  className="opacity-0 group-hover:opacity-60 transition-opacity duration-500"
-                />
-                <div className="text-4xl font-bold text-primary mb-2 relative z-10">{stat.number}</div>
-                <div className="text-muted-foreground relative z-10">{stat.label}</div>
+                <div className="text-4xl font-bold text-primary mb-2">{stat.number}</div>
+                <div className="text-muted-foreground">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -307,25 +213,15 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-3xl mx-auto relative group"
+          className="max-w-3xl mx-auto"
         >
-          <Card className="glass-card floating-card p-12 relative overflow-hidden">
-            <GlowingEffect
-              proximity={150}
-              spread={40}
-              blur={3}
-              className="opacity-40 group-hover:opacity-80 transition-opacity duration-700"
-            />
-            <div className="relative z-10">
-              <h2 className="text-4xl font-bold mb-6">Ready to Transform Your Mental Health?</h2>
-              <p className="text-xl text-muted-foreground mb-8">
-                Join thousands who have found support, healing, and growth with MindfulAI
-              </p>
-              <Button size="lg" asChild className="text-lg px-12 py-6 therapeutic-hover ripple-effect">
-                <Link href="/auth/signup">Start Free Trial</Link>
-              </Button>
-            </div>
-          </Card>
+          <h2 className="text-4xl font-bold mb-6">Ready to Transform Your Mental Health?</h2>
+          <p className="text-xl text-muted-foreground mb-8">
+            Join thousands who have found support, healing, and growth with MindfulAI
+          </p>
+          <Button size="lg" asChild className="text-lg px-12 py-6 therapeutic-hover ripple-effect">
+            <Link href="/auth/signup">Start Free Trial</Link>
+          </Button>
         </motion.div>
       </section>
 
