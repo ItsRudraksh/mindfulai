@@ -213,7 +213,7 @@ export default function VoiceSession() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Voice Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col glass-card floating-card overflow-hidden relative">
+            <Card className="h-auto py-4 flex flex-col glass-card floating-card overflow-hidden relative">
               {/* Background Gradient Animation */}
               <div className="absolute inset-0 z-0">
                 <BackgroundGradientAnimation
@@ -233,7 +233,7 @@ export default function VoiceSession() {
               {/* Content Layer */}
               <div className="relative z-10 flex flex-col h-full">
                 <CardHeader className="text-center text-white relative z-20">
-                  <CardTitle>AI Voice Companion</CardTitle>
+                  <CardTitle className='mt-3'>AI Voice Companion</CardTitle>
                   <p className="text-white/80">
                     {state.callStatus === "idle"
                       ? "Enter your details below to start your voice therapy session."
@@ -250,7 +250,7 @@ export default function VoiceSession() {
                   </p>
                 </CardHeader>
 
-                <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8 relative z-20">
+                <CardContent className="flex-1 flex flex-col items-center space-y-9 relative z-20">
                   {/* Voice Visualization - Centered properly */}
                   <div className="relative">
                     <motion.div
