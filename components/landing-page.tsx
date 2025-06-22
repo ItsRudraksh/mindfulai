@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { GooeyText } from '@/components/ui/gooey-text';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Heart, Video, Phone, MessageCircle, Brain, Shield, Clock, Award } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function LandingPage() {
   const heroTexts = [
@@ -22,39 +24,87 @@ export default function LandingPage() {
       icon: Video,
       title: "AI Video Therapy",
       description: "Real-time therapy sessions with advanced AI avatars using Tavus technology",
-      color: "text-blue-500"
+      color: "text-blue-500",
+      area: "md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
     },
     {
       icon: Phone,
       title: "Voice Conversations",
       description: "Natural voice therapy sessions powered by ElevenLabs conversational AI",
-      color: "text-green-500"
+      color: "text-green-500",
+      area: "md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]"
     },
     {
       icon: MessageCircle,
       title: "Text Chat Support",
       description: "24/7 text-based therapy with GPT-4 powered intelligent responses",
-      color: "text-purple-500"
+      color: "text-purple-500",
+      area: "md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]"
     },
     {
       icon: Brain,
       title: "Mood Tracking",
       description: "Advanced analytics to track your mental health progress over time",
-      color: "text-orange-500"
+      color: "text-orange-500",
+      area: "md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]"
     },
     {
       icon: Shield,
       title: "Privacy First",
       description: "End-to-end encryption and HIPAA compliant data protection",
-      color: "text-red-500"
+      color: "text-red-500",
+      area: "md:[grid-area:3/1/4/7] xl:[grid-area:2/8/3/11]"
     },
     {
       icon: Clock,
       title: "Available 24/7",
       description: "Mental health support whenever you need it, day or night",
-      color: "text-teal-500"
+      color: "text-teal-500",
+      area: "md:[grid-area:3/7/4/13] xl:[grid-area:2/11/3/13]"
     }
   ];
+
+  const FeatureCard = ({ feature, index }: { feature: any; index: number }) => {
+    return (
+      <li className={cn("min-h-[14rem] list-none", feature.area)}>
+        <div className="relative h-full rounded-[1.25rem] border-[0.75px] border-border p-2 md:rounded-[1.5rem] md:p-3">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+            borderWidth={3}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: index * 0.1 }}
+            whileHover={{ scale: 1.02 }}
+            className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl border-[0.75px] bg-background/60 backdrop-blur-therapeutic p-6 shadow-glass dark:shadow-glass-dark md:p-6"
+          >
+            <div className="relative flex flex-1 flex-col justify-between gap-3">
+              <motion.div 
+                className="w-fit rounded-lg border-[0.75px] border-border bg-muted/50 p-2"
+                whileHover={{ rotate: 5 }}
+                transition={{ duration: 0.2 }}
+              >
+                <feature.icon className={`h-6 w-6 ${feature.color}`} />
+              </motion.div>
+              <div className="space-y-3">
+                <h3 className="pt-0.5 text-xl leading-[1.375rem] font-semibold font-sans tracking-[-0.04em] md:text-2xl md:leading-[1.875rem] text-balance text-foreground">
+                  {feature.title}
+                </h3>
+                <p className="[&_b]:md:font-semibold [&_strong]:md:font-semibold font-sans text-sm leading-[1.125rem] md:text-base md:leading-[1.375rem] text-muted-foreground">
+                  {feature.description}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </li>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/40 via-white/60 to-green-50/40 dark:from-blue-950/40 dark:via-gray-900/60 dark:to-green-950/40 backdrop-blur-therapeutic">
@@ -136,7 +186,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section with Glowing Effect Grid */}
       <section className="container mx-auto px-6 py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -150,35 +200,12 @@ export default function LandingPage() {
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Glowing Effect Grid Layout */}
+        <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2">
           {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-            >
-              <Card className="h-full glass-card floating-card therapeutic-hover">
-                <CardHeader>
-                  <motion.div 
-                    className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center mb-4`}
-                    whileHover={{ rotate: 5 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
-                  </motion.div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base leading-relaxed">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <FeatureCard key={feature.title} feature={feature} index={index} />
           ))}
-        </div>
+        </ul>
       </section>
 
       {/* Stats Section */}
