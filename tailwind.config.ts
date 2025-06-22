@@ -86,6 +86,19 @@ const config: Config = {
         floating: "0 10px 40px 0 rgba(0, 0, 0, 0.1)",
         "floating-dark": "0 10px 40px 0 rgba(255, 255, 255, 0.05)",
       },
+      // Background gradient animation keyframes and animations
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        ripple: "ripple 0.6s linear",
+        "gentle-pulse": "gentle-pulse 2s ease-in-out infinite",
+        // Background gradient animations
+        first: "moveVertical 30s ease infinite",
+        second: "moveInCircle 20s reverse infinite",
+        third: "moveInCircle 40s linear infinite",
+        fourth: "moveHorizontal 40s ease infinite",
+        fifth: "moveInCircle 20s ease infinite",
+      },
       keyframes: {
         "accordion-down": {
           from: {
@@ -121,12 +134,40 @@ const config: Config = {
             opacity: "0.8",
           },
         },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        ripple: "ripple 0.6s linear",
-        "gentle-pulse": "gentle-pulse 2s ease-in-out infinite",
+        // Background gradient animation keyframes
+        moveHorizontal: {
+          "0%": {
+            transform: "translateX(-50%) translateY(-10%)",
+          },
+          "50%": {
+            transform: "translateX(50%) translateY(10%)",
+          },
+          "100%": {
+            transform: "translateX(-50%) translateY(-10%)",
+          },
+        },
+        moveInCircle: {
+          "0%": {
+            transform: "rotate(0deg)",
+          },
+          "50%": {
+            transform: "rotate(180deg)",
+          },
+          "100%": {
+            transform: "rotate(360deg)",
+          },
+        },
+        moveVertical: {
+          "0%": {
+            transform: "translateY(-50%)",
+          },
+          "50%": {
+            transform: "translateY(50%)",
+          },
+          "100%": {
+            transform: "translateY(-50%)",
+          },
+        },
       },
     },
   },

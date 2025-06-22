@@ -13,6 +13,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { useVideoSession } from '@/contexts/video-session-context';
+import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -164,127 +165,132 @@ export default function VideoSession() {
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <Card className="overflow-hidden glass-card floating-card">
-              <div className="relative aspect-video bg-gradient-to-br from-blue-900/80 to-purple-900/80 flex items-center justify-center backdrop-blur-therapeutic">
-                {!state.conversationUrl && !state.isGeneratingLink ? (
-                  <div className="text-center text-white p-8 max-w-2xl">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-subtle"
-                    >
-                      <Video className="h-16 w-16" />
-                    </motion.div>
-                    <h3 className="text-2xl font-semibold mb-4">Ready to Start Your Session</h3>
-                    <p className="text-white/80 mb-6">
-                      Before we begin, please describe your current mental state to help personalize your therapy session.
-                    </p>
-
-                    <div className="bg-white/10 backdrop-blur-subtle rounded-lg p-6 mb-6">
-                      <Label htmlFor="stateDescription" className="text-white text-left block mb-3 font-medium">
-                        How are you feeling right now? *
-                      </Label>
-                      <Textarea
-                        id="stateDescription"
-                        value={state.stateDescription}
-                        onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
-                        placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
-                        className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none glass-input"
-                        required
-                      />
-                      <p className="text-white/60 text-sm mt-2">
-                        This helps our AI therapist understand your current state and provide better support.
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={handleConnect}
-                      size="lg"
-                      className="bg-blue-600 hover:bg-blue-700 therapeutic-hover ripple-effect"
-                      disabled={state.isGeneratingLink || !state.stateDescription.trim()}
-                    >
-                      <Video className="h-5 w-5 mr-2" />
-                      Generate Session Link
-                    </Button>
-                  </div>
-                ) : state.isGeneratingLink ? (
-                  <div className="text-center text-white">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
-                    />
-                    <h3 className="text-xl font-semibold mb-2">Generating Personalized Session...</h3>
-                    <p className="text-white/80">Creating your conversation link with personalized context.</p>
-                  </div>
-                ) : (
-                  <div className="text-center text-white p-4">
-                    {state.showEmbeddedVideo ? (
-                      <iframe
-                        src={state.conversationUrl!}
-                        title="Tavus Conversation"
-                        className="w-full aspect-video rounded-lg mb-6"
-                        allow="camera; microphone; display-capture"
-                        ref={iframeRef}
-                      ></iframe>
-                    ) : (
-                      <>
-                        <h3 className="text-2xl font-semibold mb-4">Your Session is Ready!</h3>
-                        <p className="text-white/80 mb-6 max-w-xl break-all">
-                          {state.conversationUrl}
+              <div className="relative aspect-video flex items-center justify-center">
+                {/* Background Gradient Animation */}
+                <BackgroundGradientAnimation>
+                  <div className="absolute z-50 inset-0 flex items-center justify-center text-white font-bold px-4 pointer-events-none text-3xl text-center md:text-4xl lg:text-7xl">
+                    {!state.conversationUrl && !state.isGeneratingLink ? (
+                      <div className="text-center text-white p-8 max-w-2xl pointer-events-auto">
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-subtle"
+                        >
+                          <Video className="h-16 w-16" />
+                        </motion.div>
+                        <h3 className="text-2xl font-semibold mb-4">Ready to Start Your Session</h3>
+                        <p className="text-white/80 mb-6 text-base">
+                          Before we begin, please describe your current mental state to help personalize your therapy session.
                         </p>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="lg"
-                              className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
-                            >
-                              Join Session
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56 glass-card">
-                            <DropdownMenuItem onSelect={() => window.open(state.conversationUrl!, '_blank')} className="therapeutic-hover">
-                              <Copy className="mr-2 h-4 w-4" />
-                              <span>Open in New Tab</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => {
-                              dispatch({ type: 'SET_SHOW_EMBEDDED_VIDEO', payload: true });
-                              setTimeout(() => {
-                                if (iframeRef.current) {
-                                  iframeRef.current.requestFullscreen().catch(err => {
-                                    console.error("Error attempting to enable full-screen mode:", err);
-                                  });
-                                }
-                              }, 100);
-                            }} className="therapeutic-hover">
-                              <Video className="mr-2 h-4 w-4" />
-                              <span>Join Here</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
-                    )}
-                    <Button
-                      onClick={() => {
-                        dispatch({ type: 'RESET_SESSION' });
-                      }}
-                      size="lg"
-                      variant="outline"
+
+                        <div className="bg-white/10 backdrop-blur-subtle rounded-lg p-6 mb-6">
+                          <Label htmlFor="stateDescription" className="text-white text-left block mb-3 font-medium">
+                            How are you feeling right now? *
+                          </Label>
+                          <Textarea
+                            id="stateDescription"
+                            value={state.stateDescription}
+                            onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
+                            placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
+                            className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none glass-input"
+                            required
+                          />
+                          <p className="text-white/60 text-sm mt-2">
+                            This helps our AI therapist understand your current state and provide better support.
+                          </p>
+                        </div>
+
+                        <Button
+                          onClick={handleConnect}
+                          size="lg"
+                          className="bg-blue-600 hover:bg-blue-700 therapeutic-hover ripple-effect"
+                          disabled={state.isGeneratingLink || !state.stateDescription.trim()}
+                        >
+                          <Video className="h-5 w-5 mr-2" />
+                          Generate Session Link
+                        </Button>
+                      </div>
+                    ) : state.isGeneratingLink ? (
+                      <div className="text-center text-white">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full mb-4 mx-auto"
+                        />
+                        <h3 className="text-xl font-semibold mb-2">Generating Personalized Session...</h3>
+                        <p className="text-white/80 text-base">Creating your conversation link with personalized context.</p>
+                      </div>
+                    ) : (
+                      <div className="text-center text-white p-4 pointer-events-auto">
+                        {state.showEmbeddedVideo ? (
+                          <iframe
+                            src={state.conversationUrl!}
+                            title="Tavus Conversation"
+                            className="w-full aspect-video rounded-lg mb-6"
+                            allow="camera; microphone; display-capture"
+                            ref={iframeRef}
+                          ></iframe>
+                        ) : (
+                          <>
+                            <h3 className="text-2xl font-semibold mb-4">Your Session is Ready!</h3>
+                            <p className="text-white/80 mb-6 max-w-xl break-all text-sm">
+                              {state.conversationUrl}
+                            </p>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="lg"
+                                  className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
+                                >
+                                  Join Session
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-56 glass-card">
+                                <DropdownMenuItem onSelect={() => window.open(state.conversationUrl!, '_blank')} className="therapeutic-hover">
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  <span>Open in New Tab</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => {
+                                  dispatch({ type: 'SET_SHOW_EMBEDDED_VIDEO', payload: true });
+                                  setTimeout(() => {
+                                    if (iframeRef.current) {
+                                      iframeRef.current.requestFullscreen().catch(err => {
+                                        console.error("Error attempting to enable full-screen mode:", err);
+                                      });
+                                    }
+                                  }, 100);
+                                }} className="therapeutic-hover">
+                                  <Video className="mr-2 h-4 w-4" />
+                                  <span>Join Here</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                        <Button
+                          onClick={() => {
+                            dispatch({ type: 'RESET_SESSION' });
+                          }}
+                          size="lg"
+                          variant="outline"
                           className="ml-4 border-white text-black dark:text-white hover:bg-white/60 dark:hover:bg-white/20 therapeutic-hover"
-                    >
-                      Generate New Link
-                    </Button>
-                    {state.isConnected && (
-                      <Button
-                        onClick={handleDisconnect}
-                        size="lg"
-                        variant="destructive"
-                        className="ml-4 therapeutic-hover"
-                      >
-                        End Session
-                      </Button>
+                        >
+                          Generate New Link
+                        </Button>
+                        {state.isConnected && (
+                          <Button
+                            onClick={handleDisconnect}
+                            size="lg"
+                            variant="destructive"
+                            className="ml-4 therapeutic-hover"
+                          >
+                            End Session
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
+                </BackgroundGradientAnimation>
               </div>
             </Card>
           </div>
