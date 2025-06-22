@@ -269,7 +269,7 @@ export default function VideoSession() {
                       }}
                       size="lg"
                       variant="outline"
-                      className="ml-4 border-white text-white hover:bg-white/10 dark:hover:bg-white/20 therapeutic-hover"
+                          className="ml-4 border-white text-black dark:text-white hover:bg-white/60 dark:hover:bg-white/20 therapeutic-hover"
                     >
                       Generate New Link
                     </Button>
