@@ -4,10 +4,19 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { GooeyText } from '@/components/ui/gooey-text';
 import { Heart, Video, Phone, MessageCircle, Brain, Shield, Clock, Award } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
+  const heroTexts = [
+    "Your Personal AI Therapist",
+    "Mental Health Companion",
+    "Healing Through Technology",
+    "Mindful AI Support",
+    "Therapeutic Innovation"
+  ];
+
   const features = [
     {
       icon: Video,
@@ -78,7 +87,7 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section with GooeyText */}
       <section className="container mx-auto px-6 py-20">
         <div className="text-center max-w-4xl mx-auto">
           <motion.div
@@ -89,18 +98,32 @@ export default function LandingPage() {
             <Badge variant="secondary" className="mb-4 backdrop-blur-subtle">
               AI-Powered Mental Health Support
             </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent leading-tight">
-              Your Personal AI Therapist
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            
+            {/* Gooey Text Hero Title */}
+            <div className="mb-6 h-32 md:h-40 flex items-center justify-center">
+              <GooeyText
+                texts={heroTexts}
+                morphTime={1.5}
+                cooldownTime={2}
+                className="w-full"
+                textClassName="text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent leading-tight"
+              />
+            </div>
+            
+            <motion.p 
+              className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
               Experience breakthrough mental health support with AI-powered video therapy, voice conversations, and intelligent chat support available 24/7.
-            </p>
+            </motion.p>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Button size="lg" asChild className="text-lg px-8 py-6 therapeutic-hover ripple-effect">
