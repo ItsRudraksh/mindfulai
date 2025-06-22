@@ -96,19 +96,19 @@ export default function ChatSession() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50/40 via-white/60 to-blue-50/40 dark:from-purple-950/40 dark:via-gray-900/60 dark:to-blue-950/40 backdrop-blur-therapeutic">
       {/* Header */}
-      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
+      <header className="glass-header sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="therapeutic-hover">
                 <Link href="/dashboard">
                   <ArrowLeft className="h-5 w-5" />
                 </Link>
               </Button>
               <div className="flex items-center space-x-3">
-                <Avatar>
+                <Avatar className="therapeutic-hover">
                   <AvatarImage src="/ai-therapist.png" />
                   <AvatarFallback>
                     <Bot className="h-5 w-5" />
@@ -117,15 +117,15 @@ export default function ChatSession() {
                 <div>
                   <h1 className="font-semibold">AI Therapy Companion</h1>
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-gentle-pulse"></div>
                     <span className="text-sm text-muted-foreground">Online & Ready</span>
                   </div>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary">Secure Session</Badge>
-              <Button variant="ghost" size="icon">
+              <Badge variant="secondary" className="backdrop-blur-subtle">Secure Session</Badge>
+              <Button variant="ghost" size="icon" className="therapeutic-hover">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </div>
@@ -135,7 +135,7 @@ export default function ChatSession() {
 
       {/* Chat Container */}
       <div className="container mx-auto px-6 py-8 max-w-4xl">
-        <Card className="h-[calc(100vh-200px)] flex flex-col">
+        <Card className="h-[calc(100vh-200px)] flex flex-col glass-card floating-card">
           {/* Messages Area */}
           <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((message, index) => (
@@ -149,7 +149,7 @@ export default function ChatSession() {
                 <div className={`flex items-start space-x-3 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                   }`}>
                   <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarFallback>
+                    <AvatarFallback className="backdrop-blur-subtle">
                       {message.sender === 'user' ? (
                         <UserIcon className="h-4 w-4" />
                       ) : (
@@ -157,10 +157,14 @@ export default function ChatSession() {
                       )}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={`rounded-lg p-4 ${message.sender === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
-                    }`}>
+                  <motion.div 
+                    className={`rounded-lg p-4 backdrop-blur-subtle ${message.sender === 'user'
+                        ? 'bg-primary/80 text-primary-foreground'
+                        : 'bg-muted/80 text-foreground'
+                      }`}
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ duration: 0.2 }}
+                  >
                     <p className="text-sm leading-relaxed">{message.content}</p>
                     <p className="text-xs opacity-70 mt-2">
                       {message.timestamp.toLocaleTimeString([], {
@@ -168,7 +172,7 @@ export default function ChatSession() {
                         minute: '2-digit'
                       })}
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
               </motion.div>
             ))}
@@ -185,7 +189,7 @@ export default function ChatSession() {
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-muted rounded-lg p-4">
+                  <div className="bg-muted/80 rounded-lg p-4 backdrop-blur-subtle">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -199,20 +203,21 @@ export default function ChatSession() {
           </CardContent>
 
           {/* Input Area */}
-          <div className="border-t p-6">
+          <div className="border-t border-border/30 p-6 backdrop-blur-subtle">
             <div className="flex space-x-4">
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Share what's on your mind..."
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1"
+                className="flex-1 glass-input"
                 disabled={isTyping}
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!newMessage.trim() || isTyping}
                 size="icon"
+                className="therapeutic-hover ripple-effect"
               >
                 <Send className="h-4 w-4" />
               </Button>

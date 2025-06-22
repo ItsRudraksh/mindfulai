@@ -26,10 +26,10 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.1 }}
     >
-      <Card>
+      <Card className="glass-card floating-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-pink-500" />
+            <Heart className="h-5 w-5 text-pink-500 animate-gentle-pulse" />
             Daily Mood Check-in
           </CardTitle>
           <CardDescription>
@@ -44,11 +44,13 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentMood(mood.id)}
                 className={`
-                  flex flex-col items-center p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                  flex flex-col items-center p-4 rounded-lg border-glass transition-all duration-350 ease-in-out therapeutic-hover ripple-effect
                   ${currentMood === mood.id 
-                    ? 'border-primary bg-primary/10' 
+                    ? 'border-primary bg-primary/10 shadow-therapeutic' 
                     : 'border-border hover:border-muted-foreground'
                   }
                 `}
@@ -69,14 +71,14 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                 Thanks for sharing! Based on your mood, here are some personalized recommendations:
               </p>
               <div className="flex gap-2 justify-center">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="calming-hover">
                   <Zap className="h-4 w-4 mr-2" />
                   Quick Meditation
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="calming-hover">
                   Breathing Exercise
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="calming-hover">
                   Journal Entry
                 </Button>
               </div>

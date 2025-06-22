@@ -61,6 +61,31 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))',
         },
       },
+      // Glassmorphism and micro-interaction extensions
+      backdropBlur: {
+        'therapeutic': '15px',
+        'gentle': '10px',
+        'subtle': '5px',
+      },
+      borderWidth: {
+        'glass': '1.5px',
+      },
+      transitionDuration: {
+        '350': '350ms',
+        '400': '400ms',
+      },
+      scale: {
+        '103': '1.03',
+        '102': '1.02',
+      },
+      boxShadow: {
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+        'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+        'therapeutic': '0 4px 20px 0 rgba(59, 130, 246, 0.15)',
+        'calming': '0 2px 16px 0 rgba(34, 197, 94, 0.12)',
+        'floating': '0 10px 40px 0 rgba(0, 0, 0, 0.1)',
+        'floating-dark': '0 10px 40px 0 rgba(255, 255, 255, 0.05)',
+      },
       keyframes: {
         'accordion-down': {
           from: {
@@ -78,10 +103,30 @@ const config: Config = {
             height: '0',
           },
         },
+        'ripple': {
+          '0%': {
+            transform: 'scale(0)',
+            opacity: '1',
+          },
+          '100%': {
+            transform: 'scale(4)',
+            opacity: '0',
+          },
+        },
+        'gentle-pulse': {
+          '0%, 100%': {
+            opacity: '1',
+          },
+          '50%': {
+            opacity: '0.8',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'ripple': 'ripple 0.6s linear',
+        'gentle-pulse': 'gentle-pulse 2s ease-in-out infinite',
       },
     },
   },

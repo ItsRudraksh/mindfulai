@@ -57,19 +57,19 @@ export default function EmergencyResources() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-red-50/40 via-white/60 to-orange-50/40 dark:from-red-950/40 dark:via-gray-900/60 dark:to-orange-950/40 backdrop-blur-therapeutic">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b">
+      <header className="glass-header">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="therapeutic-hover">
                 <Link href="/">
                   <ArrowLeft className="h-5 w-5" />
                 </Link>
               </Button>
               <div className="flex items-center space-x-2">
-                <Heart className="h-8 w-8 text-red-500" />
+                <Heart className="h-8 w-8 text-red-500 animate-gentle-pulse" />
                 <h1 className="text-2xl font-bold text-red-600">Emergency Resources</h1>
               </div>
             </div>
@@ -88,9 +88,9 @@ export default function EmergencyResources() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Alert className="mb-8 border-red-200 bg-red-50">
+          <Alert className="mb-8 border-red-200 bg-red-50/80 dark:bg-red-950/20 backdrop-blur-subtle">
             <Heart className="h-5 w-5 text-red-600" />
-            <AlertDescription className="text-red-800 font-medium">
+            <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
               If you are in immediate danger or having thoughts of self-harm, please contact emergency services (911)
               or the National Suicide Prevention Lifeline (988) immediately.
             </AlertDescription>
@@ -112,12 +112,17 @@ export default function EmergencyResources() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
               >
-                <Card className="h-full hover:shadow-lg transition-all duration-300">
+                <Card className="h-full glass-card floating-card therapeutic-hover">
                   <CardHeader className="text-center">
-                    <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${contact.type === 'emergency' ? 'bg-red-100' :
-                        contact.type === 'text' ? 'bg-blue-100' : 'bg-green-100'
-                      }`}>
+                    <motion.div 
+                      className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${contact.type === 'emergency' ? 'bg-red-100 dark:bg-red-950/20' :
+                          contact.type === 'text' ? 'bg-blue-100 dark:bg-blue-950/20' : 'bg-green-100 dark:bg-green-950/20'
+                        }`}
+                      whileHover={{ rotate: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
                       {contact.type === 'text' ? (
                         <MessageCircle className={`h-8 w-8 ${contact.type === 'emergency' ? 'text-red-600' :
                             contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
@@ -127,14 +132,14 @@ export default function EmergencyResources() {
                             contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
                           }`} />
                       )}
-                    </div>
+                    </motion.div>
                     <CardTitle className="text-lg">{contact.name}</CardTitle>
                     <CardDescription>{contact.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="text-center">
                     <Button
                       size="lg"
-                      className={`w-full text-lg font-bold ${contact.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' :
+                      className={`w-full text-lg font-bold ripple-effect ${contact.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' :
                           contact.type === 'text' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
                         }`}
                       asChild
@@ -164,19 +169,20 @@ export default function EmergencyResources() {
                 initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
               >
-                <Card className="h-full hover:shadow-lg transition-all duration-300">
+                <Card className="h-full glass-card floating-card therapeutic-hover">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{resource.title}</CardTitle>
-                      <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-muted/50 px-2 py-1 rounded-full backdrop-blur-subtle">
                         {resource.category}
                       </span>
                     </div>
                     <CardDescription>{resource.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="outline" className="w-full" asChild>
+                    <Button variant="outline" className="w-full therapeutic-hover" asChild>
                       <a href={resource.url} target="_blank" rel="noopener noreferrer">
                         <Globe className="h-4 w-4 mr-2" />
                         Visit Website
@@ -196,7 +202,7 @@ export default function EmergencyResources() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-12"
         >
-          <Card className="bg-gradient-to-r from-blue-50 to-green-50">
+          <Card className="glass-card floating-card bg-gradient-to-r from-blue-50/50 to-green-50/50 dark:from-blue-950/20 dark:to-green-950/20">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Create Your Safety Plan</CardTitle>
               <CardDescription className="text-lg">
@@ -205,25 +211,25 @@ export default function EmergencyResources() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-6">
-                <div>
+                <motion.div whileHover={{ scale: 1.02 }} className="therapeutic-hover p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Warning Signs</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Identify your personal warning signs</li>
                     <li>• Recognize triggers and situations</li>
                     <li>• Note changes in thoughts or feelings</li>
                   </ul>
-                </div>
-                <div>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.02 }} className="therapeutic-hover p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Coping Strategies</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Deep breathing exercises</li>
                     <li>• Call a trusted friend or family member</li>
                     <li>• Use grounding techniques</li>
                   </ul>
-                </div>
+                </motion.div>
               </div>
               <div className="text-center pt-4">
-                <Button size="lg">Download Safety Plan Template</Button>
+                <Button size="lg" className="therapeutic-hover ripple-effect">Download Safety Plan Template</Button>
               </div>
             </CardContent>
           </Card>
@@ -236,7 +242,7 @@ export default function EmergencyResources() {
           transition={{ duration: 0.6, delay: 0.7 }}
           className="text-center mt-12"
         >
-          <Button variant="outline" size="lg" asChild>
+          <Button variant="outline" size="lg" asChild className="therapeutic-hover">
             <Link href="/dashboard">
               Return to Dashboard
             </Link>

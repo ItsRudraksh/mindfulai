@@ -48,16 +48,16 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/40 via-white/60 to-green-50/40 dark:from-blue-950/40 dark:via-gray-900/60 dark:to-green-950/40 backdrop-blur-therapeutic">
       {/* Header */}
       <header className="relative">
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 therapeutic-hover"
           >
-            <Heart className="h-8 w-8 text-primary" />
+            <Heart className="h-8 w-8 text-primary animate-gentle-pulse" />
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               MindfulAI
             </span>
@@ -68,10 +68,10 @@ export default function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             className="space-x-4"
           >
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="therapeutic-hover">
               <Link href="/auth/signin">Sign In</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="therapeutic-hover ripple-effect">
               <Link href="/auth/signup">Get Started</Link>
             </Button>
           </motion.div>
@@ -86,7 +86,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <Badge variant="secondary" className="mb-4">
+            <Badge variant="secondary" className="mb-4 backdrop-blur-subtle">
               AI-Powered Mental Health Support
             </Badge>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent leading-tight">
@@ -103,10 +103,10 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Button size="lg" asChild className="text-lg px-8 py-6">
+            <Button size="lg" asChild className="text-lg px-8 py-6 therapeutic-hover ripple-effect">
               <Link href="/auth/signup">Start Your Journey</Link>
             </Button>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-6">
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-6 therapeutic-hover">
               <Link href="/emergency">Emergency Resources</Link>
             </Button>
           </motion.div>
@@ -134,12 +134,17 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
+              whileHover={{ scale: 1.02 }}
             >
-              <Card className="h-full hover:shadow-lg transition-all duration-300 border-0 bg-card/60 backdrop-blur-sm">
+              <Card className="h-full glass-card floating-card therapeutic-hover">
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-4`}>
+                  <motion.div 
+                    className={`w-12 h-12 rounded-lg bg-muted/50 flex items-center justify-center mb-4`}
+                    whileHover={{ rotate: 5 }}
+                    transition={{ duration: 0.2 }}
+                  >
                     <feature.icon className={`h-6 w-6 ${feature.color}`} />
-                  </div>
+                  </motion.div>
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -154,7 +159,7 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="bg-muted/50 backdrop-blur-sm py-20">
+      <section className="bg-muted/30 backdrop-blur-therapeutic py-20">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             {[
@@ -168,6 +173,8 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                className="therapeutic-hover p-4 rounded-lg"
               >
                 <div className="text-4xl font-bold text-primary mb-2">{stat.number}</div>
                 <div className="text-muted-foreground">{stat.label}</div>
@@ -189,14 +196,14 @@ export default function LandingPage() {
           <p className="text-xl text-muted-foreground mb-8">
             Join thousands who have found support, healing, and growth with MindfulAI
           </p>
-          <Button size="lg" asChild className="text-lg px-12 py-6">
+          <Button size="lg" asChild className="text-lg px-12 py-6 therapeutic-hover ripple-effect">
             <Link href="/auth/signup">Start Free Trial</Link>
           </Button>
         </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-muted py-12">
+      <footer className="bg-muted/50 backdrop-blur-therapeutic py-12">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">

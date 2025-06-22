@@ -16,7 +16,7 @@ export default function ProgressOverview({ weeklyProgress }: ProgressOverviewPro
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.6, delay: 0.3 }}
     >
-      <Card>
+      <Card className="glass-card floating-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -36,29 +36,38 @@ export default function ProgressOverview({ weeklyProgress }: ProgressOverviewPro
           </div>
           
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <motion.div 
+              className="flex items-center justify-between therapeutic-hover p-2 rounded-lg"
+              whileHover={{ scale: 1.02 }}
+            >
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-blue-500" />
                 <span className="text-sm">Sessions Goal</span>
               </div>
               <span className="text-sm font-medium">3/4</span>
-            </div>
+            </motion.div>
             
-            <div className="flex items-center justify-between">
+            <motion.div 
+              className="flex items-center justify-between therapeutic-hover p-2 rounded-lg"
+              whileHover={{ scale: 1.02 }}
+            >
               <div className="flex items-center gap-2">
                 <Award className="h-4 w-4 text-green-500" />
                 <span className="text-sm">Mood Consistency</span>
               </div>
               <span className="text-sm font-medium">85%</span>
-            </div>
+            </motion.div>
           </div>
 
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium text-green-800 mb-1">Keep it up!</h4>
-            <p className="text-sm text-green-700">
+          <motion.div 
+            className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 p-4 rounded-lg backdrop-blur-subtle"
+            whileHover={{ scale: 1.02 }}
+          >
+            <h4 className="font-medium text-green-800 dark:text-green-200 mb-1">Keep it up!</h4>
+            <p className="text-sm text-green-700 dark:text-green-300">
               You're on track to complete your weekly mental health goals.
             </p>
-          </div>
+          </motion.div>
         </CardContent>
       </Card>
     </motion.div>

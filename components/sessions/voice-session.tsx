@@ -158,13 +158,13 @@ export default function VoiceSession() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-green-50/40 via-white/60 to-blue-50/40 dark:from-green-950/40 dark:via-gray-900/60 dark:to-blue-950/40 backdrop-blur-therapeutic">
       {/* Header */}
-      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
+      <header className="glass-header sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="therapeutic-hover">
                 <Link href="/dashboard">
                   <ArrowLeft className="h-5 w-5" />
                 </Link>
@@ -178,12 +178,12 @@ export default function VoiceSession() {
             </div>
             <div className="flex items-center space-x-2">
               {state.isInitiating && (
-                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200 backdrop-blur-subtle">
                   Initiating Call...
                 </Badge>
               )}
               {state.callStatus !== "idle" && (
-                <Badge variant="secondary" className={getStatusColor(state.callStatus)}>
+                <Badge variant="secondary" className={`backdrop-blur-subtle ${getStatusColor(state.callStatus)}`}>
                   {getStatusText(state.callStatus)}
                   {(state.callStatus === "in-progress" || state.callStatus === "processing") &&
                     ` • ${formatDuration(state.sessionDuration)}`
@@ -191,13 +191,13 @@ export default function VoiceSession() {
                 </Badge>
               )}
               {state.conversationId && state.callStatus !== "done" && state.callStatus !== "failed" && (
-                <Button variant="outline" size="sm" onClick={handleManualStatusCheck}>
+                <Button variant="outline" size="sm" onClick={handleManualStatusCheck} className="therapeutic-hover">
                   <Activity className="h-4 w-4 mr-2" />
                   Check Status
                 </Button>
               )}
               {state.error && (
-                <Button variant="outline" size="sm" onClick={handleRestore}>
+                <Button variant="outline" size="sm" onClick={handleRestore} className="therapeutic-hover">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Restore
                 </Button>
@@ -212,7 +212,7 @@ export default function VoiceSession() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Voice Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col">
+            <Card className="h-[600px] flex flex-col glass-card floating-card">
               <CardHeader className="text-center">
                 <CardTitle>AI Voice Companion</CardTitle>
                 <p className="text-muted-foreground">
@@ -231,18 +231,18 @@ export default function VoiceSession() {
                 </p>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8">
-                {/* Voice Visualization */}
+                {/*Voice Visualization */}
                 <div className="relative">
                   <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center ${state.callStatus === "in-progress"
-                        ? 'bg-green-100 dark:bg-green-950/20'
+                    className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
+                        ? 'bg-green-100/80 dark:bg-green-950/20'
                         : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? 'bg-yellow-100 dark:bg-yellow-950/20'
+                          ? 'bg-yellow-100/80 dark:bg-yellow-950/20'
                           : state.callStatus === "done"
-                            ? 'bg-blue-100 dark:bg-blue-950/20'
+                            ? 'bg-blue-100/80 dark:bg-blue-950/20'
                             : state.callStatus === "failed"
-                              ? 'bg-red-100 dark:bg-red-950/20'
-                              : 'bg-muted'
+                              ? 'bg-red-100/80 dark:bg-red-950/20'
+                              : 'bg-muted/80'
                       }`}
                     animate={
                       state.callStatus === "in-progress"
@@ -289,7 +289,7 @@ export default function VoiceSession() {
                           value={state.phoneNumber}
                           onChange={(e) => dispatch({ type: 'SET_PHONE_NUMBER', payload: e.target.value })}
                           placeholder="+1234567890"
-                          className="text-center text-lg"
+                          className="text-center text-lg glass-input"
                           required
                         />
                         <p className="text-xs text-muted-foreground mt-1">
@@ -306,7 +306,7 @@ export default function VoiceSession() {
                           value={state.stateDescription}
                           onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
                           placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
-                          className="min-h-[100px] resize-none"
+                          className="min-h-[100px] resize-none glass-input"
                           required
                         />
                         <p className="text-xs text-muted-foreground mt-1">
@@ -318,7 +318,7 @@ export default function VoiceSession() {
                     <Button
                       onClick={handleInitiateCall}
                       size="lg"
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      className="w-full bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
                       disabled={state.isInitiating || !state.phoneNumber.trim() || !state.stateDescription.trim()}
                     >
                       <Phone className="h-5 w-5 mr-2" />
@@ -355,6 +355,7 @@ export default function VoiceSession() {
                           <Button
                             variant="outline"
                             asChild
+                            className="therapeutic-hover"
                           >
                             <Link href={`/sessions/${state.sessionId}`}>
                               View Session Details
@@ -375,7 +376,7 @@ export default function VoiceSession() {
                         <Button
                           onClick={() => dispatch({ type: 'RESET_SESSION' })}
                           size="lg"
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
                         >
                           <Phone className="h-5 w-5 mr-2" />
                           Start New Session
@@ -390,14 +391,14 @@ export default function VoiceSession() {
 
           {/* Session Info */}
           <div className="space-y-6">
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Session Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant="secondary" className={getStatusColor(state.callStatus)}>
+                  <Badge variant="secondary" className={`backdrop-blur-subtle ${getStatusColor(state.callStatus)}`}>
                     {getStatusText(state.callStatus)}
                   </Badge>
                 </div>
@@ -413,11 +414,11 @@ export default function VoiceSession() {
                     <span className="text-sm font-mono">{state.phoneNumber}</span>
                   </div>
                 )}
-                {(state.conversationId || activeSession?.metadata?.elevenlabsConversationId) && (
+                {(state.conversationId || activeSession?.elevenlabsConversationId) && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Conversation ID</span>
                     <span className="text-xs font-mono">
-                      {(activeSession?.metadata?.elevenlabsConversationId || state.conversationId)?.slice(0, 8)}...
+                      {(activeSession?.elevenlabsConversationId || state.conversationId)?.slice(0, 8)}...
                     </span>
                   </div>
                 )}
@@ -447,7 +448,7 @@ export default function VoiceSession() {
             </Card>
 
             {state.stateDescription && (
-              <Card>
+              <Card className="glass-card floating-card">
                 <CardHeader>
                   <CardTitle className="text-lg">Current State</CardTitle>
                 </CardHeader>
@@ -459,7 +460,7 @@ export default function VoiceSession() {
               </Card>
             )}
 
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Voice Tips</CardTitle>
               </CardHeader>
@@ -477,7 +478,7 @@ export default function VoiceSession() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Emergency</CardTitle>
               </CardHeader>
@@ -485,11 +486,11 @@ export default function VoiceSession() {
                 <p className="text-sm text-muted-foreground mb-3">
                   If you're in crisis, please reach out for immediate help.
                 </p>
-                <Button variant="outline" size="sm" asChild className="w-full">
+                <Button variant="outline" size="sm" asChild className="w-full therapeutic-hover">
                   <Link href="/emergency">Emergency Resources</Link>
                 </Button>
                 {state.error && (
-                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleRestore}>
+                  <Button variant="outline" size="sm" className="w-full mt-2 therapeutic-hover" onClick={handleRestore}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Restore Session
                   </Button>

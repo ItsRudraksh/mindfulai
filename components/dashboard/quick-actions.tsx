@@ -64,7 +64,7 @@ export default function QuickActions() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
     >
-      <Card>
+      <Card className="glass-card floating-card">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>
@@ -79,16 +79,21 @@ export default function QuickActions() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
               >
                 <Button
                   variant="ghost"
                   asChild
-                  className="h-auto p-4 flex flex-col items-start text-left w-full hover:bg-muted"
+                  className="h-auto p-4 flex flex-col items-start text-left w-full therapeutic-hover ripple-effect"
                 >
                   <Link href={action.href}>
-                    <div className={`w-10 h-10 rounded-lg ${action.bg} flex items-center justify-center mb-3`}>
+                    <motion.div 
+                      className={`w-10 h-10 rounded-lg ${action.bg} flex items-center justify-center mb-3`}
+                      whileHover={{ rotate: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
                       <action.icon className={`h-5 w-5 ${action.color}`} />
-                    </div>
+                    </motion.div>
                     <div>
                       <h3 className="font-semibold mb-1">{action.title}</h3>
                       <p className="text-sm text-muted-foreground">{action.description}</p>

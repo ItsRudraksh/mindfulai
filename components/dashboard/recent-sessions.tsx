@@ -74,7 +74,7 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.3 }}
     >
-      <Card>
+      <Card className="glass-card floating-card">
         <CardHeader>
           <CardTitle>Recent Sessions</CardTitle>
           <CardDescription>
@@ -96,12 +96,17 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors"
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center justify-between p-4 border border-border/30 rounded-lg therapeutic-hover backdrop-blur-subtle bg-card/50"
                   >
                     <div className="flex items-center space-x-4">
-                      <div className={`w-10 h-10 rounded-lg bg-muted/50 dark:bg-muted/20 flex items-center justify-center`}>
+                      <motion.div 
+                        className={`w-10 h-10 rounded-lg bg-muted/50 dark:bg-muted/20 flex items-center justify-center`}
+                        whileHover={{ rotate: 5 }}
+                        transition={{ duration: 0.2 }}
+                      >
                         <Icon className={`h-5 w-5 ${getTypeColor(session.type)}`} />
-                      </div>
+                      </motion.div>
                       <div>
                         <h4 className="font-medium">{getSessionTitle(session.type)}</h4>
                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -113,10 +118,10 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="backdrop-blur-subtle">
                         {session.mood || session.status}
                       </Badge>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="therapeutic-hover">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </div>

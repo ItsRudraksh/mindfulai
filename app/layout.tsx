@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen bg-gradient-to-br from-blue-50/30 via-white/50 to-green-50/30 dark:from-blue-950/30 dark:via-gray-900/50 dark:to-green-950/30`}>
         <ConvexProvider>
           <VideoSessionProvider>
             <VoiceSessionProvider>
@@ -31,7 +31,9 @@ export default function RootLayout({
                 enableSystem={false}
                 disableTransitionOnChange={false}
               >
-                {children}
+                <div className="relative min-h-screen backdrop-blur-therapeutic">
+                  {children}
+                </div>
                 <Toaster />
               </ThemeProvider>
             </VoiceSessionProvider>

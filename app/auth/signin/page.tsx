@@ -47,7 +47,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/40 via-white/60 to-green-50/40 dark:from-blue-950/40 dark:via-gray-900/60 dark:to-green-950/40 flex items-center justify-center p-6 backdrop-blur-therapeutic">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -55,14 +55,18 @@ export default function SignInPage() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <Heart className="h-12 w-12 text-primary" />
-          </div>
+          <motion.div 
+            className="flex items-center justify-center mb-4"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Heart className="h-12 w-12 text-primary animate-gentle-pulse" />
+          </motion.div>
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to continue your mental health journey</p>
         </div>
 
-        <Card>
+        <Card className="glass-card floating-card">
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
             <CardDescription>Choose your preferred sign in method</CardDescription>
@@ -72,7 +76,7 @@ export default function SignInPage() {
             <div className="space-y-2">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full therapeutic-hover ripple-effect"
                 onClick={() => handleSocialSignIn('google')}
                 disabled={isLoading}
               >
@@ -86,7 +90,7 @@ export default function SignInPage() {
               </Button>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full therapeutic-hover ripple-effect"
                 onClick={() => handleSocialSignIn('github')}
                 disabled={isLoading}
               >
@@ -97,10 +101,10 @@ export default function SignInPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border/30" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
 
@@ -114,7 +118,7 @@ export default function SignInPage() {
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 glass-input"
                     required
                   />
                 </div>
@@ -125,20 +129,24 @@ export default function SignInPage() {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 glass-input"
                     required
                   />
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full therapeutic-hover ripple-effect" 
+                disabled={isLoading}
+              >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Don't have an account? </span>
-              <Link href="/auth/signup" className="text-primary hover:underline">
+              <Link href="/auth/signup" className="text-primary hover:underline transition-colors duration-350">
                 Sign up
               </Link>
             </div>

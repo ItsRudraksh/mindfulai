@@ -113,12 +113,12 @@ export default function VideoSession() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/40 via-white/60 to-purple-50/40 dark:from-blue-950/40 dark:via-gray-900/60 dark:to-purple-950/40 backdrop-blur-therapeutic">
+      <header className="glass-header sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="therapeutic-hover">
                 <Link href="/dashboard">
                   <ArrowLeft className="h-5 w-5" />
                 </Link>
@@ -132,27 +132,27 @@ export default function VideoSession() {
             </div>
             <div className="flex items-center space-x-2">
               {state.isGeneratingLink && (
-                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200 backdrop-blur-subtle">
                   Generating Link...
                 </Badge>
               )}
               {state.conversationUrl && (
-                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200">
+                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200 backdrop-blur-subtle">
                   Link Generated
                 </Badge>
               )}
               {state.isConnected && (
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200">
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-950/20 text-green-800 dark:text-green-200 backdrop-blur-subtle">
                   Active • {formatDuration(state.sessionDuration)}
                 </Badge>
               )}
               {state.error && (
-                <Button variant="outline" size="sm" onClick={handleRestore}>
+                <Button variant="outline" size="sm" onClick={handleRestore} className="therapeutic-hover">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Restore
                 </Button>
               )}
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="therapeutic-hover">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </div>
@@ -163,14 +163,14 @@ export default function VideoSession() {
       <div className="container mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
-            <Card className="overflow-hidden">
-              <div className="relative aspect-video bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
+            <Card className="overflow-hidden glass-card floating-card">
+              <div className="relative aspect-video bg-gradient-to-br from-blue-900/80 to-purple-900/80 flex items-center justify-center backdrop-blur-therapeutic">
                 {!state.conversationUrl && !state.isGeneratingLink ? (
                   <div className="text-center text-white p-8 max-w-2xl">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto"
+                      className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-subtle"
                     >
                       <Video className="h-16 w-16" />
                     </motion.div>
@@ -179,7 +179,7 @@ export default function VideoSession() {
                       Before we begin, please describe your current mental state to help personalize your therapy session.
                     </p>
 
-                    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
+                    <div className="bg-white/10 backdrop-blur-subtle rounded-lg p-6 mb-6">
                       <Label htmlFor="stateDescription" className="text-white text-left block mb-3 font-medium">
                         How are you feeling right now? *
                       </Label>
@@ -188,7 +188,7 @@ export default function VideoSession() {
                         value={state.stateDescription}
                         onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
                         placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
-                        className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none"
+                        className="min-h-[100px] bg-white/20 border-white/30 text-white placeholder:text-white/60 resize-none glass-input"
                         required
                       />
                       <p className="text-white/60 text-sm mt-2">
@@ -199,7 +199,7 @@ export default function VideoSession() {
                     <Button
                       onClick={handleConnect}
                       size="lg"
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 therapeutic-hover ripple-effect"
                       disabled={state.isGeneratingLink || !state.stateDescription.trim()}
                     >
                       <Video className="h-5 w-5 mr-2" />
@@ -236,13 +236,13 @@ export default function VideoSession() {
                           <DropdownMenuTrigger asChild>
                             <Button
                               size="lg"
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
                             >
                               Join Session
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56">
-                            <DropdownMenuItem onSelect={() => window.open(state.conversationUrl!, '_blank')}>
+                          <DropdownMenuContent className="w-56 glass-card">
+                            <DropdownMenuItem onSelect={() => window.open(state.conversationUrl!, '_blank')} className="therapeutic-hover">
                               <Copy className="mr-2 h-4 w-4" />
                               <span>Open in New Tab</span>
                             </DropdownMenuItem>
@@ -255,7 +255,7 @@ export default function VideoSession() {
                                   });
                                 }
                               }, 100);
-                            }}>
+                            }} className="therapeutic-hover">
                               <Video className="mr-2 h-4 w-4" />
                               <span>Join Here</span>
                             </DropdownMenuItem>
@@ -269,7 +269,7 @@ export default function VideoSession() {
                       }}
                       size="lg"
                       variant="outline"
-                      className="ml-4 border-white text-white hover:bg-white/10 dark:hover:bg-white/20"
+                      className="ml-4 border-white text-white hover:bg-white/10 dark:hover:bg-white/20 therapeutic-hover"
                     >
                       Generate New Link
                     </Button>
@@ -278,7 +278,7 @@ export default function VideoSession() {
                         onClick={handleDisconnect}
                         size="lg"
                         variant="destructive"
-                        className="ml-4"
+                        className="ml-4 therapeutic-hover"
                       >
                         End Session
                       </Button>
@@ -290,14 +290,14 @@ export default function VideoSession() {
           </div>
 
           <div className="space-y-6">
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Session Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={state.conversationUrl ? "default" : "secondary"}>
+                  <Badge variant={state.conversationUrl ? "default" : "secondary"} className="backdrop-blur-subtle">
                     {state.conversationUrl ? "Generated" : "Pending"}
                   </Badge>
                 </div>
@@ -310,7 +310,7 @@ export default function VideoSession() {
                 {state.stateDescription && (
                   <div>
                     <span className="text-sm text-muted-foreground block mb-1">Current State</span>
-                    <p className="text-xs bg-muted p-2 rounded text-muted-foreground">
+                    <p className="text-xs bg-muted/30 p-2 rounded text-muted-foreground backdrop-blur-subtle">
                       {state.stateDescription}
                     </p>
                   </div>
@@ -318,18 +318,18 @@ export default function VideoSession() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+                <Button variant="outline" size="sm" className="w-full justify-start therapeutic-hover" asChild>
                   <Link href="/emergency">
                     Emergency Help
                   </Link>
                 </Button>
                 {state.error && (
-                  <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleRestore}>
+                  <Button variant="outline" size="sm" className="w-full justify-start therapeutic-hover" onClick={handleRestore}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Restore Session
                   </Button>
@@ -337,7 +337,7 @@ export default function VideoSession() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="glass-card floating-card">
               <CardHeader>
                 <CardTitle className="text-lg">Session Context</CardTitle>
               </CardHeader>
