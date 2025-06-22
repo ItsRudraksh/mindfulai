@@ -27,7 +27,7 @@ export default function RootLayout({
             <VoiceSessionProvider>
               <ThemeProvider
                 attribute="class"
-                defaultTheme="dark"
+                defaultTheme="light"
                 enableSystem={false}
                 disableTransitionOnChange={false}
               >
