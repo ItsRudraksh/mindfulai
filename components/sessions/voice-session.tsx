@@ -213,26 +213,9 @@ export default function VoiceSession() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Voice Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col glass-card floating-card overflow-hidden">
-              <CardHeader className="text-center relative z-50">
-                <CardTitle>AI Voice Companion</CardTitle>
-                <p className="text-muted-foreground">
-                  {state.callStatus === "idle"
-                    ? "Enter your details below to start your voice therapy session."
-                    : state.callStatus === "initiated"
-                      ? "Your call is being initiated. You should receive a call shortly."
-                      : state.callStatus === "in-progress"
-                        ? "You're connected! Continue your therapy conversation."
-                        : state.callStatus === "processing"
-                          ? "Your call is being processed. Please wait..."
-                          : state.callStatus === "done"
-                            ? "Your therapy session has been completed successfully."
-                            : "Call failed. Please try again."
-                  }
-                </p>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8 relative">
-                {/* Background Gradient Animation with Voice-specific colors */}
+            <Card className="h-[600px] flex flex-col glass-card floating-card overflow-hidden relative">
+              {/* Background Gradient Animation */}
+              <div className="absolute inset-0 z-0">
                 <BackgroundGradientAnimation
                   gradientBackgroundStart="rgb(34, 197, 94)"  // Green-500
                   gradientBackgroundEnd="rgb(59, 130, 246)"   // Blue-500
@@ -244,51 +227,73 @@ export default function VoiceSession() {
                   pointerColor="34, 197, 94"  // Green-500
                   size="80%"
                   blendingValue="hard-light"
-                  className="absolute inset-0"
                 />
+              </div>
 
-                {/* Voice Visualization - Centered properly */}
-                <div className="relative z-50 flex flex-col items-center justify-center space-y-8">
-                  <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
-                        ? 'bg-green-100/80 dark:bg-green-950/20'
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? 'bg-yellow-100/80 dark:bg-yellow-950/20'
-                          : state.callStatus === "done"
-                            ? 'bg-blue-100/80 dark:bg-blue-950/20'
-                            : state.callStatus === "failed"
-                              ? 'bg-red-100/80 dark:bg-red-950/20'
-                              : 'bg-white/20'
-                      }`}
-                    animate={
-                      state.callStatus === "in-progress"
-                        ? { scale: [1, 1.1, 1] }
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? { scale: [1, 1.05, 1] }
-                          : {}
+              {/* Content Layer */}
+              <div className="relative z-10 flex flex-col h-full">
+                <CardHeader className="text-center text-white relative z-20">
+                  <CardTitle>AI Voice Companion</CardTitle>
+                  <p className="text-white/80">
+                    {state.callStatus === "idle"
+                      ? "Enter your details below to start your voice therapy session."
+                      : state.callStatus === "initiated"
+                        ? "Your call is being initiated. You should receive a call shortly."
+                        : state.callStatus === "in-progress"
+                          ? "You're connected! Continue your therapy conversation."
+                          : state.callStatus === "processing"
+                            ? "Your call is being processed. Please wait..."
+                            : state.callStatus === "done"
+                              ? "Your therapy session has been completed successfully."
+                              : "Call failed. Please try again."
                     }
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
-                        ? 'text-green-600'
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? 'text-yellow-600'
-                          : state.callStatus === "done"
-                            ? 'text-blue-600'
-                            : state.callStatus === "failed"
-                              ? 'text-red-600'
-                              : 'text-white'
-                      }`} />
-                  </motion.div>
+                  </p>
+                </CardHeader>
 
-                  {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
+                <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8 relative z-20">
+                  {/* Voice Visualization - Centered properly */}
+                  <div className="relative">
                     <motion.div
-                      className={`absolute inset-0 rounded-full border-4 ${state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
+                      className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
+                          ? 'bg-green-100/80 dark:bg-green-950/40'
+                          : state.callStatus === "initiated" || state.callStatus === "processing"
+                            ? 'bg-yellow-100/80 dark:bg-yellow-950/40'
+                            : state.callStatus === "done"
+                              ? 'bg-blue-100/80 dark:bg-blue-950/40'
+                              : state.callStatus === "failed"
+                                ? 'bg-red-100/80 dark:bg-red-950/40'
+                                : 'bg-white/20'
                         }`}
-                      animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                      animate={
+                        state.callStatus === "in-progress"
+                          ? { scale: [1, 1.1, 1] }
+                          : state.callStatus === "initiated" || state.callStatus === "processing"
+                            ? { scale: [1, 1.05, 1] }
+                            : {}
+                      }
                       transition={{ duration: 2, repeat: Infinity }}
-                    />
-                  )}
+                    >
+                      <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
+                          ? 'text-green-600'
+                          : state.callStatus === "initiated" || state.callStatus === "processing"
+                            ? 'text-yellow-600'
+                            : state.callStatus === "done"
+                              ? 'text-blue-600'
+                              : state.callStatus === "failed"
+                                ? 'text-red-600'
+                                : 'text-white'
+                        }`} />
+                    </motion.div>
+
+                    {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
+                      <motion.div
+                        className={`absolute inset-0 rounded-full border-4 ${state.callStatus === "in-progress" ? 'border-green-300/60' : 'border-yellow-300/60'
+                          }`}
+                        animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                    )}
+                  </div>
 
                   {/* Call Setup Form or Status Display */}
                   {state.callStatus === "idle" && (
@@ -400,8 +405,8 @@ export default function VoiceSession() {
                       </div>
                     </div>
                   )}
-                </div>
-              </CardContent>
+                </CardContent>
+              </div>
             </Card>
           </div>
 
