@@ -14,6 +14,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { useVoiceSession } from '@/contexts/voice-session-context';
+import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
 
 export default function VoiceSession() {
   const { state, dispatch, initiateCall, restoreSession, checkCallStatus } = useVoiceSession();
@@ -212,8 +213,8 @@ export default function VoiceSession() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Voice Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-[600px] flex flex-col glass-card floating-card">
-              <CardHeader className="text-center">
+            <Card className="h-[600px] flex flex-col glass-card floating-card overflow-hidden">
+              <CardHeader className="text-center relative z-50">
                 <CardTitle>AI Voice Companion</CardTitle>
                 <p className="text-muted-foreground">
                   {state.callStatus === "idle"
@@ -230,161 +231,183 @@ export default function VoiceSession() {
                   }
                 </p>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8">
-                {/*Voice Visualization */}
-                <div className="relative">
-                  <motion.div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
-                        ? 'bg-green-100/80 dark:bg-green-950/20'
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? 'bg-yellow-100/80 dark:bg-yellow-950/20'
-                          : state.callStatus === "done"
-                            ? 'bg-blue-100/80 dark:bg-blue-950/20'
-                            : state.callStatus === "failed"
-                              ? 'bg-red-100/80 dark:bg-red-950/20'
-                              : 'bg-muted/80'
-                      }`}
-                    animate={
-                      state.callStatus === "in-progress"
-                        ? { scale: [1, 1.1, 1] }
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? { scale: [1, 1.05, 1] }
-                          : {}
-                    }
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
-                        ? 'text-green-600'
-                        : state.callStatus === "initiated" || state.callStatus === "processing"
-                          ? 'text-yellow-600'
-                          : state.callStatus === "done"
-                            ? 'text-blue-600'
-                            : state.callStatus === "failed"
-                              ? 'text-red-600'
-                              : 'text-muted-foreground'
-                      }`} />
-                  </motion.div>
+              <CardContent className="flex-1 flex flex-col items-center justify-center space-y-8 relative">
+                {/* Background Gradient Animation with Voice-specific colors */}
+                <BackgroundGradientAnimation
+                  gradientBackgroundStart="rgb(34, 197, 94)"  // Green-500
+                  gradientBackgroundEnd="rgb(59, 130, 246)"   // Blue-500
+                  firstColor="34, 197, 94"    // Green-500
+                  secondColor="16, 185, 129"  // Emerald-500
+                  thirdColor="6, 182, 212"    // Cyan-500
+                  fourthColor="59, 130, 246"  // Blue-500
+                  fifthColor="99, 102, 241"   // Indigo-500
+                  pointerColor="34, 197, 94"  // Green-500
+                  size="80%"
+                  blendingValue="hard-light"
+                  className="absolute inset-0"
+                >
+                  <div className="absolute z-50 inset-0 flex items-center justify-center text-white font-bold px-4 pointer-events-none">
+                    {/* Voice Visualization */}
+                    <div className="relative pointer-events-auto">
+                      <motion.div
+                        className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
+                            ? 'bg-green-100/80 dark:bg-green-950/20'
+                            : state.callStatus === "initiated" || state.callStatus === "processing"
+                              ? 'bg-yellow-100/80 dark:bg-yellow-950/20'
+                              : state.callStatus === "done"
+                                ? 'bg-blue-100/80 dark:bg-blue-950/20'
+                                : state.callStatus === "failed"
+                                  ? 'bg-red-100/80 dark:bg-red-950/20'
+                                  : 'bg-white/20'
+                          }`}
+                        animate={
+                          state.callStatus === "in-progress"
+                            ? { scale: [1, 1.1, 1] }
+                            : state.callStatus === "initiated" || state.callStatus === "processing"
+                              ? { scale: [1, 1.05, 1] }
+                              : {}
+                        }
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
+                            ? 'text-green-600'
+                            : state.callStatus === "initiated" || state.callStatus === "processing"
+                              ? 'text-yellow-600'
+                              : state.callStatus === "done"
+                                ? 'text-blue-600'
+                                : state.callStatus === "failed"
+                                  ? 'text-red-600'
+                                  : 'text-white'
+                          }`} />
+                      </motion.div>
 
-                  {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
-                    <motion.div
-                      className={`absolute inset-0 rounded-full border-4 ${state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
-                        }`}
-                      animate={{ scale: [1, 1.5], opacity: [1, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                  )}
-                </div>
-
-                {/* Call Setup Form */}
-                {state.callStatus === "idle" && (
-                  <div className="w-full max-w-md space-y-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="phoneNumber" className="text-left block mb-2 font-medium">
-                          Your Phone Number *
-                        </Label>
-                        <Input
-                          id="phoneNumber"
-                          type="tel"
-                          value={state.phoneNumber}
-                          onChange={(e) => dispatch({ type: 'SET_PHONE_NUMBER', payload: e.target.value })}
-                          placeholder="+1234567890"
-                          className="text-center text-lg glass-input"
-                          required
+                      {(state.callStatus === "in-progress" || state.callStatus === "initiated") && (
+                        <motion.div
+                          className={`absolute inset-0 rounded-full border-4 ${state.callStatus === "in-progress" ? 'border-green-300' : 'border-yellow-300'
+                            }`}
+                          animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                          transition={{ duration: 2, repeat: Infinity }}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Include country code (e.g., +1 for US, +91 for India)
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="stateDescription" className="text-left block mb-2 font-medium">
-                          How are you feeling right now? *
-                        </Label>
-                        <Textarea
-                          id="stateDescription"
-                          value={state.stateDescription}
-                          onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
-                          placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
-                          className="min-h-[100px] resize-none glass-input"
-                          required
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          This helps our AI therapist understand your current state and provide better support.
-                        </p>
-                      </div>
+                      )}
                     </div>
-
-                    <Button
-                      onClick={handleInitiateCall}
-                      size="lg"
-                      className="w-full bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
-                      disabled={state.isInitiating || !state.phoneNumber.trim() || !state.stateDescription.trim()}
-                    >
-                      <Phone className="h-5 w-5 mr-2" />
-                      {state.isInitiating ? 'Initiating Call...' : 'Start Voice Session'}
-                    </Button>
                   </div>
-                )}
 
-                {/* Call Status Display */}
-                {state.callStatus !== "idle" && (
-                  <div className="text-center space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{getStatusText(state.callStatus)}</h3>
-                      {state.callStatus === "initiated" && (
-                        <p className="text-muted-foreground">
-                          Please answer your phone when it rings. The AI therapist will begin the conversation.
-                        </p>
-                      )}
-                      {state.callStatus === "in-progress" && (
-                        <p className="text-muted-foreground">
-                          Your therapy session is active. Speak naturally with the AI companion.
-                        </p>
-                      )}
-                      {state.callStatus === "processing" && (
-                        <p className="text-muted-foreground">
-                          Your call is being processed. Analysis and summary will be available shortly.
-                        </p>
-                      )}
-                      {state.callStatus === "done" && (
-                        <div className="space-y-4">
-                          <p className="text-muted-foreground">
-                            Your therapy session has been completed successfully.
-                          </p>
+                  {/* Call Setup Form or Status Display */}
+                  <div className="absolute z-50 inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center text-white p-8 max-w-2xl pointer-events-auto">
+                      {/* Call Setup Form */}
+                      {state.callStatus === "idle" && (
+                        <div className="w-full max-w-md space-y-6">
+                          <div className="space-y-4">
+                            <div>
+                              <Label htmlFor="phoneNumber" className="text-white text-left block mb-2 font-medium">
+                                Your Phone Number *
+                              </Label>
+                              <Input
+                                id="phoneNumber"
+                                type="tel"
+                                value={state.phoneNumber}
+                                onChange={(e) => dispatch({ type: 'SET_PHONE_NUMBER', payload: e.target.value })}
+                                placeholder="+1234567890"
+                                className="text-center text-lg bg-white/20 border-white/30 text-white placeholder:text-white/60 glass-input"
+                                required
+                              />
+                              <p className="text-white/60 text-xs mt-1">
+                                Include country code (e.g., +1 for US, +91 for India)
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="stateDescription" className="text-white text-left block mb-2 font-medium">
+                                How are you feeling right now? *
+                              </Label>
+                              <Textarea
+                                id="stateDescription"
+                                value={state.stateDescription}
+                                onChange={(e) => dispatch({ type: 'SET_STATE_DESCRIPTION', payload: e.target.value })}
+                                placeholder="Describe your current thoughts, feelings, or what's on your mind today..."
+                                className="min-h-[100px] resize-none bg-white/20 border-white/30 text-white placeholder:text-white/60 glass-input"
+                                required
+                              />
+                              <p className="text-white/60 text-xs mt-1">
+                                This helps our AI therapist understand your current state and provide better support.
+                              </p>
+                            </div>
+                          </div>
+
                           <Button
-                            variant="outline"
-                            asChild
-                            className="therapeutic-hover"
+                            onClick={handleInitiateCall}
+                            size="lg"
+                            className="w-full bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
+                            disabled={state.isInitiating || !state.phoneNumber.trim() || !state.stateDescription.trim()}
                           >
-                            <Link href={`/sessions/${state.sessionId}`}>
-                              View Session Details
-                            </Link>
+                            <Phone className="h-5 w-5 mr-2" />
+                            {state.isInitiating ? 'Initiating Call...' : 'Start Voice Session'}
                           </Button>
                         </div>
                       )}
-                      {state.callStatus === "failed" && (
-                        <p className="text-red-600">
-                          The call could not be completed. Please check your phone number and try again.
-                        </p>
-                      )}
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 justify-center">
-                      {(state.callStatus === "done" || state.callStatus === "failed") && (
-                        <Button
-                          onClick={() => dispatch({ type: 'RESET_SESSION' })}
-                          size="lg"
-                          className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
-                        >
-                          <Phone className="h-5 w-5 mr-2" />
-                          Start New Session
-                        </Button>
+                      {/* Call Status Display */}
+                      {state.callStatus !== "idle" && (
+                        <div className="text-center space-y-4">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-2">{getStatusText(state.callStatus)}</h3>
+                            {state.callStatus === "initiated" && (
+                              <p className="text-white/80">
+                                Please answer your phone when it rings. The AI therapist will begin the conversation.
+                              </p>
+                            )}
+                            {state.callStatus === "in-progress" && (
+                              <p className="text-white/80">
+                                Your therapy session is active. Speak naturally with the AI companion.
+                              </p>
+                            )}
+                            {state.callStatus === "processing" && (
+                              <p className="text-white/80">
+                                Your call is being processed. Analysis and summary will be available shortly.
+                              </p>
+                            )}
+                            {state.callStatus === "done" && (
+                              <div className="space-y-4">
+                                <p className="text-white/80">
+                                  Your therapy session has been completed successfully.
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  asChild
+                                  className="therapeutic-hover border-white text-black dark:text-white hover:bg-white/60 dark:hover:bg-white/20"
+                                >
+                                  <Link href={`/sessions/${state.sessionId}`}>
+                                    View Session Details
+                                  </Link>
+                                </Button>
+                              </div>
+                            )}
+                            {state.callStatus === "failed" && (
+                              <p className="text-red-200">
+                                The call could not be completed. Please check your phone number and try again.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-4 justify-center">
+                            {(state.callStatus === "done" || state.callStatus === "failed") && (
+                              <Button
+                                onClick={() => dispatch({ type: 'RESET_SESSION' })}
+                                size="lg"
+                                className="bg-green-600 hover:bg-green-700 therapeutic-hover ripple-effect"
+                              >
+                                <Phone className="h-5 w-5 mr-2" />
+                                Start New Session
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
-                )}
+                </BackgroundGradientAnimation>
               </CardContent>
             </Card>
           </div>
