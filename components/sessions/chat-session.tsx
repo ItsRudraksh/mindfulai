@@ -110,9 +110,9 @@ export default function ChatSession() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize conversation - only once when component mounts
+  // Initialize conversation - only once when component mounts and user/conversations are loaded
   useEffect(() => {
-    if (user && !hasInitialized) {
+    if (user && conversations !== undefined && !hasInitialized) {
       setHasInitialized(true);
       
       if (conversations.length === 0) {
@@ -562,7 +562,7 @@ export default function ChatSession() {
                                     setEditingMessageId(null);
                                     setEditContent('');
                                   }}
-                                  className="therapeutic-hover"
+                                  className="therapeutic-hover bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                   Cancel
                                 </Button>
