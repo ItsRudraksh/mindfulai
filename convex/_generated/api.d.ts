@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as chatConversations from "../chatConversations.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as moodEntries from "../moodEntries.js";
 import type * as sessions from "../sessions.js";
 import type * as users from "../users.js";
 
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   chatConversations: typeof chatConversations;
   http: typeof http;
   messages: typeof messages;
+  moodEntries: typeof moodEntries;
   sessions: typeof sessions;
   users: typeof users;
 }>;

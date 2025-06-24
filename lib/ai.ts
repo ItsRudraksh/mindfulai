@@ -2,7 +2,9 @@ import OpenAI from "openai";
 
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || "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",
+  apiKey:
+    process.env.OPENROUTER_API_KEY ||
+    "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",
   dangerouslyAllowBrowser: true,
 });
 
@@ -38,86 +40,151 @@ export interface MoodEntry {
 
 // Content guardrails - topics to avoid or redirect
 const RESTRICTED_TOPICS = [
-  'coding', 'programming', 'software development', 'technical implementation',
-  'hacking', 'cybersecurity', 'data analysis', 'machine learning',
-  'financial advice', 'investment', 'legal advice', 'medical diagnosis',
-  'prescription medication', 'drug recommendations'
+  "coding",
+  "programming",
+  "software development",
+  "technical implementation",
+  "hacking",
+  "cybersecurity",
+  "data analysis",
+  "machine learning",
+  "financial advice",
+  "investment",
+  "legal advice",
+  "medical diagnosis",
+  "prescription medication",
+  "drug recommendations",
 ];
 
 const MENTAL_HEALTH_KEYWORDS = [
-  'anxiety', 'depression', 'stress', 'worry', 'fear', 'sad', 'angry',
-  'overwhelmed', 'lonely', 'grief', 'trauma', 'panic', 'mood',
-  'therapy', 'counseling', 'mental health', 'emotional', 'feelings',
-  'thoughts', 'mindfulness', 'meditation', 'coping', 'support'
+  "anxiety",
+  "depression",
+  "stress",
+  "worry",
+  "fear",
+  "sad",
+  "angry",
+  "overwhelmed",
+  "lonely",
+  "grief",
+  "trauma",
+  "panic",
+  "mood",
+  "therapy",
+  "counseling",
+  "mental health",
+  "emotional",
+  "feelings",
+  "thoughts",
+  "mindfulness",
+  "meditation",
+  "coping",
+  "support",
 ];
 
 // Available activities in the app
 const AVAILABLE_ACTIVITIES: ActivityOption[] = [
   {
-    id: 'video-session',
-    name: 'Video Therapy Session',
-    description: 'Connect with AI therapist via video for face-to-face support',
-    route: '/sessions/video',
-    icon: 'Video',
-    estimatedTime: '15-30 minutes',
-    benefits: ['Personal connection', 'Visual cues', 'Immersive support', 'Real-time interaction']
+    id: "video-session",
+    name: "Video Therapy Session",
+    description: "Connect with AI therapist via video for face-to-face support",
+    route: "/sessions/video",
+    icon: "Video",
+    estimatedTime: "15-30 minutes",
+    benefits: [
+      "Personal connection",
+      "Visual cues",
+      "Immersive support",
+      "Real-time interaction",
+    ],
   },
   {
-    id: 'voice-call',
-    name: 'Voice Therapy Call',
-    description: 'Talk with AI companion through a natural phone conversation',
-    route: '/sessions/voice',
-    icon: 'Phone',
-    estimatedTime: '10-25 minutes',
-    benefits: ['Natural conversation', 'Hands-free support', 'Voice expression', 'Comfortable setting']
+    id: "voice-call",
+    name: "Voice Therapy Call",
+    description: "Talk with AI companion through a natural phone conversation",
+    route: "/sessions/voice",
+    icon: "Phone",
+    estimatedTime: "10-25 minutes",
+    benefits: [
+      "Natural conversation",
+      "Hands-free support",
+      "Voice expression",
+      "Comfortable setting",
+    ],
   },
   {
-    id: 'chat-session',
-    name: 'Text Chat Therapy',
-    description: 'Written conversation with AI therapist for thoughtful exchange',
-    route: '/sessions/chat',
-    icon: 'MessageCircle',
-    estimatedTime: '5-20 minutes',
-    benefits: ['Time to reflect', 'Written record', 'Flexible pace', 'Privacy comfort']
+    id: "chat-session",
+    name: "Text Chat Therapy",
+    description:
+      "Written conversation with AI therapist for thoughtful exchange",
+    route: "/sessions/chat",
+    icon: "MessageCircle",
+    estimatedTime: "5-20 minutes",
+    benefits: [
+      "Time to reflect",
+      "Written record",
+      "Flexible pace",
+      "Privacy comfort",
+    ],
   },
   {
-    id: 'journaling',
-    name: 'Guided Journaling',
-    description: 'Write about your thoughts and feelings with AI-guided prompts',
-    route: '/journal',
-    icon: 'PenTool',
-    estimatedTime: '10-15 minutes',
-    benefits: ['Self-reflection', 'Emotional processing', 'Pattern recognition', 'Personal growth']
+    id: "journaling",
+    name: "Guided Journaling",
+    description:
+      "Write about your thoughts and feelings with AI-guided prompts",
+    route: "/journal",
+    icon: "PenTool",
+    estimatedTime: "10-15 minutes",
+    benefits: [
+      "Self-reflection",
+      "Emotional processing",
+      "Pattern recognition",
+      "Personal growth",
+    ],
   },
   {
-    id: 'meditation',
-    name: 'Mindfulness Meditation',
-    description: 'Guided meditation exercises for relaxation and mental clarity',
-    route: '/meditation',
-    icon: 'Brain',
-    estimatedTime: '5-20 minutes',
-    benefits: ['Stress reduction', 'Present moment awareness', 'Emotional regulation', 'Mental clarity']
+    id: "meditation",
+    name: "Mindfulness Meditation",
+    description:
+      "Guided meditation exercises for relaxation and mental clarity",
+    route: "/meditation",
+    icon: "Brain",
+    estimatedTime: "5-20 minutes",
+    benefits: [
+      "Stress reduction",
+      "Present moment awareness",
+      "Emotional regulation",
+      "Mental clarity",
+    ],
   },
   {
-    id: 'breathing',
-    name: 'Breathing Exercises',
-    description: 'Structured breathing techniques for immediate calm and focus',
-    route: '/breathing',
-    icon: 'Wind',
-    estimatedTime: '3-10 minutes',
-    benefits: ['Immediate relief', 'Anxiety reduction', 'Physical relaxation', 'Quick reset']
-  }
+    id: "breathing",
+    name: "Breathing Exercises",
+    description: "Structured breathing techniques for immediate calm and focus",
+    route: "/breathing",
+    icon: "Wind",
+    estimatedTime: "3-10 minutes",
+    benefits: [
+      "Immediate relief",
+      "Anxiety reduction",
+      "Physical relaxation",
+      "Quick reset",
+    ],
+  },
 ];
 
-function checkContentGuardrails(message: string): { allowed: boolean; reason?: string } {
+function checkContentGuardrails(message: string): {
+  allowed: boolean;
+  reason?: string;
+} {
   const lowerMessage = message.toLowerCase();
-  
+
   // Check for restricted topics
   for (const topic of RESTRICTED_TOPICS) {
     if (lowerMessage.includes(topic)) {
       return {
         allowed: false,
-        reason: `I'm specifically designed to provide mental health support. I can't help with ${topic}-related topics. Let's focus on your emotional wellbeing instead. How are you feeling today?`
+        reason: `I'm specifically designed to provide mental health support. I can't help with ${topic}-related topics. Let's focus on your emotional wellbeing instead. How are you feeling today?`,
       };
     }
   }
@@ -126,24 +193,36 @@ function checkContentGuardrails(message: string): { allowed: boolean; reason?: s
   if (message.trim().length < 3) {
     return {
       allowed: false,
-      reason: "Could you share a bit more about what's on your mind? I'm here to listen and support you."
+      reason:
+        "Could you share a bit more about what's on your mind? I'm here to listen and support you.",
     };
   }
 
   // Check for mental health relevance
-  const hasMentalHealthContent = MENTAL_HEALTH_KEYWORDS.some(keyword => 
+  const hasMentalHealthContent = MENTAL_HEALTH_KEYWORDS.some((keyword) =>
     lowerMessage.includes(keyword)
   );
 
   // If no mental health keywords and message seems off-topic, gently redirect
   if (!hasMentalHealthContent && message.length > 50) {
-    const offTopicIndicators = ['how to', 'tutorial', 'explain', 'code', 'build', 'create', 'develop'];
-    const seemsOffTopic = offTopicIndicators.some(indicator => lowerMessage.includes(indicator));
-    
+    const offTopicIndicators = [
+      "how to",
+      "tutorial",
+      "explain",
+      "code",
+      "build",
+      "create",
+      "develop",
+    ];
+    const seemsOffTopic = offTopicIndicators.some((indicator) =>
+      lowerMessage.includes(indicator)
+    );
+
     if (seemsOffTopic) {
       return {
         allowed: false,
-        reason: "I'm here to support your mental health and emotional wellbeing. While I can't help with technical or instructional topics, I'd love to hear about how you're feeling or what's been on your mind lately."
+        reason:
+          "I'm here to support your mental health and emotional wellbeing. While I can't help with technical or instructional topics, I'd love to hear about how you're feeling or what's been on your mind lately.",
       };
     }
   }
@@ -163,30 +242,33 @@ export async function generateMoodActivityRecommendations(
 ): Promise<MoodRecommendation> {
   try {
     const activitiesJson = JSON.stringify(AVAILABLE_ACTIVITIES, null, 2);
-    
+
     let moodHistoryContext = "";
     if (moodHistory && moodHistory.length > 0) {
       moodHistoryContext = `\n\nTODAY'S MOOD HISTORY:
-${moodHistory.map((entry, index) => 
-  `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ''}`
-).join('\n')}
+${moodHistory
+  .map(
+    (entry, index) =>
+      `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ""}`
+  )
+  .join("\n")}
 
 Consider this mood progression when making recommendations. Look for patterns, triggers, or emotional trends that might inform your suggestions.`;
     }
-    
+
     const systemPrompt = `You are an expert mental health AI that recommends the most appropriate therapeutic activities based on a user's current mood and emotional state.
 
 AVAILABLE ACTIVITIES:
 ${activitiesJson}
 
-TASK: Based on the user's mood${moodHistory ? ' and their mood history today' : ''}, recommend the TOP 2 most beneficial activities from the list above.
+TASK: Based on the user's mood${moodHistory ? " and their mood history today" : ""}, recommend the TOP 2 most beneficial activities from the list above.
 
 GUIDELINES:
 1. **Mood-Activity Matching**: Consider which activities work best for specific emotional states
 2. **Therapeutic Principles**: Use evidence-based mental health approaches
 3. **User Context**: Factor in their experience level and available time
 4. **Practical Benefits**: Focus on immediate and long-term emotional benefits
-5. **Mood Patterns**: ${moodHistory ? 'Analyze the mood progression throughout the day to provide more personalized recommendations' : 'Focus on the current mood state'}
+5. **Mood Patterns**: ${moodHistory ? "Analyze the mood progression throughout the day to provide more personalized recommendations" : "Focus on the current mood state"}
 
 RESPONSE FORMAT (JSON):
 {
@@ -201,7 +283,7 @@ RESPONSE FORMAT (JSON):
       "benefits": ["benefit1", "benefit2"]
     }
   ],
-  "reasoning": "Brief explanation (2-3 sentences) of why these activities are ideal for this mood${moodHistory ? ' and mood pattern' : ''}",
+  "reasoning": "Brief explanation (2-3 sentences) of why these activities are ideal for this mood${moodHistory ? " and mood pattern" : ""}",
   "encouragement": "Supportive, personalized message (1-2 sentences) to motivate the user"
 }
 
@@ -213,65 +295,81 @@ MOOD-ACTIVITY GUIDELINES:
 - **Stressed**: Breathing exercises for immediate relief, meditation for deeper calm
 - **Good/Positive**: Journaling for reflection, any session to maintain wellbeing
 
-${userContext?.name ? `User's name: ${userContext.name}` : ''}
-${userContext?.previousSessions ? `Previous sessions: ${userContext.previousSessions}` : ''}
-${userContext?.timeAvailable ? `Available time: ${userContext.timeAvailable}` : ''}
+${userContext?.name ? `User's name: ${userContext.name}` : ""}
+${userContext?.previousSessions ? `Previous sessions: ${userContext.previousSessions}` : ""}
+${userContext?.timeAvailable ? `Available time: ${userContext.timeAvailable}` : ""}
 ${moodHistoryContext}
 
 Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and encouragement.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Current mood: "${mood}"` }
+        { role: "user", content: `Current mood: "${mood}"` },
       ],
       temperature: 0.6,
       max_tokens: 800,
     });
 
     const response = completion.choices[0]?.message?.content;
-    
+
     if (!response) {
       throw new Error("No response from AI");
     }
 
     // Parse JSON response
     const recommendation: MoodRecommendation = JSON.parse(response);
-    
+
     // Validate that we have exactly 2 recommendations
-    if (!recommendation.topRecommendations || recommendation.topRecommendations.length !== 2) {
+    if (
+      !recommendation.topRecommendations ||
+      recommendation.topRecommendations.length !== 2
+    ) {
       throw new Error("Invalid recommendation format");
     }
 
     return recommendation;
   } catch (error) {
     console.error("Mood activity recommendation error:", error);
-    
+
     // Fallback recommendations based on mood keywords
     const moodLower = mood.toLowerCase();
     let fallbackActivities: ActivityOption[] = [];
-    
-    if (moodLower.includes('anxious') || moodLower.includes('overwhelmed') || moodLower.includes('stress')) {
+
+    if (
+      moodLower.includes("anxious") ||
+      moodLower.includes("overwhelmed") ||
+      moodLower.includes("stress")
+    ) {
       fallbackActivities = [AVAILABLE_ACTIVITIES[5], AVAILABLE_ACTIVITIES[4]]; // Breathing, Meditation
-    } else if (moodLower.includes('sad') || moodLower.includes('down') || moodLower.includes('lonely')) {
+    } else if (
+      moodLower.includes("sad") ||
+      moodLower.includes("down") ||
+      moodLower.includes("lonely")
+    ) {
       fallbackActivities = [AVAILABLE_ACTIVITIES[0], AVAILABLE_ACTIVITIES[3]]; // Video, Journaling
-    } else if (moodLower.includes('angry') || moodLower.includes('frustrated')) {
+    } else if (
+      moodLower.includes("angry") ||
+      moodLower.includes("frustrated")
+    ) {
       fallbackActivities = [AVAILABLE_ACTIVITIES[1], AVAILABLE_ACTIVITIES[4]]; // Voice, Meditation
     } else {
       fallbackActivities = [AVAILABLE_ACTIVITIES[2], AVAILABLE_ACTIVITIES[4]]; // Chat, Meditation
     }
-    
+
     return {
       topRecommendations: fallbackActivities,
-      reasoning: "Based on your current mood, these activities can provide the support and relief you need right now.",
-      encouragement: "Remember, taking this step to care for your mental health shows real strength. You've got this!"
+      reasoning:
+        "Based on your current mood, these activities can provide the support and relief you need right now.",
+      encouragement:
+        "Remember, taking this step to care for your mental health shows real strength. You've got this!",
     };
   }
 }
 
 export async function generateMoodInsight(
-  mood: string, 
+  mood: string,
   context?: string,
   moodHistory?: MoodEntry[]
 ): Promise<string> {
@@ -279,32 +377,39 @@ export async function generateMoodInsight(
     let moodHistoryContext = "";
     if (moodHistory && moodHistory.length > 0) {
       moodHistoryContext = `\n\nToday's mood progression:
-${moodHistory.map((entry, index) => 
-  `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ''}`
-).join('\n')}
+${moodHistory
+  .map(
+    (entry, index) =>
+      `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ""}`
+  )
+  .join("\n")}
 
 Consider this emotional journey when providing your insight.`;
     }
 
-    const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ''}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? 'Take into account their mood patterns today to provide more personalized reflection.' : ''} Respond in the same language and style as the input.`;
+    const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ""}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? "Take into account their mood patterns today to provide more personalized reflection." : ""} Respond in the same language and style as the input.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         {
           role: "system",
-          content: "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing. When mood history is provided, acknowledge patterns and growth."
+          content:
+            "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing. When mood history is provided, acknowledge patterns and growth.",
         },
         {
           role: "user",
-          content: prompt
-        }
+          content: prompt,
+        },
       ],
       temperature: 0.6,
       max_tokens: 200,
     });
 
-    return completion.choices[0]?.message?.content || "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
+    return (
+      completion.choices[0]?.message?.content ||
+      "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself."
+    );
   } catch (error) {
     console.error("Mood insight generation error:", error);
     return "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
@@ -328,7 +433,7 @@ export async function generateTherapyResponse(
       return {
         content: guardrailCheck.reason!,
         flagged: true,
-        flagReason: "Off-topic content redirected to mental health focus"
+        flagReason: "Off-topic content redirected to mental health focus",
       };
     }
 
@@ -395,9 +500,9 @@ EXAMPLE INTEGRATION (use sparingly and naturally):
 ❌ Avoid: Forcing examples when simple validation is enough
 ❌ Avoid: Long, detailed stories that overshadow the user's experience
 
-${userContext?.name ? `The user's name is ${userContext.name}.` : ''}
-${userContext?.mood ? `They described their current state as: "${userContext.mood}"` : ''}
-${userContext?.previousSessions ? `This user has had ${userContext.previousSessions} previous therapy sessions.` : 'This appears to be a new user.'}
+${userContext?.name ? `The user's name is ${userContext.name}.` : ""}
+${userContext?.mood ? `They described their current state as: "${userContext.mood}"` : ""}
+${userContext?.previousSessions ? `This user has had ${userContext.previousSessions} previous therapy sessions.` : "This appears to be a new user."}
 ${contextualBackground}
 
 Remember: You are a mental health companion. Be genuinely helpful, naturally empathetic, and culturally aware. Use examples thoughtfully, not automatically.`;
@@ -406,56 +511,60 @@ Remember: You are a mental health companion. Be genuinely helpful, naturally emp
     const messages: ChatMessage[] = [
       { role: "system", content: systemPrompt },
       ...conversationHistory.slice(-10), // Keep last 10 messages for context
-      { role: "user", content: userMessage }
+      { role: "user", content: userMessage },
     ];
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: messages,
       temperature: 0.7,
       max_tokens: 500,
     });
 
-    const response = completion.choices[0]?.message?.content || "I'm here to listen and support you. Could you tell me more about what's on your mind?";
+    const response =
+      completion.choices[0]?.message?.content ||
+      "I'm here to listen and support you. Could you tell me more about what's on your mind?";
 
     // Double-check AI response for any off-topic content
     const responseCheck = checkContentGuardrails(response);
     if (!responseCheck.allowed) {
       return {
-        content: "I'm here to support your mental health and emotional wellbeing. How are you feeling right now, and what would be most helpful for you today?",
+        content:
+          "I'm here to support your mental health and emotional wellbeing. How are you feeling right now, and what would be most helpful for you today?",
         flagged: true,
-        flagReason: "AI response contained off-topic content"
+        flagReason: "AI response contained off-topic content",
       };
     }
 
     return { content: response };
   } catch (error) {
     console.error("AI therapy response error:", error);
-    
+
     // Fallback responses for different scenarios
     const fallbackResponses = [
       "I hear you, and what you're sharing is really important. Can you tell me more about what's been on your mind lately?",
       "Thank you for being open with me. It takes courage to share your feelings. How has this been affecting your daily life?",
       "I appreciate you trusting me with this. Those feelings are completely valid. What do you think might help you feel more supported right now?",
       "That sounds really challenging. You're showing a lot of strength by reaching out. What coping strategies have you tried before?",
-      "I can sense this is weighing on you. Remember, it's okay to feel this way. What would make you feel most heard and understood right now?"
+      "I can sense this is weighing on you. Remember, it's okay to feel this way. What would make you feel most heard and understood right now?",
     ];
-    
+
     return {
-      content: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)]
+      content:
+        fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
     };
   }
 }
 
 export async function generateConversationSummary(
-  messages: ChatMessage[], 
+  messages: ChatMessage[],
   existingSummary?: string
 ): Promise<string> {
   try {
     const conversation = messages
-      .filter(m => m.role !== 'system')
-      .map(m => `${m.role}: ${m.content}`)
-      .join('\n');
+      .filter((m) => m.role !== "system")
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
 
     let summaryPrompt = "";
     if (existingSummary && existingSummary.trim()) {
@@ -465,25 +574,32 @@ export async function generateConversationSummary(
     }
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         {
           role: "system",
-          content: "You are a professional therapy assistant. Create concise, therapeutic summaries that capture emotional themes, progress, and key insights. Use the same language style as the conversation. Focus on continuity of care and therapeutic relationship building."
+          content:
+            "You are a professional therapy assistant. Create concise, therapeutic summaries that capture emotional themes, progress, and key insights. Use the same language style as the conversation. Focus on continuity of care and therapeutic relationship building.",
         },
         {
           role: "user",
-          content: summaryPrompt
-        }
+          content: summaryPrompt,
+        },
       ],
       temperature: 0.3,
       max_tokens: 250,
     });
 
-    return completion.choices[0]?.message?.content || "Therapy conversation covering emotional wellbeing and support.";
+    return (
+      completion.choices[0]?.message?.content ||
+      "Therapy conversation covering emotional wellbeing and support."
+    );
   } catch (error) {
     console.error("Conversation summary error:", error);
-    return existingSummary || "Therapy conversation covering emotional wellbeing and support.";
+    return (
+      existingSummary ||
+      "Therapy conversation covering emotional wellbeing and support."
+    );
   }
 }
 
@@ -495,15 +611,16 @@ export function estimateTokenCount(text: string): number {
 
 // Helper function to check if context needs summarization
 export function shouldSummarizeContext(
-  conversationHistory: ChatMessage[], 
+  conversationHistory: ChatMessage[],
   rollingSummary?: string
 ): boolean {
-  const historyTokens = conversationHistory.reduce((total, msg) => 
-    total + estimateTokenCount(msg.content), 0
+  const historyTokens = conversationHistory.reduce(
+    (total, msg) => total + estimateTokenCount(msg.content),
+    0
   );
   const summaryTokens = rollingSummary ? estimateTokenCount(rollingSummary) : 0;
-  
+
   // Trigger summarization if total context exceeds ~2000 tokens
   // This leaves room for system prompt and response
-  return (historyTokens + summaryTokens) > 2000;
+  return historyTokens + summaryTokens > 2000;
 }
