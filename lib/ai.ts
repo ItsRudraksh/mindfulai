@@ -79,7 +79,7 @@ export async function generateMoodInsight(mood: string, context?: string): Promi
     const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ''}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         {
           role: "system",
