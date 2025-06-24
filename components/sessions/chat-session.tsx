@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bot, User as UserIcon, ArrowLeft, MoreVertical } from 'lucide-react';
+import { Send, Bot, User as UserIcon, ArrowLeft, MoreVertical, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { toast } from 'sonner';
+import { ChatMessage } from '@/lib/ai';
 
 interface Message {
   id: string;
@@ -25,20 +27,40 @@ export default function ChatSession() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const createSessionMutation = useMutation(api.sessions.createSession);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
-      setMessages([
-        {
-          id: '1',
-          content: `Hello ${user.name?.split(' ')[0] || 'there'}! I'm your AI therapy companion. I'm here to listen and support you through whatever you're experiencing today. How are you feeling right now?`,
-          sender: 'ai',
-          timestamp: new Date(),
-        }
-      ]);
+      const welcomeMessage: Message = {
+        id: '1',
+        content: `Hello ${user.name?.split(' ')[0] || 'there'}! I'm your AI therapy companion powered by advanced language models. I'm here to listen and support you through whatever you're experiencing today. How are you feeling right now?`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages([welcomeMessage]);
+      
+      // Create initial session
+      createChatSession();
     }
   }, [user]);
+
+  const createChatSession = async () => {
+    if (!user) return;
+    
+    try {
+      const newSessionId = await createSessionMutation({
+        type: "chat",
+        startTime: Date.now(),
+        mood: "Starting chat therapy session",
+      });
+      setSessionId(newSessionId);
+    } catch (error) {
+      console.error('Failed to create chat session:', error);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -59,32 +81,73 @@ export default function ChatSession() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    
+    // Add to conversation history for AI context
+    const newHistory: ChatMessage[] = [
+      ...conversationHistory,
+      { role: 'user', content: newMessage }
+    ];
+    
     setNewMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      // Call AI API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: newMessage,
+          conversationHistory: newHistory,
+          userContext: {
+            name: user?.name?.split(' ')[0],
+            mood: messages.find(m => m.mood)?.mood,
+            previousSessions: 0, // Could be fetched from database
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const aiResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          content: data.response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+        
+        // Update conversation history
+        setConversationHistory([
+          ...newHistory,
+          { role: 'assistant', content: data.response }
+        ]);
+      } else {
+        throw new Error(data.error || 'Failed to generate response');
+      }
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      toast.error('Failed to get response. Please try again.');
+      
+      // Fallback response
+      const fallbackResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(newMessage),
+        content: "I apologize, but I'm having trouble connecting right now. Your feelings and thoughts are important to me. Could you try sharing again?",
         sender: 'ai',
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, fallbackResponse]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
-  };
-
-  const generateAIResponse = (userMessage: string): string => {
-    // This would typically call your LLM API
-    const responses = [
-      "I hear you, and what you're sharing is really important. Can you tell me more about what's been on your mind lately?",
-      "Thank you for being open with me. It takes courage to share your feelings. How has this been affecting your daily life?",
-      "I appreciate you trusting me with this. Those feelings are completely valid. What do you think might help you feel more supported right now?",
-      "That sounds really challenging. You're showing a lot of strength by reaching out. What coping strategies have you tried before?",
-      "I can sense this is weighing on you. Remember, it's okay to feel this way. What would make you feel most heard and understood right now?"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+    }
   };
 
   if (!user) {
@@ -115,16 +178,22 @@ export default function ChatSession() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h1 className="font-semibold">AI Therapy Companion</h1>
+                  <h1 className="font-semibold flex items-center gap-2">
+                    AI Therapy Companion
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                  </h1>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-gentle-pulse"></div>
-                    <span className="text-sm text-muted-foreground">Online & Ready</span>
+                    <span className="text-sm text-muted-foreground">Powered by Claude AI</span>
                   </div>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="backdrop-blur-subtle">Secure Session</Badge>
+              <Badge variant="secondary" className="backdrop-blur-subtle">
+                <Sparkles className="h-3 w-3 mr-1" />
+                AI-Powered
+              </Badge>
               <Button variant="ghost" size="icon" className="therapeutic-hover">
                 <MoreVertical className="h-5 w-5" />
               </Button>
@@ -160,12 +229,12 @@ export default function ChatSession() {
                   <motion.div 
                     className={`rounded-lg p-4 backdrop-blur-subtle ${message.sender === 'user'
                         ? 'bg-primary/80 text-primary-foreground'
-                        : 'bg-muted/80 text-foreground'
+                        : 'bg-muted/80 text-foreground border border-purple-200/30'
                       }`}
                     whileHover={{ scale: 1.02 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                     <p className="text-xs opacity-70 mt-2">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: '2-digit',
@@ -189,11 +258,14 @@ export default function ChatSession() {
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-muted/80 rounded-lg p-4 backdrop-blur-subtle">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="bg-muted/80 rounded-lg p-4 backdrop-blur-subtle border border-purple-200/30">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">AI is thinking...</span>
                     </div>
                   </div>
                 </div>
@@ -209,7 +281,7 @@ export default function ChatSession() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Share what's on your mind..."
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                 className="flex-1 glass-input"
                 disabled={isTyping}
               />
@@ -217,13 +289,13 @@ export default function ChatSession() {
                 onClick={handleSendMessage}
                 disabled={!newMessage.trim() || isTyping}
                 size="icon"
-                className="therapeutic-hover ripple-effect"
+                className="therapeutic-hover ripple-effect bg-purple-600 hover:bg-purple-700"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              Your conversations are private and secure. This AI is trained to provide supportive responses.
+              Your conversations are private and secure. This AI uses advanced language models to provide supportive responses.
             </p>
           </div>
         </Card>
