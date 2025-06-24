@@ -34,6 +34,7 @@ import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { ChatMessage } from '@/lib/ai';
 import { Id } from '@/convex/_generated/dataModel';
+import { useChat } from '@/contexts/chat-context';
 
 interface Message {
   _id: Id<"messages">;
@@ -50,19 +51,10 @@ interface Message {
   };
 }
 
-interface Conversation {
-  _id: Id<"chatConversations">;
-  title: string;
-  status: 'active' | 'completed' | 'archived';
-  lastMessageAt?: number;
-  messageCount: number;
-}
-
 export default function ChatSession() {
   const user = useQuery(api.users.current);
-  const conversations = useQuery(api.chatConversations.getUserConversations) || [];
+  const { state: chatState, createNewConversation, switchConversation } = useChat();
   
-  const [currentConversationId, setCurrentConversationId] = useState<Id<"chatConversations"> | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -70,23 +62,20 @@ export default function ChatSession() {
   const [editingMessageId, setEditingMessageId] = useState<Id<"messages"> | null>(null);
   const [editContent, setEditContent] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Mutations
-  const createConversationMutation = useMutation(api.chatConversations.createConversation);
   const createMessageMutation = useMutation(api.messages.createMessage);
   const editMessageMutation = useMutation(api.messages.editMessage);
   const regenerateMessageMutation = useMutation(api.messages.regenerateMessage);
   const deleteMessageMutation = useMutation(api.messages.deleteMessage);
   const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
-  const updateConversationMutation = useMutation(api.chatConversations.updateConversation);
 
   // Queries
   const conversationMessages = useQuery(
     api.messages.getConversationMessages,
-    currentConversationId ? { conversationId: currentConversationId } : "skip"
+    chatState.currentConversationId ? { conversationId: chatState.currentConversationId } : "skip"
   );
 
   // Load messages when conversation changes
@@ -110,57 +99,24 @@ export default function ChatSession() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize conversation - only once when component mounts and user/conversations are loaded
-  useEffect(() => {
-    if (user && conversations !== undefined && !hasInitialized) {
-      setHasInitialized(true);
-      
-      if (conversations.length === 0) {
-        // No conversations exist, create one
-        createNewConversation();
-      } else {
-        // Load the most recent active conversation
-        const activeConversation = conversations.find(c => c.status === 'active') || conversations[0];
-        setCurrentConversationId(activeConversation._id);
-      }
-    }
-  }, [user, conversations, hasInitialized]);
-
-  const createNewConversation = async () => {
-    if (!user) return;
-    
-    try {
-      const conversationId = await createConversationMutation({
-        title: `Chat Session - ${new Date().toLocaleDateString()}`,
-      });
-      setCurrentConversationId(conversationId);
+  const handleCreateNewConversation = async () => {
+    const conversationId = await createNewConversation();
+    if (conversationId) {
       setMessages([]);
       setConversationHistory([]);
-      
-      // Add welcome message
-      const welcomeMessage = await createMessageMutation({
-        conversationId,
-        content: `Hello ${user.name?.split(' ')[0] || 'there'}! I'm your AI therapy companion powered by advanced language models. I'm here to listen and support you through whatever you're experiencing today. How are you feeling right now?`,
-        sender: 'ai',
-        metadata: {
-          aiModel: 'system-welcome',
-        }
-      });
-      
       toast.success('New conversation started!');
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
+    } else {
       toast.error('Failed to create new conversation');
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !currentConversationId) return;
+    if (!newMessage.trim() || !chatState.currentConversationId) return;
 
     try {
       // Create user message
-      const userMessageId = await createMessageMutation({
-        conversationId: currentConversationId,
+      await createMessageMutation({
+        conversationId: chatState.currentConversationId,
         content: newMessage,
         sender: 'user',
       });
@@ -185,7 +141,7 @@ export default function ChatSession() {
           userContext: {
             name: user?.name?.split(' ')[0],
             mood: messages.find(m => m.metadata?.flagged)?.metadata?.flagReason,
-            previousSessions: conversations.length,
+            previousSessions: chatState.conversations.length,
           },
         }),
       });
@@ -199,7 +155,7 @@ export default function ChatSession() {
       if (data.success) {
         // Create AI message
         await createMessageMutation({
-          conversationId: currentConversationId,
+          conversationId: chatState.currentConversationId,
           content: data.response,
           sender: 'ai',
           metadata: {
@@ -257,7 +213,7 @@ export default function ChatSession() {
               conversationHistory: historyUpToPoint,
               userContext: {
                 name: user?.name?.split(' ')[0],
-                previousSessions: conversations.length,
+                previousSessions: chatState.conversations.length,
               },
               action: 'regenerate',
             }),
@@ -319,7 +275,7 @@ export default function ChatSession() {
           conversationHistory: historyUpToPoint,
           userContext: {
             name: user?.name?.split(' ')[0],
-            previousSessions: conversations.length,
+            previousSessions: chatState.conversations.length,
           },
           action: 'regenerate',
         }),
@@ -363,7 +319,7 @@ export default function ChatSession() {
         
         // Delete all messages from this point onwards
         await deleteMessagesAfterMutation({ 
-          conversationId: currentConversationId!,
+          conversationId: chatState.currentConversationId!,
           fromTimestamp: message.timestamp 
         });
         
@@ -394,7 +350,18 @@ export default function ChatSession() {
     );
   }
 
-  const currentConversation = conversations.find(c => c._id === currentConversationId);
+  if (chatState.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Setting up your chat session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentConversation = chatState.conversations.find(c => c._id === chatState.currentConversationId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/40 via-white/60 to-blue-50/40 dark:from-purple-950/40 dark:via-gray-900/60 dark:to-blue-950/40 backdrop-blur-therapeutic">
@@ -434,12 +401,12 @@ export default function ChatSession() {
                 className="therapeutic-hover"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Conversations ({conversations.length})
+                Conversations ({chatState.conversations.length})
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={createNewConversation}
+                onClick={handleCreateNewConversation}
                 className="therapeutic-hover"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -470,17 +437,17 @@ export default function ChatSession() {
                     <CardTitle className="text-lg">Your Conversations</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 max-h-[60vh] overflow-y-auto">
-                    {conversations.map((conversation) => (
+                    {chatState.conversations.map((conversation) => (
                       <motion.div
                         key={conversation._id}
                         whileHover={{ scale: 1.02 }}
                         className={`p-3 rounded-lg cursor-pointer transition-all therapeutic-hover ${
-                          currentConversationId === conversation._id
+                          chatState.currentConversationId === conversation._id
                             ? 'bg-primary/10 border border-primary/20'
                             : 'bg-muted/30 hover:bg-muted/50'
                         }`}
                         onClick={() => {
-                          setCurrentConversationId(conversation._id);
+                          switchConversation(conversation._id);
                           setShowConversationList(false);
                         }}
                       >
@@ -689,11 +656,11 @@ export default function ChatSession() {
                     placeholder="Share what's on your mind..."
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                     className="flex-1 glass-input"
-                    disabled={isTyping || !currentConversationId}
+                    disabled={isTyping || !chatState.currentConversationId}
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || isTyping || !currentConversationId}
+                    disabled={!newMessage.trim() || isTyping || !chatState.currentConversationId}
                     size="icon"
                     className="therapeutic-hover ripple-effect bg-purple-600 hover:bg-purple-700"
                   >
