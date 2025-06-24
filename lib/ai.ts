@@ -123,7 +123,7 @@ Remember: You are a mental health companion. Stay focused on emotional support a
     ];
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: messages,
       temperature: 0.7,
       max_tokens: 500,
@@ -165,7 +165,7 @@ export async function generateMoodInsight(mood: string, context?: string): Promi
     const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ''}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         {
           role: "system",
@@ -195,7 +195,7 @@ export async function generateConversationSummary(messages: ChatMessage[]): Prom
       .join('\n');
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: [
         {
           role: "system",
