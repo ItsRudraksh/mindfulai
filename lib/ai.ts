@@ -51,7 +51,7 @@ ${userContext?.previousSessions ? `This user has had ${userContext.previousSessi
     ];
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
+      model: "anthropic/claude-opus-4",
       messages: messages,
       temperature: 0.7,
       max_tokens: 500,
