@@ -24,6 +24,7 @@ export const createConversation = mutation({
       createdAt: now,
       updatedAt: now,
       messageCount: 0,
+      rollingSummary: "", // Initialize empty rolling summary
     });
   },
 });
@@ -88,6 +89,29 @@ export const updateConversation = mutation({
 
     return await ctx.db.patch(conversationId, {
       ...updates,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const updateConversationSummary = mutation({
+  args: {
+    conversationId: v.id("chatConversations"),
+    rollingSummary: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Conversation not found or unauthorized");
+    }
+
+    return await ctx.db.patch(args.conversationId, {
+      rollingSummary: args.rollingSummary,
       updatedAt: Date.now(),
     });
   },

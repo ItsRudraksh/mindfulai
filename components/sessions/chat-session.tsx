@@ -71,10 +71,16 @@ export default function ChatSession() {
   const regenerateMessageMutation = useMutation(api.messages.regenerateMessage);
   const deleteMessageMutation = useMutation(api.messages.deleteMessage);
   const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
+  const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
 
   // Queries
   const conversationMessages = useQuery(
     api.messages.getConversationMessages,
+    chatState.currentConversationId ? { conversationId: chatState.currentConversationId } : "skip"
+  );
+
+  const currentConversation = useQuery(
+    api.chatConversations.getConversationById,
     chatState.currentConversationId ? { conversationId: chatState.currentConversationId } : "skip"
   );
 
@@ -131,17 +137,19 @@ export default function ChatSession() {
         { role: 'user', content: userMessage }
       ];
 
-      // Call AI API
+      // Call AI API with enhanced context management
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
           conversationHistory: newHistory,
+          conversationId: chatState.currentConversationId,
           userContext: {
             name: user?.name?.split(' ')[0],
             mood: messages.find(m => m.metadata?.flagged)?.metadata?.flagReason,
             previousSessions: chatState.conversations.length,
+            rollingSummary: currentConversation?.rollingSummary || "",
           },
         }),
       });
@@ -164,6 +172,14 @@ export default function ChatSession() {
             aiModel: data.metadata?.aiModel,
           }
         });
+
+        // Update rolling summary if it was updated
+        if (data.updatedSummary && data.updatedSummary !== currentConversation?.rollingSummary) {
+          await updateConversationSummaryMutation({
+            conversationId: chatState.currentConversationId,
+            rollingSummary: data.updatedSummary,
+          });
+        }
       } else {
         throw new Error(data.error || 'Failed to generate response');
       }
@@ -211,9 +227,11 @@ export default function ChatSession() {
             body: JSON.stringify({
               message: editContent, // Use the edited content
               conversationHistory: historyUpToPoint,
+              conversationId: chatState.currentConversationId,
               userContext: {
                 name: user?.name?.split(' ')[0],
                 previousSessions: chatState.conversations.length,
+                rollingSummary: currentConversation?.rollingSummary || "",
               },
               action: 'regenerate',
             }),
@@ -273,9 +291,11 @@ export default function ChatSession() {
         body: JSON.stringify({
           message: userMessage.content,
           conversationHistory: historyUpToPoint,
+          conversationId: chatState.currentConversationId,
           userContext: {
             name: user?.name?.split(' ')[0],
             previousSessions: chatState.conversations.length,
+            rollingSummary: currentConversation?.rollingSummary || "",
           },
           action: 'regenerate',
         }),
@@ -361,7 +381,7 @@ export default function ChatSession() {
     );
   }
 
-  const currentConversation = chatState.conversations.find(c => c._id === chatState.currentConversationId);
+  const currentConversationData = chatState.conversations.find(c => c._id === chatState.currentConversationId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/40 via-white/60 to-blue-50/40 dark:from-purple-950/40 dark:via-gray-900/60 dark:to-blue-950/40 backdrop-blur-therapeutic">
@@ -383,12 +403,17 @@ export default function ChatSession() {
                 </Avatar>
                 <div>
                   <h1 className="font-semibold flex items-center gap-2">
-                    {currentConversation?.title || 'AI Therapy Companion'}
+                    {currentConversationData?.title || 'AI Therapy Companion'}
                     <Sparkles className="h-4 w-4 text-purple-500" />
                   </h1>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-gentle-pulse"></div>
-                    <span className="text-sm text-muted-foreground">Powered by Claude AI</span>
+                    <span className="text-sm text-muted-foreground">
+                      Powered by Claude AI
+                      {currentConversation?.rollingSummary && (
+                        <span className="ml-2 text-xs">• Context maintained</span>
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -463,6 +488,13 @@ export default function ChatSession() {
                             : 'No messages'
                           }
                         </p>
+                        {conversation.rollingSummary && (
+                          <div className="mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              Context maintained
+                            </Badge>
+                          </div>
+                        )}
                       </motion.div>
                     ))}
                   </CardContent>
@@ -669,6 +701,9 @@ export default function ChatSession() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 text-center">
                   Your conversations are private and secure. This AI focuses exclusively on mental health support.
+                  {currentConversation?.rollingSummary && (
+                    <span className="block mt-1">✨ Context from previous conversations is maintained for continuity.</span>
+                  )}
                 </p>
               </div>
             </Card>

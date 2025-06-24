@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateTherapyResponse, ChatMessage } from "@/lib/ai";
+import { generateTherapyResponse, generateConversationSummary, shouldSummarizeContext, ChatMessage } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationHistory, userContext, action } = await request.json();
+    const { message, conversationHistory, userContext, action, conversationId } = await request.json();
 
     if (action === "regenerate") {
       // Handle message regeneration
@@ -32,6 +32,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (action === "summarize") {
+      // Handle conversation summarization
+      if (!conversationHistory || !Array.isArray(conversationHistory)) {
+        return NextResponse.json(
+          { error: "Conversation history is required for summarization" },
+          { status: 400 }
+        );
+      }
+
+      const { existingSummary } = await request.json();
+      const summary = await generateConversationSummary(
+        conversationHistory,
+        existingSummary
+      );
+
+      return NextResponse.json({
+        success: true,
+        summary: summary,
+      });
+    }
+
     // Handle regular message
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -40,11 +61,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate AI response
+    // Get rolling summary if conversation ID is provided
+    let rollingSummary = "";
+    if (conversationId) {
+      try {
+        // This would typically fetch from your database
+        // For now, we'll use the rollingSummary from the request if provided
+        rollingSummary = userContext?.rollingSummary || "";
+      } catch (error) {
+        console.error("Error fetching rolling summary:", error);
+      }
+    }
+
+    // Check if we need to summarize the context
+    const needsSummarization = shouldSummarizeContext(
+      conversationHistory || [],
+      rollingSummary
+    );
+
+    let updatedSummary = rollingSummary;
+    let contextForAI = conversationHistory || [];
+
+    if (needsSummarization && conversationHistory && conversationHistory.length > 10) {
+      // Summarize older messages (keep last 5, summarize the rest)
+      const messagesToSummarize = conversationHistory.slice(0, -5);
+      const recentMessages = conversationHistory.slice(-5);
+      
+      if (messagesToSummarize.length > 0) {
+        updatedSummary = await generateConversationSummary(
+          messagesToSummarize,
+          rollingSummary
+        );
+        contextForAI = recentMessages;
+      }
+    }
+
+    // Generate AI response with context
     const aiResponse = await generateTherapyResponse(
       message,
-      conversationHistory || [],
-      userContext
+      contextForAI,
+      userContext,
+      updatedSummary
     );
 
     return NextResponse.json({
@@ -52,8 +109,10 @@ export async function POST(request: NextRequest) {
       response: aiResponse.content,
       flagged: aiResponse.flagged,
       flagReason: aiResponse.flagReason,
+      updatedSummary: updatedSummary !== rollingSummary ? updatedSummary : undefined,
       metadata: {
         aiModel: "anthropic/claude-3.5-sonnet",
+        contextSummarized: needsSummarization,
       }
     });
   } catch (error) {

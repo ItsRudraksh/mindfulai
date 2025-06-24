@@ -56,6 +56,7 @@ interface ChatContextType {
   initializeChat: () => Promise<void>;
   createNewConversation: () => Promise<Id<"chatConversations"> | null>;
   switchConversation: (conversationId: Id<"chatConversations">) => void;
+  summarizeCurrentConversation: () => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -67,6 +68,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const conversations = useQuery(api.chatConversations.getUserConversations);
   const createConversationMutation = useMutation(api.chatConversations.createConversation);
   const createMessageMutation = useMutation(api.messages.createMessage);
+  const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
 
   // Update conversations when data changes
   useEffect(() => {
@@ -81,6 +83,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       initializeChat();
     }
   }, [user, conversations, state.isInitialized]);
+
+  // Cleanup effect to summarize conversation when switching or unmounting
+  useEffect(() => {
+    return () => {
+      if (state.currentConversationId) {
+        summarizeCurrentConversation();
+      }
+    };
+  }, [state.currentConversationId]);
 
   const initializeChat = async () => {
     if (!user || state.isInitialized) return;
@@ -139,6 +150,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         updatedAt: now,
         messageCount: 1,
         lastMessageAt: now,
+        rollingSummary: "",
       };
 
       dispatch({ type: 'ADD_CONVERSATION', payload: newConversation });
@@ -152,7 +164,43 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchConversation = (conversationId: Id<"chatConversations">) => {
+    // Summarize current conversation before switching
+    if (state.currentConversationId && state.currentConversationId !== conversationId) {
+      summarizeCurrentConversation();
+    }
     dispatch({ type: 'SET_CURRENT_CONVERSATION', payload: conversationId });
+  };
+
+  const summarizeCurrentConversation = async () => {
+    if (!state.currentConversationId) return;
+
+    try {
+      // Get recent messages for summarization
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'summarize',
+          conversationId: state.currentConversationId,
+          // You would fetch the actual conversation history here
+          conversationHistory: [], // This should be populated with recent messages
+          existingSummary: "", // This should be the current rolling summary
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.summary) {
+          // Update the conversation summary in the database
+          await updateConversationSummaryMutation({
+            conversationId: state.currentConversationId,
+            rollingSummary: data.summary,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error summarizing conversation:', error);
+    }
   };
 
   const contextValue: ChatContextType = {
@@ -161,6 +209,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     initializeChat,
     createNewConversation,
     switchConversation,
+    summarizeCurrentConversation,
   };
 
   return (

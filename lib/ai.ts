@@ -3,7 +3,7 @@ import OpenAI from "openai";
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY || "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",
-  dangerouslyAllowBrowser:true,
+  dangerouslyAllowBrowser: true,
 });
 
 export interface ChatMessage {
@@ -25,6 +25,15 @@ export interface MoodRecommendation {
   topRecommendations: ActivityOption[];
   reasoning: string;
   encouragement: string;
+}
+
+export interface MoodEntry {
+  mood: string;
+  intensity: number;
+  timestamp: number;
+  notes?: string;
+  triggers?: string[];
+  activities?: string[];
 }
 
 // Content guardrails - topics to avoid or redirect
@@ -149,23 +158,35 @@ export async function generateMoodActivityRecommendations(
     previousSessions?: number;
     timeAvailable?: string;
     preferences?: string[];
-  }
+  },
+  moodHistory?: MoodEntry[]
 ): Promise<MoodRecommendation> {
   try {
     const activitiesJson = JSON.stringify(AVAILABLE_ACTIVITIES, null, 2);
+    
+    let moodHistoryContext = "";
+    if (moodHistory && moodHistory.length > 0) {
+      moodHistoryContext = `\n\nTODAY'S MOOD HISTORY:
+${moodHistory.map((entry, index) => 
+  `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ''}`
+).join('\n')}
+
+Consider this mood progression when making recommendations. Look for patterns, triggers, or emotional trends that might inform your suggestions.`;
+    }
     
     const systemPrompt = `You are an expert mental health AI that recommends the most appropriate therapeutic activities based on a user's current mood and emotional state.
 
 AVAILABLE ACTIVITIES:
 ${activitiesJson}
 
-TASK: Based on the user's mood, recommend the TOP 2 most beneficial activities from the list above.
+TASK: Based on the user's mood${moodHistory ? ' and their mood history today' : ''}, recommend the TOP 2 most beneficial activities from the list above.
 
 GUIDELINES:
 1. **Mood-Activity Matching**: Consider which activities work best for specific emotional states
 2. **Therapeutic Principles**: Use evidence-based mental health approaches
 3. **User Context**: Factor in their experience level and available time
 4. **Practical Benefits**: Focus on immediate and long-term emotional benefits
+5. **Mood Patterns**: ${moodHistory ? 'Analyze the mood progression throughout the day to provide more personalized recommendations' : 'Focus on the current mood state'}
 
 RESPONSE FORMAT (JSON):
 {
@@ -180,7 +201,7 @@ RESPONSE FORMAT (JSON):
       "benefits": ["benefit1", "benefit2"]
     }
   ],
-  "reasoning": "Brief explanation (2-3 sentences) of why these activities are ideal for this mood",
+  "reasoning": "Brief explanation (2-3 sentences) of why these activities are ideal for this mood${moodHistory ? ' and mood pattern' : ''}",
   "encouragement": "Supportive, personalized message (1-2 sentences) to motivate the user"
 }
 
@@ -195,6 +216,7 @@ MOOD-ACTIVITY GUIDELINES:
 ${userContext?.name ? `User's name: ${userContext.name}` : ''}
 ${userContext?.previousSessions ? `Previous sessions: ${userContext.previousSessions}` : ''}
 ${userContext?.timeAvailable ? `Available time: ${userContext.timeAvailable}` : ''}
+${moodHistoryContext}
 
 Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and encouragement.`;
 
@@ -248,6 +270,47 @@ Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and
   }
 }
 
+export async function generateMoodInsight(
+  mood: string, 
+  context?: string,
+  moodHistory?: MoodEntry[]
+): Promise<string> {
+  try {
+    let moodHistoryContext = "";
+    if (moodHistory && moodHistory.length > 0) {
+      moodHistoryContext = `\n\nToday's mood progression:
+${moodHistory.map((entry, index) => 
+  `${index + 1}. ${new Date(entry.timestamp).toLocaleTimeString()}: ${entry.mood} (intensity: ${entry.intensity}/10)${entry.notes ? ` - ${entry.notes}` : ''}`
+).join('\n')}
+
+Consider this emotional journey when providing your insight.`;
+    }
+
+    const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ''}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? 'Take into account their mood patterns today to provide more personalized reflection.' : ''} Respond in the same language and style as the input.`;
+
+    const completion = await client.chat.completions.create({
+      model: "anthropic/claude-3.5-sonnet",
+      messages: [
+        {
+          role: "system",
+          content: "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing. When mood history is provided, acknowledge patterns and growth."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.6,
+      max_tokens: 200,
+    });
+
+    return completion.choices[0]?.message?.content || "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
+  } catch (error) {
+    console.error("Mood insight generation error:", error);
+    return "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
+  }
+}
+
 export async function generateTherapyResponse(
   userMessage: string,
   conversationHistory: ChatMessage[] = [],
@@ -255,7 +318,8 @@ export async function generateTherapyResponse(
     name?: string;
     mood?: string;
     previousSessions?: number;
-  }
+  },
+  rollingSummary?: string
 ): Promise<{ content: string; flagged?: boolean; flagReason?: string }> {
   try {
     // Check content guardrails
@@ -269,6 +333,11 @@ export async function generateTherapyResponse(
     }
 
     // Create enhanced system prompt for therapy context
+    let contextualBackground = "";
+    if (rollingSummary && rollingSummary.trim()) {
+      contextualBackground = `\n\nPREVIOUS CONVERSATION CONTEXT:\n${rollingSummary}\n\nThis summary provides background context for the ongoing therapeutic relationship. Use it to maintain continuity and reference previous discussions when relevant.`;
+    }
+
     const systemPrompt = `You are a compassionate, professional AI therapy companion specializing in mental health support. Your role is to provide empathetic, culturally-sensitive therapeutic guidance.
 
 CORE THERAPEUTIC PRINCIPLES:
@@ -306,6 +375,12 @@ CORE THERAPEUTIC PRINCIPLES:
    - Redirect off-topic requests gently back to emotional support
    - Recognize when to suggest professional help for serious concerns
 
+6. **Conversation Continuity**:
+   - Reference previous conversations naturally when relevant
+   - Build on established therapeutic rapport
+   - Acknowledge progress and patterns from past sessions
+   - Maintain consistent therapeutic approach
+
 RESPONSE STYLE:
 - Keep responses conversational and warm (150-300 words typically)
 - Use the user's name naturally when provided
@@ -323,10 +398,11 @@ EXAMPLE INTEGRATION (use sparingly and naturally):
 ${userContext?.name ? `The user's name is ${userContext.name}.` : ''}
 ${userContext?.mood ? `They described their current state as: "${userContext.mood}"` : ''}
 ${userContext?.previousSessions ? `This user has had ${userContext.previousSessions} previous therapy sessions.` : 'This appears to be a new user.'}
+${contextualBackground}
 
 Remember: You are a mental health companion. Be genuinely helpful, naturally empathetic, and culturally aware. Use examples thoughtfully, not automatically.`;
 
-    // Prepare messages array
+    // Prepare messages array with rolling summary context
     const messages: ChatMessage[] = [
       { role: "system", content: systemPrompt },
       ...conversationHistory.slice(-10), // Keep last 10 messages for context
@@ -371,59 +447,63 @@ Remember: You are a mental health companion. Be genuinely helpful, naturally emp
   }
 }
 
-export async function generateMoodInsight(mood: string, context?: string): Promise<string> {
-  try {
-    const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ''}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. Respond in the same language and style as the input.`;
-
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-3.5-sonnet",
-      messages: [
-        {
-          role: "system",
-          content: "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.6,
-      max_tokens: 150,
-    });
-
-    return completion.choices[0]?.message?.content || "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
-  } catch (error) {
-    console.error("Mood insight generation error:", error);
-    return "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself.";
-  }
-}
-
-export async function generateConversationSummary(messages: ChatMessage[]): Promise<string> {
+export async function generateConversationSummary(
+  messages: ChatMessage[], 
+  existingSummary?: string
+): Promise<string> {
   try {
     const conversation = messages
       .filter(m => m.role !== 'system')
       .map(m => `${m.role}: ${m.content}`)
       .join('\n');
 
+    let summaryPrompt = "";
+    if (existingSummary && existingSummary.trim()) {
+      summaryPrompt = `Previous conversation summary: ${existingSummary}\n\nNew conversation segment:\n${conversation}\n\nCreate an updated summary that combines the previous context with the new conversation. Focus on therapeutic themes, emotional progress, coping strategies discussed, and key insights. Keep it concise but comprehensive (3-4 sentences max).`;
+    } else {
+      summaryPrompt = `Conversation:\n${conversation}\n\nSummarize this therapy conversation in 2-3 sentences, focusing on the main topics discussed, emotional themes, coping strategies, and therapeutic insights. Be professional and respectful.`;
+    }
+
     const completion = await client.chat.completions.create({
       model: "anthropic/claude-3.5-sonnet",
       messages: [
         {
           role: "system",
-          content: "Summarize this therapy conversation in 2-3 sentences, focusing on the main topics discussed and emotional themes. Be professional and respectful. Use the same language style as the conversation."
+          content: "You are a professional therapy assistant. Create concise, therapeutic summaries that capture emotional themes, progress, and key insights. Use the same language style as the conversation. Focus on continuity of care and therapeutic relationship building."
         },
         {
           role: "user",
-          content: conversation
+          content: summaryPrompt
         }
       ],
       temperature: 0.3,
-      max_tokens: 200,
+      max_tokens: 250,
     });
 
     return completion.choices[0]?.message?.content || "Therapy conversation covering emotional wellbeing and support.";
   } catch (error) {
     console.error("Conversation summary error:", error);
-    return "Therapy conversation covering emotional wellbeing and support.";
+    return existingSummary || "Therapy conversation covering emotional wellbeing and support.";
   }
+}
+
+// Helper function to estimate token count (rough approximation)
+export function estimateTokenCount(text: string): number {
+  // Rough approximation: 1 token ≈ 4 characters for English text
+  return Math.ceil(text.length / 4);
+}
+
+// Helper function to check if context needs summarization
+export function shouldSummarizeContext(
+  conversationHistory: ChatMessage[], 
+  rollingSummary?: string
+): boolean {
+  const historyTokens = conversationHistory.reduce((total, msg) => 
+    total + estimateTokenCount(msg.content), 0
+  );
+  const summaryTokens = rollingSummary ? estimateTokenCount(rollingSummary) : 0;
+  
+  // Trigger summarization if total context exceeds ~2000 tokens
+  // This leaves room for system prompt and response
+  return (historyTokens + summaryTokens) > 2000;
 }

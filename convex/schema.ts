@@ -73,6 +73,7 @@ export default defineSchema({
     lastMessageAt: v.optional(v.number()),
     messageCount: v.number(),
     summary: v.optional(v.string()),
+    rollingSummary: v.optional(v.string()), // New field for context management
     tags: v.optional(v.array(v.string())),
   })
     .index("by_user", ["userId"])
@@ -117,9 +118,12 @@ export default defineSchema({
     timestamp: v.number(),
     triggers: v.optional(v.array(v.string())),
     activities: v.optional(v.array(v.string())),
+    aiInsight: v.optional(v.string()), // AI-generated insight for this mood entry
+    recommendationsUsed: v.optional(v.array(v.string())), // Track which recommendations user acted on
   })
     .index("by_user", ["userId"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_user_and_date", ["userId", "timestamp"]), // For daily mood queries
 
   journalEntries: defineTable({
     userId: v.id("users"),
