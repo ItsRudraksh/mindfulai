@@ -59,23 +59,55 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
 
+  chatConversations: defineTable({
+    userId: v.id("users"),
+    sessionId: v.optional(v.id("sessions")),
+    title: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("archived")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastMessageAt: v.optional(v.number()),
+    messageCount: v.number(),
+    summary: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_last_message", ["lastMessageAt"]),
+
   messages: defineTable({
-    sessionId: v.id("sessions"),
+    sessionId: v.optional(v.id("sessions")),
+    conversationId: v.id("chatConversations"),
     userId: v.id("users"),
     content: v.string(),
+    originalContent: v.optional(v.string()), // For edited messages
     sender: v.union(v.literal("user"), v.literal("ai")),
     timestamp: v.number(),
+    isEdited: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
+    isRegenerated: v.optional(v.boolean()),
+    regeneratedAt: v.optional(v.number()),
+    parentMessageId: v.optional(v.id("messages")), // For regenerated messages
     metadata: v.optional(
       v.object({
         mood: v.optional(v.string()),
         sentiment: v.optional(v.string()),
         confidence: v.optional(v.number()),
+        flagged: v.optional(v.boolean()),
+        flagReason: v.optional(v.string()),
+        aiModel: v.optional(v.string()),
+        tokens: v.optional(v.number()),
       })
     ),
   })
-    .index("by_session", ["sessionId"])
+    .index("by_conversation", ["conversationId"])
     .index("by_user", ["userId"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_session", ["sessionId"]),
 
   moodEntries: defineTable({
     userId: v.id("users"),
