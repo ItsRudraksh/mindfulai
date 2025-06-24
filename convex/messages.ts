@@ -179,6 +179,51 @@ export const deleteMessage = mutation({
   },
 });
 
+export const deleteMessagesAfter = mutation({
+  args: {
+    conversationId: v.id("chatConversations"),
+    fromTimestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    // Verify conversation ownership
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Conversation not found or unauthorized");
+    }
+
+    // Get all messages from the timestamp onwards
+    const messagesToDelete = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .filter((q) => q.gte(q.field("timestamp"), args.fromTimestamp))
+      .collect();
+
+    // Delete all messages
+    for (const message of messagesToDelete) {
+      await ctx.db.delete(message._id);
+    }
+
+    // Update conversation message count
+    const remainingMessageCount = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .collect()
+      .then(messages => messages.length);
+
+    await ctx.db.patch(args.conversationId, {
+      messageCount: remainingMessageCount,
+      updatedAt: Date.now(),
+    });
+
+    return messagesToDelete.length;
+  },
+});
+
 export const flagMessage = mutation({
   args: {
     messageId: v.id("messages"),

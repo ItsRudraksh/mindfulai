@@ -70,6 +70,7 @@ export default function ChatSession() {
   const [editingMessageId, setEditingMessageId] = useState<Id<"messages"> | null>(null);
   const [editContent, setEditContent] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +80,7 @@ export default function ChatSession() {
   const editMessageMutation = useMutation(api.messages.editMessage);
   const regenerateMessageMutation = useMutation(api.messages.regenerateMessage);
   const deleteMessageMutation = useMutation(api.messages.deleteMessage);
+  const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
   const updateConversationMutation = useMutation(api.chatConversations.updateConversation);
 
   // Queries
@@ -108,16 +110,21 @@ export default function ChatSession() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Create initial conversation or load existing
+  // Initialize conversation - only once when component mounts
   useEffect(() => {
-    if (user && conversations.length === 0) {
-      createNewConversation();
-    } else if (conversations.length > 0 && !currentConversationId) {
-      // Load the most recent active conversation
-      const activeConversation = conversations.find(c => c.status === 'active') || conversations[0];
-      setCurrentConversationId(activeConversation._id);
+    if (user && !hasInitialized) {
+      setHasInitialized(true);
+      
+      if (conversations.length === 0) {
+        // No conversations exist, create one
+        createNewConversation();
+      } else {
+        // Load the most recent active conversation
+        const activeConversation = conversations.find(c => c.status === 'active') || conversations[0];
+        setCurrentConversationId(activeConversation._id);
+      }
     }
-  }, [user, conversations, currentConversationId]);
+  }, [user, conversations, hasInitialized]);
 
   const createNewConversation = async () => {
     if (!user) return;
@@ -222,6 +229,56 @@ export default function ChatSession() {
       });
       setEditingMessageId(null);
       setEditContent('');
+      
+      // After editing a user message, regenerate the AI response that follows
+      const messageIndex = messages.findIndex(m => m._id === messageId);
+      const nextMessage = messages[messageIndex + 1];
+      
+      if (nextMessage && nextMessage.sender === 'ai') {
+        // Find the user message that prompted this AI response
+        const userMessage = messages[messageIndex];
+        
+        if (userMessage && userMessage.sender === 'user') {
+          // Get conversation history up to this point
+          const historyUpToPoint = messages
+            .slice(0, messageIndex)
+            .slice(-8) // Keep last 8 messages for context
+            .map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            })) as ChatMessage[];
+
+          // Call AI API for regeneration with edited content
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: editContent, // Use the edited content
+              conversationHistory: historyUpToPoint,
+              userContext: {
+                name: user?.name?.split(' ')[0],
+                previousSessions: conversations.length,
+              },
+              action: 'regenerate',
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success) {
+              await regenerateMessageMutation({
+                messageId: nextMessage._id,
+                newContent: data.response,
+                metadata: {
+                  aiModel: data.metadata?.aiModel,
+                }
+              });
+            }
+          }
+        }
+      }
+      
       toast.success('Message edited successfully');
     } catch (error) {
       console.error('Error editing message:', error);
@@ -296,8 +353,26 @@ export default function ChatSession() {
 
   const handleDeleteMessage = async (messageId: Id<"messages">) => {
     try {
-      await deleteMessageMutation({ messageId });
-      toast.success('Message deleted');
+      const message = messages.find(m => m._id === messageId);
+      if (!message) return;
+
+      // If it's a user message, delete all messages after it
+      if (message.sender === 'user') {
+        const messageIndex = messages.findIndex(m => m._id === messageId);
+        const messagesToDelete = messages.slice(messageIndex);
+        
+        // Delete all messages from this point onwards
+        await deleteMessagesAfterMutation({ 
+          conversationId: currentConversationId!,
+          fromTimestamp: message.timestamp 
+        });
+        
+        toast.success(`Deleted ${messagesToDelete.length} message(s)`);
+      } else {
+        // Just delete the AI message
+        await deleteMessageMutation({ messageId });
+        toast.success('Message deleted');
+      }
     } catch (error) {
       console.error('Error deleting message:', error);
       toast.error('Failed to delete message');
@@ -470,7 +545,7 @@ export default function ChatSession() {
                               <Textarea
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}
-                                className="min-h-[60px] resize-none"
+                                className="min-h-[60px] resize-none bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                               />
                               <div className="flex gap-2">
                                 <Button
@@ -500,10 +575,20 @@ export default function ChatSession() {
                               </p>
                               
                               {/* Message Actions */}
-                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity ${
+                                message.sender === 'user' ? 'bg-white/20 rounded-full p-1' : ''
+                              }`}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className={`h-6 w-6 p-0 ${
+                                        message.sender === 'user' 
+                                          ? 'text-white hover:bg-white/20' 
+                                          : 'hover:bg-muted/50'
+                                      }`}
+                                    >
                                       <MoreVertical className="h-3 w-3" />
                                     </Button>
                                   </DropdownMenuTrigger>
@@ -535,7 +620,7 @@ export default function ChatSession() {
                                       className="therapeutic-hover text-destructive"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
+                                      Delete {message.sender === 'user' ? '& Below' : ''}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
