@@ -10,6 +10,22 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ActivityOption {
+  id: string;
+  name: string;
+  description: string;
+  route: string;
+  icon: string;
+  estimatedTime: string;
+  benefits: string[];
+}
+
+export interface MoodRecommendation {
+  topRecommendations: ActivityOption[];
+  reasoning: string;
+  encouragement: string;
+}
+
 // Content guardrails - topics to avoid or redirect
 const RESTRICTED_TOPICS = [
   'coding', 'programming', 'software development', 'technical implementation',
@@ -23,6 +39,64 @@ const MENTAL_HEALTH_KEYWORDS = [
   'overwhelmed', 'lonely', 'grief', 'trauma', 'panic', 'mood',
   'therapy', 'counseling', 'mental health', 'emotional', 'feelings',
   'thoughts', 'mindfulness', 'meditation', 'coping', 'support'
+];
+
+// Available activities in the app
+const AVAILABLE_ACTIVITIES: ActivityOption[] = [
+  {
+    id: 'video-session',
+    name: 'Video Therapy Session',
+    description: 'Connect with AI therapist via video for face-to-face support',
+    route: '/sessions/video',
+    icon: 'Video',
+    estimatedTime: '15-30 minutes',
+    benefits: ['Personal connection', 'Visual cues', 'Immersive support', 'Real-time interaction']
+  },
+  {
+    id: 'voice-call',
+    name: 'Voice Therapy Call',
+    description: 'Talk with AI companion through a natural phone conversation',
+    route: '/sessions/voice',
+    icon: 'Phone',
+    estimatedTime: '10-25 minutes',
+    benefits: ['Natural conversation', 'Hands-free support', 'Voice expression', 'Comfortable setting']
+  },
+  {
+    id: 'chat-session',
+    name: 'Text Chat Therapy',
+    description: 'Written conversation with AI therapist for thoughtful exchange',
+    route: '/sessions/chat',
+    icon: 'MessageCircle',
+    estimatedTime: '5-20 minutes',
+    benefits: ['Time to reflect', 'Written record', 'Flexible pace', 'Privacy comfort']
+  },
+  {
+    id: 'journaling',
+    name: 'Guided Journaling',
+    description: 'Write about your thoughts and feelings with AI-guided prompts',
+    route: '/journal',
+    icon: 'PenTool',
+    estimatedTime: '10-15 minutes',
+    benefits: ['Self-reflection', 'Emotional processing', 'Pattern recognition', 'Personal growth']
+  },
+  {
+    id: 'meditation',
+    name: 'Mindfulness Meditation',
+    description: 'Guided meditation exercises for relaxation and mental clarity',
+    route: '/meditation',
+    icon: 'Brain',
+    estimatedTime: '5-20 minutes',
+    benefits: ['Stress reduction', 'Present moment awareness', 'Emotional regulation', 'Mental clarity']
+  },
+  {
+    id: 'breathing',
+    name: 'Breathing Exercises',
+    description: 'Structured breathing techniques for immediate calm and focus',
+    route: '/breathing',
+    icon: 'Wind',
+    estimatedTime: '3-10 minutes',
+    benefits: ['Immediate relief', 'Anxiety reduction', 'Physical relaxation', 'Quick reset']
+  }
 ];
 
 function checkContentGuardrails(message: string): { allowed: boolean; reason?: string } {
@@ -65,6 +139,112 @@ function checkContentGuardrails(message: string): { allowed: boolean; reason?: s
   }
 
   return { allowed: true };
+}
+
+export async function generateMoodActivityRecommendations(
+  mood: string,
+  userContext?: {
+    name?: string;
+    previousSessions?: number;
+    timeAvailable?: string;
+    preferences?: string[];
+  }
+): Promise<MoodRecommendation> {
+  try {
+    const activitiesJson = JSON.stringify(AVAILABLE_ACTIVITIES, null, 2);
+    
+    const systemPrompt = `You are an expert mental health AI that recommends the most appropriate therapeutic activities based on a user's current mood and emotional state.
+
+AVAILABLE ACTIVITIES:
+${activitiesJson}
+
+TASK: Based on the user's mood, recommend the TOP 2 most beneficial activities from the list above.
+
+GUIDELINES:
+1. **Mood-Activity Matching**: Consider which activities work best for specific emotional states
+2. **Therapeutic Principles**: Use evidence-based mental health approaches
+3. **User Context**: Factor in their experience level and available time
+4. **Practical Benefits**: Focus on immediate and long-term emotional benefits
+
+RESPONSE FORMAT (JSON):
+{
+  "topRecommendations": [
+    {
+      "id": "activity-id",
+      "name": "Activity Name",
+      "description": "Brief description",
+      "route": "/route",
+      "icon": "IconName",
+      "estimatedTime": "time range",
+      "benefits": ["benefit1", "benefit2"]
+    }
+  ],
+  "reasoning": "Brief explanation (2-3 sentences) of why these activities are ideal for this mood",
+  "encouragement": "Supportive, personalized message (1-2 sentences) to motivate the user"
+}
+
+MOOD-ACTIVITY GUIDELINES:
+- **Anxious/Overwhelmed**: Breathing exercises, meditation, gentle chat
+- **Sad/Down**: Video session for connection, journaling for processing
+- **Angry/Frustrated**: Voice call for expression, meditation for regulation
+- **Lonely**: Video session for face-to-face connection, chat for interaction
+- **Stressed**: Breathing exercises for immediate relief, meditation for deeper calm
+- **Good/Positive**: Journaling for reflection, any session to maintain wellbeing
+
+${userContext?.name ? `User's name: ${userContext.name}` : ''}
+${userContext?.previousSessions ? `Previous sessions: ${userContext.previousSessions}` : ''}
+${userContext?.timeAvailable ? `Available time: ${userContext.timeAvailable}` : ''}
+
+Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and encouragement.`;
+
+    const completion = await client.chat.completions.create({
+      model: "anthropic/claude-3.5-sonnet",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Current mood: "${mood}"` }
+      ],
+      temperature: 0.6,
+      max_tokens: 800,
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    
+    if (!response) {
+      throw new Error("No response from AI");
+    }
+
+    // Parse JSON response
+    const recommendation: MoodRecommendation = JSON.parse(response);
+    
+    // Validate that we have exactly 2 recommendations
+    if (!recommendation.topRecommendations || recommendation.topRecommendations.length !== 2) {
+      throw new Error("Invalid recommendation format");
+    }
+
+    return recommendation;
+  } catch (error) {
+    console.error("Mood activity recommendation error:", error);
+    
+    // Fallback recommendations based on mood keywords
+    const moodLower = mood.toLowerCase();
+    let fallbackActivities: ActivityOption[] = [];
+    
+    if (moodLower.includes('anxious') || moodLower.includes('overwhelmed') || moodLower.includes('stress')) {
+      fallbackActivities = [AVAILABLE_ACTIVITIES[5], AVAILABLE_ACTIVITIES[4]]; // Breathing, Meditation
+    } else if (moodLower.includes('sad') || moodLower.includes('down') || moodLower.includes('lonely')) {
+      fallbackActivities = [AVAILABLE_ACTIVITIES[0], AVAILABLE_ACTIVITIES[3]]; // Video, Journaling
+    } else if (moodLower.includes('angry') || moodLower.includes('frustrated')) {
+      fallbackActivities = [AVAILABLE_ACTIVITIES[1], AVAILABLE_ACTIVITIES[4]]; // Voice, Meditation
+    } else {
+      fallbackActivities = [AVAILABLE_ACTIVITIES[2], AVAILABLE_ACTIVITIES[4]]; // Chat, Meditation
+    }
+    
+    return {
+      topRecommendations: fallbackActivities,
+      reasoning: "Based on your current mood, these activities can provide the support and relief you need right now.",
+      encouragement: "Remember, taking this step to care for your mental health shows real strength. You've got this!"
+    };
+  }
 }
 
 export async function generateTherapyResponse(
