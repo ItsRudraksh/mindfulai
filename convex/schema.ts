@@ -27,9 +27,6 @@ export default defineSchema({
         notifications: v.boolean(),
         theme: v.string(),
         language: v.string(),
-        journalSoundEnabled: v.optional(v.boolean()),
-        journalFont: v.optional(v.string()),
-        journalTheme: v.optional(v.string()),
       })
     ),
   }).index("email", ["email"]),
@@ -148,30 +145,18 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_user_and_date", ["userId", "timestamp"]), // For daily mood queries
 
-  // Enhanced journal entries with rich text support
   journalEntries: defineTable({
     userId: v.id("users"),
     title: v.optional(v.string()),
-    content: v.string(), // Rich text content as JSON string
-    plainTextContent: v.optional(v.string()), // For search purposes
+    content: v.string(),
     mood: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     isPrivate: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    wordCount: v.optional(v.number()),
-    readingTime: v.optional(v.number()), // in minutes
-    images: v.optional(v.array(v.string())), // Array of image URLs
-    font: v.optional(v.string()),
-    theme: v.optional(v.string()),
-    isFavorite: v.optional(v.boolean()),
   })
     .index("by_user", ["userId"])
-    .index("by_created_at", ["createdAt"])
-    .index("by_updated_at", ["updatedAt"])
-    .index("by_user_and_date", ["userId", "createdAt"])
-    .index("by_tags", ["tags"])
-    .index("by_mood", ["mood"]),
+    .index("by_created_at", ["createdAt"]),
 
   goals: defineTable({
     userId: v.id("users"),
