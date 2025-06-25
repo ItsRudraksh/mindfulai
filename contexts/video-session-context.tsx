@@ -115,6 +115,7 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
   const createSessionMutation = useMutation(api.sessions.createSession);
   const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
   const endSessionMutation = useMutation(api.sessions.endSession);
+  const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -299,14 +300,41 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
       const data = await response.json();
 
       if (data.success) {
-        // End session in Convex
+        // Get complete conversation data with verbose=true
+        const statusResponse = await fetch('/api/tavus/conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'status',
+            conversationId: state.tavusConversation.conversation_id,
+          }),
+        });
+
+        const statusData = await statusResponse.json();
+
+        if (statusData.conversation) {
+          // Store complete Tavus conversation data
+          await storeTavusConversationDataMutation({
+            sessionId: state.sessionId,
+            tavusConversationData: statusData.conversation,
+          });
+        } else {
+          // Fallback to basic session end
+          await endSessionMutation({
+            sessionId: state.sessionId,
+            endTime: Date.now(),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error ending session:', error);
+      // Still try to end the session in our database
+      if (state.sessionId) {
         await endSessionMutation({
           sessionId: state.sessionId,
           endTime: Date.now(),
         });
       }
-    } catch (error) {
-      console.error('Error ending session:', error);
     } finally {
       dispatch({ type: 'RESET_SESSION' });
       localStorage.removeItem(STORAGE_KEY);

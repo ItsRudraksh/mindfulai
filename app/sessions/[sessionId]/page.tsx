@@ -5,13 +5,14 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Play, Pause, Volume2, VolumeX, Eye, FileText, Brain } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/ui/audio-player';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface SessionDetailsPageProps {
   params: {
@@ -140,6 +141,18 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     link.click();
   };
 
+  // Extract Tavus conversation data
+  const tavusData = session?.metadata?.tavusConversationData;
+  const recordingEvent = tavusData?.events?.find((event: any) => 
+    event.event_type === "application.recording_ready"
+  );
+  const transcriptEvent = tavusData?.events?.find((event: any) => 
+    event.event_type === "application.transcription_ready"
+  );
+  const perceptionEvent = tavusData?.events?.find((event: any) => 
+    event.event_type === "application.perception_analysis"
+  );
+
   if (!session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -229,26 +242,130 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
               </CardContent>
             </Card>
 
-            {/* Transcript Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Session Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingSummary ? (
-                  <div className="flex items-center justify-center h-24">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p className="ml-3 text-muted-foreground">Loading summary...</p>
-                  </div>
-                ) : transcriptSummary ? (
-                  <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 p-4 rounded-lg">
-                    <p className="text-sm leading-relaxed">{transcriptSummary}</p>
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground text-sm">No transcript summary available.</div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Tavus Video Session Data */}
+            {session.type === 'video' && tavusData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Video Session Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="transcript" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="transcript" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Transcript
+                      </TabsTrigger>
+                      <TabsTrigger value="perception" className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        Perception
+                      </TabsTrigger>
+                      <TabsTrigger value="recording" className="flex items-center gap-2">
+                        <Video className="h-4 w-4" />
+                        Recording
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="transcript" className="space-y-4">
+                      {transcriptEvent?.properties?.transcript ? (
+                        <div className="space-y-3">
+                          {transcriptEvent.properties.transcript
+                            .filter((msg: any) => msg.role !== 'system')
+                            .map((msg: any, index: number) => (
+                              <div
+                                key={index}
+                                className={`p-3 rounded-lg ${
+                                  msg.role === 'user'
+                                    ? 'bg-blue-50 dark:bg-blue-950/20 ml-8'
+                                    : 'bg-green-50 dark:bg-green-950/20 mr-8'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge variant="outline" className="text-xs">
+                                    {msg.role === 'user' ? 'You' : 'AI Therapist'}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm">{msg.content}</p>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No transcript available for this session.
+                        </p>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="perception" className="space-y-4">
+                      {perceptionEvent?.properties?.analysis ? (
+                        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 p-4 rounded-lg">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Brain className="h-5 w-5 text-purple-600" />
+                            <span className="font-medium">AI Perception Analysis</span>
+                          </div>
+                          <div className="prose prose-sm max-w-none">
+                            <p className="text-sm leading-relaxed whitespace-pre-line">
+                              {perceptionEvent.properties.analysis}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No perception analysis available for this session.
+                        </p>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="recording" className="space-y-4">
+                      {recordingEvent?.properties ? (
+                        <div className="text-center py-8">
+                          <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Video className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                          <h3 className="font-medium mb-2">Session Recording Available</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Duration: {recordingEvent.properties.duration} seconds
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-4">
+                            Stored in: {recordingEvent.properties.bucket_name}
+                          </p>
+                          <Button variant="outline" disabled>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Recording (Coming Soon)
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No recording available for this session.
+                        </p>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Voice Session Summary */}
+            {session.type === 'voice' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Session Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingSummary ? (
+                    <div className="flex items-center justify-center h-24">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <p className="ml-3 text-muted-foreground">Loading summary...</p>
+                    </div>
+                  ) : transcriptSummary ? (
+                    <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 p-4 rounded-lg">
+                      <p className="text-sm leading-relaxed">{transcriptSummary}</p>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">No transcript summary available.</div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Custom Audio Player */}
             {audioUrl && (
@@ -267,7 +384,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
             )}
 
             {/* Recording Section - Show when no audio loaded */}
-            {!audioUrl && (
+            {!audioUrl && session.type === 'voice' && (
               <Card>
                 <CardHeader>
                   <CardTitle>Session Recording</CardTitle>
@@ -278,29 +395,22 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                       <Phone className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <p className="text-muted-foreground mb-4">
-                      {session.type === 'voice' 
-                        ? 'Load your voice session recording to listen and download'
-                        : session.type === 'video'
-                        ? 'Video recording retrieval coming soon'
-                        : 'No recording available for chat sessions'
-                      }
+                      Load your voice session recording to listen and download
                     </p>
-                    {session.type === 'voice' && (
-                      <Button
-                        onClick={handleGetRecording}
-                        disabled={isLoadingAudio}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isLoadingAudio ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          'Get Recording'
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      onClick={handleGetRecording}
+                      disabled={isLoadingAudio}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isLoadingAudio ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        'Get Recording'
+                      )}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -345,6 +455,12 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     <span className="text-xs font-mono">
                       {session.metadata.tavusSessionId.slice(0, 8)}...
                     </span>
+                  </div>
+                )}
+                {tavusData && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Events Captured</span>
+                    <span className="text-sm font-medium">{tavusData.events?.length || 0}</span>
                   </div>
                 )}
               </CardContent>
@@ -393,6 +509,11 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                   {session.type === 'video' && (
                     <p className="text-muted-foreground">
                       Video sessions provide visual cues and can create a more personal therapeutic connection.
+                    </p>
+                  )}
+                  {tavusData && (
+                    <p className="text-muted-foreground">
+                      This session includes AI perception analysis and complete conversation data for comprehensive insights.
                     </p>
                   )}
                 </div>

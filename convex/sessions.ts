@@ -34,6 +34,7 @@ export const endSession = mutation({
         tavusSessionId: v.optional(v.string()),
         elevenlabsConversationId: v.optional(v.string()),
         recordingUrl: v.optional(v.string()),
+        tavusConversationData: v.optional(v.any()),
       })
     ),
   },
@@ -67,6 +68,7 @@ export const updateSessionMetadata = mutation({
     metadata: v.object({
       tavusSessionId: v.optional(v.string()),
       recordingUrl: v.optional(v.string()),
+      tavusConversationData: v.optional(v.any()),
     }),
   },
   handler: async (ctx, args) => {
@@ -200,5 +202,75 @@ export const getActiveSession = query({
         )
       )
       .first();
+  },
+});
+
+// New mutation to store complete Tavus conversation data
+export const storeTavusConversationData = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    tavusConversationData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Session not found or unauthorized");
+    }
+
+    // Extract useful information from Tavus data
+    const tavusData = args.tavusConversationData;
+    const recordingEvent = tavusData.events?.find((event: any) => 
+      event.event_type === "application.recording_ready"
+    );
+    const transcriptEvent = tavusData.events?.find((event: any) => 
+      event.event_type === "application.transcription_ready"
+    );
+    const perceptionEvent = tavusData.events?.find((event: any) => 
+      event.event_type === "application.perception_analysis"
+    );
+
+    // Build recording URL if available
+    let recordingUrl = "";
+    if (recordingEvent?.properties) {
+      const { bucket_name, s3_key } = recordingEvent.properties;
+      if (bucket_name && s3_key) {
+        recordingUrl = `https://${bucket_name}.s3.amazonaws.com/${s3_key}`;
+      }
+    }
+
+    // Extract notes from transcript and perception analysis
+    let sessionNotes = "";
+    if (transcriptEvent?.properties?.transcript) {
+      const transcript = transcriptEvent.properties.transcript;
+      const userMessages = transcript.filter((msg: any) => msg.role === "user");
+      sessionNotes += `Transcript Summary: ${userMessages.length} user messages exchanged. `;
+    }
+    
+    if (perceptionEvent?.properties?.analysis) {
+      sessionNotes += `Perception Analysis: ${perceptionEvent.properties.analysis.substring(0, 200)}...`;
+    }
+
+    // Update session with complete data
+    const existingMetadata = session.metadata || {};
+    const updatedMetadata = {
+      ...existingMetadata,
+      tavusConversationData: tavusData,
+      recordingUrl: recordingUrl || existingMetadata.recordingUrl,
+    };
+
+    return await ctx.db.patch(args.sessionId, {
+      metadata: updatedMetadata,
+      notes: sessionNotes || session.notes,
+      endTime: new Date(tavusData.updated_at).getTime(),
+      duration: recordingEvent?.properties?.duration ? 
+        recordingEvent.properties.duration * 1000 : // Convert seconds to milliseconds
+        session.duration,
+      status: "completed",
+    });
   },
 });

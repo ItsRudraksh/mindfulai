@@ -52,6 +52,8 @@ export default defineSchema({
       v.object({
         tavusSessionId: v.optional(v.string()),
         recordingUrl: v.optional(v.string()),
+        // Store complete Tavus conversation data
+        tavusConversationData: v.optional(v.any()),
       })
     ),
   })
@@ -175,4 +177,17 @@ export default defineSchema({
     isPrimary: v.boolean(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  // Webhook testing table
+  tavusWebhooks: defineTable({
+    conversationId: v.string(),
+    eventType: v.string(),
+    payload: v.any(),
+    headers: v.optional(v.any()),
+    timestamp: v.number(),
+    processed: v.optional(v.boolean()),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_event_type", ["eventType"]),
 });
