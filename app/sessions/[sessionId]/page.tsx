@@ -37,7 +37,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const session = useQuery(api.sessions.getSessionById, { sessionId });
   const sessionRating = useQuery(api.sessionRatings.getSessionRating, { sessionId });
   const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, { sessionId });
-  
+
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
   const generateAISummaryMutation = useMutation(api.sessions.generateAISummary);
   const updateAISummaryMutation = useMutation(api.sessions.updateAISummary);
@@ -255,7 +255,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     if (!session) return;
 
     const tavusData = session.metadata?.tavusConversationData;
-    const transcriptEvent = tavusData?.events?.find((event: any) => 
+    const transcriptEvent = tavusData?.events?.find((event: any) =>
       event.event_type === "application.transcription_ready"
     );
 
@@ -419,15 +419,6 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </div>
                   </div>
                 )}
-
-                {session.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Session Notes</p>
-                    <div className="bg-muted/50 p-3 rounded-lg">
-                      <p className="text-sm leading-relaxed">{session.notes}</p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -448,7 +439,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </div>
                   ) : session.aiSummary ? (
                     <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 p-4 rounded-lg">
-                      <div className="prose prose-sm max-w-none">
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
                         <ReactMarkdown>{session.aiSummary}</ReactMarkdown>
                       </div>
                     </div>
@@ -543,7 +534,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                             <Brain className="h-5 w-5 text-purple-600" />
                             <span className="font-medium">AI Perception Analysis</span>
                           </div>
-                          <div className="prose prose-sm max-w-none">
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
                             <ReactMarkdown>{perceptionEvent.properties.analysis}</ReactMarkdown>
                           </div>
                         </div>
@@ -732,11 +723,10 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-3 w-3 ${
-                            i < sessionRating.rating
-                              ? 'text-yellow-400 fill-yellow-400'
-                              : 'text-gray-300'
-                          }`}
+                          className={`h-3 w-3 ${i < sessionRating.rating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                            }`}
                         />
                       ))}
                       <span className="text-sm ml-1">({sessionRating.rating}/5)</span>
