@@ -263,7 +263,7 @@ export const storeTavusConversationData = mutation({
       recordingUrl: recordingUrl || existingMetadata.recordingUrl,
     };
 
-    // Update auto-refresh tracking if this is an auto-refresh
+    // Update auto-refresh tracking - FIXED: Always increment attempts for any refresh
     const updates: any = {
       metadata: updatedMetadata,
       notes: sessionNotes || session.notes,
@@ -272,18 +272,15 @@ export const storeTavusConversationData = mutation({
         recordingEvent.properties.duration * 1000 : // Convert seconds to milliseconds
         session.duration,
       status: "completed",
+      autoRefreshAttempts: (session.autoRefreshAttempts || 0) + 1, // Always increment
+      lastAutoRefresh: Date.now(),
     };
-
-    if (args.isAutoRefresh) {
-      updates.autoRefreshAttempts = (session.autoRefreshAttempts || 0) + 1;
-      updates.lastAutoRefresh = Date.now();
-    }
 
     return await ctx.db.patch(args.sessionId, updates);
   },
 });
 
-// Check if session can be auto-refreshed
+// Enhanced check if session can be auto-refreshed with better conditions
 export const canAutoRefreshSession = query({
   args: { sessionId: v.id("sessions") },
   handler: async (ctx, args) => {
@@ -302,17 +299,32 @@ export const canAutoRefreshSession = query({
     const now = Date.now();
     const timeSinceLastRefresh = now - lastRefresh;
 
+    // Check if session has all required events
+    const tavusData = session.metadata?.tavusConversationData;
+    const hasRequiredEvents = tavusData?.events && 
+      tavusData.events.find((e: any) => e.event_type === "application.recording_ready") &&
+      tavusData.events.find((e: any) => e.event_type === "application.transcription_ready") &&
+      tavusData.events.find((e: any) => e.event_type === "application.perception_analysis");
+
     // Can refresh if:
     // 1. Less than 3 attempts made
     // 2. At least 30 seconds since last refresh (to avoid spam)
     // 3. Session is video type and has Tavus session ID
+    // 4. Missing any of the required events
     return {
       canRefresh: attempts < 3 && 
                   timeSinceLastRefresh > 30000 && 
                   session.type === "video" && 
-                  session.metadata?.tavusSessionId,
+                  session.metadata?.tavusSessionId &&
+                  !hasRequiredEvents, // Only refresh if missing events
       attemptsRemaining: Math.max(0, 3 - attempts),
       timeSinceLastRefresh,
+      hasRequiredEvents: !!hasRequiredEvents,
+      missingEvents: !hasRequiredEvents ? [
+        !tavusData?.events?.find((e: any) => e.event_type === "application.recording_ready") && "recording",
+        !tavusData?.events?.find((e: any) => e.event_type === "application.transcription_ready") && "transcript", 
+        !tavusData?.events?.find((e: any) => e.event_type === "application.perception_analysis") && "perception"
+      ].filter(Boolean) : [],
     };
   },
 });

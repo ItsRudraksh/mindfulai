@@ -31,6 +31,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [isGeneratingAISummary, setIsGeneratingAISummary] = useState(false);
+  const [currentRating, setCurrentRating] = useState<any>(null);
 
   const { sessionId: routeSessionId } = useParams();
   const sessionId = routeSessionId as Id<"sessions">;
@@ -41,6 +42,11 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
   const generateAISummaryMutation = useMutation(api.sessions.generateAISummary);
   const updateAISummaryMutation = useMutation(api.sessions.updateAISummary);
+
+  // Update local rating state when sessionRating changes
+  useEffect(() => {
+    setCurrentRating(sessionRating);
+  }, [sessionRating]);
 
   // Auto-refresh logic for video sessions
   useEffect(() => {
@@ -78,12 +84,8 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
 
     // Only auto-refresh if we can and should
     if (canAutoRefresh?.canRefresh && session?.type === 'video' && session?.metadata?.tavusSessionId) {
-      // Check if we have incomplete data (no events or no recording)
-      const hasIncompleteData = !session.metadata?.tavusConversationData?.events ||
-        session.metadata?.tavusConversationData?.events?.length === 0 ||
-        !session.metadata?.tavusConversationData?.events?.find((e: any) =>
-          e.event_type === "application.recording_ready"
-        );
+      // Check if we have incomplete data (missing any required events)
+      const hasIncompleteData = !canAutoRefresh.hasRequiredEvents;
 
       if (hasIncompleteData) {
         // Delay auto-refresh by 5 seconds to allow page to load
@@ -309,6 +311,12 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     } finally {
       setIsGeneratingAISummary(false);
     }
+  };
+
+  const handleRatingSubmitted = () => {
+    // Update local state to reflect the new rating without page reload
+    toast.success('Rating updated successfully!');
+    // The rating will be updated via the useQuery hook automatically
   };
 
   // Extract Tavus conversation data
@@ -689,11 +697,8 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
               <SessionRating
                 sessionId={session._id}
                 sessionType={session.type}
-                existingRating={sessionRating}
-                onRatingSubmitted={() => {
-                  // Refresh the rating data
-                  window.location.reload();
-                }}
+                existingRating={currentRating}
+                onRatingSubmitted={handleRatingSubmitted}
               />
             )}
           </div>
@@ -716,20 +721,20 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     {session.status}
                   </Badge>
                 </div>
-                {sessionRating && (
+                {currentRating && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Your Rating</span>
                     <div className="flex items-center gap-1">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-3 w-3 ${i < sessionRating.rating
+                          className={`h-3 w-3 ${i < currentRating.rating
                             ? 'text-yellow-400 fill-yellow-400'
                             : 'text-gray-300'
                             }`}
                         />
                       ))}
-                      <span className="text-sm ml-1">({sessionRating.rating}/5)</span>
+                      <span className="text-sm ml-1">({currentRating.rating}/5)</span>
                     </div>
                   </div>
                 )}
@@ -752,6 +757,14 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     <span className="text-sm text-muted-foreground">Auto-refresh</span>
                     <span className="text-xs">
                       {canAutoRefresh.attemptsRemaining}/3 remaining
+                    </span>
+                  </div>
+                )}
+                {canAutoRefresh && canAutoRefresh.missingEvents.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Missing Data</span>
+                    <span className="text-xs text-orange-600">
+                      {canAutoRefresh.missingEvents.join(', ')}
                     </span>
                   </div>
                 )}
