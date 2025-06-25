@@ -69,7 +69,7 @@ class TavusClient {
   }
 
   async getConversation(conversationId: string): Promise<TavusConversation> {
-    return this.makeRequest(`/conversations/${conversationId}`);
+    return this.makeRequest(`/conversations/${conversationId}?verbose=true`);
   }
 
   async endConversation(conversationId: string): Promise<void> {
