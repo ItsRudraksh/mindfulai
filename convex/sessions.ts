@@ -316,3 +316,62 @@ export const canAutoRefreshSession = query({
     };
   },
 });
+
+// Generate AI summary for session transcript
+export const generateAISummary = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Session not found or unauthorized");
+    }
+
+    // Extract transcript from session data
+    const tavusData = session.metadata?.tavusConversationData;
+    const transcriptEvent = tavusData?.events?.find((event: any) => 
+      event.event_type === "application.transcription_ready"
+    );
+
+    if (!transcriptEvent?.properties?.transcript) {
+      throw new Error("No transcript available for this session");
+    }
+
+    // The AI summary will be generated via API call
+    // For now, we'll mark that a summary is being generated
+    await ctx.db.patch(args.sessionId, {
+      aiSummary: "generating...",
+    });
+
+    return { success: true, message: "AI summary generation started" };
+  },
+});
+
+// Update AI summary after generation
+export const updateAISummary = mutation({
+  args: {
+    sessionId: v.id("sessions"),
+    aiSummary: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Session not found or unauthorized");
+    }
+
+    return await ctx.db.patch(args.sessionId, {
+      aiSummary: args.aiSummary,
+    });
+  },
+});

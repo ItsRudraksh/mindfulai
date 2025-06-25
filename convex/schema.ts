@@ -51,6 +51,8 @@ export default defineSchema({
     // Track auto-refresh attempts
     autoRefreshAttempts: v.optional(v.number()),
     lastAutoRefresh: v.optional(v.number()),
+    // AI-generated summary
+    aiSummary: v.optional(v.string()),
     metadata: v.optional(
       v.object({
         tavusSessionId: v.optional(v.string()),
@@ -63,6 +65,19 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
+
+  // New table for session ratings and feedback
+  sessionRatings: defineTable({
+    userId: v.id("users"),
+    sessionId: v.id("sessions"),
+    rating: v.number(), // 1-5 stars
+    feedback: v.optional(v.string()), // Required if rating < 3
+    createdAt: v.number(),
+    sessionType: v.union(v.literal("video"), v.literal("voice"), v.literal("chat")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"])
+    .index("by_rating", ["rating"]),
 
   chatConversations: defineTable({
     userId: v.id("users"),

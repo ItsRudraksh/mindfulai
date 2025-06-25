@@ -5,15 +5,18 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Play, Pause, Volume2, VolumeX, Eye, FileText, Brain, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Eye, FileText, Brain, ExternalLink, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/ui/audio-player';
+import { CustomVideoPlayer } from '@/components/ui/custom-video-player';
+import { SessionRating } from '@/components/ui/session-rating';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useParams } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 
 interface SessionDetailsPageProps {
   params: {
@@ -27,12 +30,17 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [transcriptSummary, setTranscriptSummary] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [isGeneratingAISummary, setIsGeneratingAISummary] = useState(false);
 
   const { sessionId: routeSessionId } = useParams();
   const sessionId = routeSessionId as Id<"sessions">;
   const session = useQuery(api.sessions.getSessionById, { sessionId });
+  const sessionRating = useQuery(api.sessionRatings.getSessionRating, { sessionId });
   const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, { sessionId });
+  
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
+  const generateAISummaryMutation = useMutation(api.sessions.generateAISummary);
+  const updateAISummaryMutation = useMutation(api.sessions.updateAISummary);
 
   // Auto-refresh logic for video sessions
   useEffect(() => {
@@ -243,6 +251,66 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     }
   };
 
+  const handleGenerateAISummary = async () => {
+    if (!session) return;
+
+    const tavusData = session.metadata?.tavusConversationData;
+    const transcriptEvent = tavusData?.events?.find((event: any) => 
+      event.event_type === "application.transcription_ready"
+    );
+
+    if (!transcriptEvent?.properties?.transcript) {
+      toast.error('No transcript available for AI summary');
+      return;
+    }
+
+    setIsGeneratingAISummary(true);
+    try {
+      // Start the generation process
+      await generateAISummaryMutation({ sessionId: session._id });
+
+      // Call the API to generate the summary
+      const response = await fetch('/api/sessions/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcriptEvent.properties.transcript,
+          sessionType: session.type,
+          userContext: {
+            mood: session.mood,
+            duration: session.duration,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Update the session with the generated summary
+          await updateAISummaryMutation({
+            sessionId: session._id,
+            aiSummary: data.summary,
+          });
+          toast.success('AI summary generated successfully!');
+        } else {
+          throw new Error(data.error || 'Failed to generate summary');
+        }
+      } else {
+        throw new Error('Failed to generate AI summary');
+      }
+    } catch (error) {
+      console.error('AI summary generation error:', error);
+      toast.error('Failed to generate AI summary');
+      // Reset the summary status
+      await updateAISummaryMutation({
+        sessionId: session._id,
+        aiSummary: '',
+      });
+    } finally {
+      setIsGeneratingAISummary(false);
+    }
+  };
+
   // Extract Tavus conversation data
   const tavusData = session?.metadata?.tavusConversationData;
   const recordingEvent = tavusData?.events?.find((event: any) =>
@@ -354,14 +422,67 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
 
                 {session.notes && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Session Summary</p>
+                    <p className="text-sm text-muted-foreground mb-2">Session Notes</p>
                     <div className="bg-muted/50 p-3 rounded-lg">
-                      <p className="text-sm leading-relaxed">Pass the complete transcript to ai to summarize and it will be user interactable basically click the button then user will get their ai summary and that will also be saved to db</p>
+                      <p className="text-sm leading-relaxed">{session.notes}</p>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* AI Summary Section */}
+            {session.type === 'video' && transcriptEvent?.properties?.transcript && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-500" />
+                    AI Session Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {session.aiSummary === 'generating...' || isGeneratingAISummary ? (
+                    <div className="flex items-center justify-center h-24">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <p className="ml-3 text-muted-foreground">Generating AI summary...</p>
+                    </div>
+                  ) : session.aiSummary ? (
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 p-4 rounded-lg">
+                      <div className="prose prose-sm max-w-none">
+                        <ReactMarkdown>{session.aiSummary}</ReactMarkdown>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Sparkles className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="font-medium mb-2">Generate AI Summary</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Get a comprehensive AI-generated summary of your therapy session
+                      </p>
+                      <Button
+                        onClick={handleGenerateAISummary}
+                        disabled={isGeneratingAISummary}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {isGeneratingAISummary ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate AI Summary
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Tavus Video Session Data */}
             {session.type === 'video' && tavusData && (
@@ -423,9 +544,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                             <span className="font-medium">AI Perception Analysis</span>
                           </div>
                           <div className="prose prose-sm max-w-none">
-                            <p className="text-sm leading-relaxed whitespace-pre-line">
-                              {perceptionEvent.properties.analysis}
-                            </p>
+                            <ReactMarkdown>{perceptionEvent.properties.analysis}</ReactMarkdown>
                           </div>
                         </div>
                       ) : (
@@ -438,17 +557,13 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     <TabsContent value="recording" className="space-y-4">
                       {session.metadata?.recordingUrl ? (
                         <div className="space-y-4">
-                          {/* Video Player */}
-                          <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                            <video
-                              controls
-                              className="w-full h-full"
-                              poster="/api/placeholder/800/450"
-                            >
-                              <source src={session.metadata.recordingUrl} type="video/mp4" />
-                              Your browser does not support the video tag.
-                            </video>
-                          </div>
+                          {/* Custom Video Player */}
+                          <CustomVideoPlayer
+                            src={session.metadata.recordingUrl}
+                            title="Therapy Session Recording"
+                            onDownload={handleVideoDownload}
+                            className="aspect-video"
+                          />
 
                           {/* Recording Info */}
                           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
@@ -577,6 +692,19 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                 </CardContent>
               </Card>
             )}
+
+            {/* Session Rating */}
+            {session.status === 'completed' && (
+              <SessionRating
+                sessionId={session._id}
+                sessionType={session.type}
+                existingRating={sessionRating}
+                onRatingSubmitted={() => {
+                  // Refresh the rating data
+                  window.location.reload();
+                }}
+              />
+            )}
           </div>
 
           {/* Sidebar */}
@@ -597,10 +725,22 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     {session.status}
                   </Badge>
                 </div>
-                {session.rating && (
+                {sessionRating && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Rating</span>
-                    <span className="text-sm font-medium">{session.rating}/5</span>
+                    <span className="text-sm text-muted-foreground">Your Rating</span>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3 w-3 ${
+                            i < sessionRating.rating
+                              ? 'text-yellow-400 fill-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-sm ml-1">({sessionRating.rating}/5)</span>
+                    </div>
                   </div>
                 )}
                 {session.elevenlabsConversationId && (
@@ -678,9 +818,9 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                       This session includes AI perception analysis and complete conversation data for comprehensive insights.
                     </p>
                   )}
-                  {canAutoRefresh && canAutoRefresh.attemptsRemaining > 0 && (
+                  {session.aiSummary && (
                     <p className="text-muted-foreground">
-                      Session data will automatically refresh up to 3 times to capture complete information.
+                      AI-generated summary provides therapeutic insights and continuity for future sessions.
                     </p>
                   )}
                 </div>
