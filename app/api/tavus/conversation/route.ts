@@ -19,6 +19,9 @@ export async function POST(request: NextRequest) {
         conversation_name: `Therapy Session - ${new Date().toISOString()}`,
         properties: {
           enable_recording: true,
+          recording_s3_bucket_name: `${process.env.TAVUS_BUCKET_NAME}`,
+          recording_s3_bucket_region: `${process.env.TAVUS_BUCKET_REGION}`,
+          aws_assume_role_arn: `${process.env.TAVUS_AWS_ARN}`,
         },
       };
 

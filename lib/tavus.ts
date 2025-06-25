@@ -19,6 +19,9 @@ interface TavusConversationRequest {
   callback_url?: string;
   properties?: {
     enable_recording?: boolean;
+    recording_s3_bucket_name?: string;
+    recording_s3_bucket_region?: string;
+    aws_assume_role_arn?: string;
   };
 }
 
