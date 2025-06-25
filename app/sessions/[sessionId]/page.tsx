@@ -13,6 +13,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { AudioPlayer } from '@/components/ui/audio-player';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useParams } from 'next/navigation';
 
 interface SessionDetailsPageProps {
   params: {
@@ -27,7 +28,8 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
-  const sessionId = params.sessionId as Id<"sessions">;
+  const { sessionId: routeSessionId } = useParams();
+  const sessionId = routeSessionId as Id<"sessions">;
   const session = useQuery(api.sessions.getSessionById, { sessionId });
   const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, { sessionId });
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
@@ -70,10 +72,10 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     if (canAutoRefresh?.canRefresh && session?.type === 'video' && session?.metadata?.tavusSessionId) {
       // Check if we have incomplete data (no events or no recording)
       const hasIncompleteData = !session.metadata?.tavusConversationData?.events ||
-                               session.metadata?.tavusConversationData?.events?.length === 0 ||
-                               !session.metadata?.tavusConversationData?.events?.find((e: any) => 
-                                 e.event_type === "application.recording_ready"
-                               );
+        session.metadata?.tavusConversationData?.events?.length === 0 ||
+        !session.metadata?.tavusConversationData?.events?.find((e: any) =>
+          e.event_type === "application.recording_ready"
+        );
 
       if (hasIncompleteData) {
         // Delay auto-refresh by 5 seconds to allow page to load
@@ -243,13 +245,13 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
 
   // Extract Tavus conversation data
   const tavusData = session?.metadata?.tavusConversationData;
-  const recordingEvent = tavusData?.events?.find((event: any) => 
+  const recordingEvent = tavusData?.events?.find((event: any) =>
     event.event_type === "application.recording_ready"
   );
-  const transcriptEvent = tavusData?.events?.find((event: any) => 
+  const transcriptEvent = tavusData?.events?.find((event: any) =>
     event.event_type === "application.transcription_ready"
   );
-  const perceptionEvent = tavusData?.events?.find((event: any) => 
+  const perceptionEvent = tavusData?.events?.find((event: any) =>
     event.event_type === "application.perception_analysis"
   );
 
@@ -352,9 +354,9 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
 
                 {session.notes && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Session Notes</p>
+                    <p className="text-sm text-muted-foreground mb-2">Session Summary</p>
                     <div className="bg-muted/50 p-3 rounded-lg">
-                      <p className="text-sm leading-relaxed">{session.notes}</p>
+                      <p className="text-sm leading-relaxed">Pass the complete transcript to ai to summarize and it will be user interactable basically click the button then user will get their ai summary and that will also be saved to db</p>
                     </div>
                   </div>
                 )}
@@ -392,11 +394,10 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                             .map((msg: any, index: number) => (
                               <div
                                 key={index}
-                                className={`p-3 rounded-lg ${
-                                  msg.role === 'user'
-                                    ? 'bg-blue-50 dark:bg-blue-950/20 ml-8'
-                                    : 'bg-green-50 dark:bg-green-950/20 mr-8'
-                                }`}
+                                className={`p-3 rounded-lg ${msg.role === 'user'
+                                  ? 'bg-blue-50 dark:bg-blue-950/20 ml-8'
+                                  : 'bg-green-50 dark:bg-green-950/20 mr-8'
+                                  }`}
                               >
                                 <div className="flex items-center gap-2 mb-1">
                                   <Badge variant="outline" className="text-xs">
@@ -448,7 +449,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                               Your browser does not support the video tag.
                             </video>
                           </div>
-                          
+
                           {/* Recording Info */}
                           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                             <div>
@@ -607,14 +608,6 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     <span className="text-sm text-muted-foreground">Conversation ID</span>
                     <span className="text-xs font-mono">
                       {session.elevenlabsConversationId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-                {session.metadata?.tavusSessionId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Tavus Session ID</span>
-                    <span className="text-xs font-mono">
-                      {session.metadata.tavusSessionId.slice(0, 8)}...
                     </span>
                   </div>
                 )}
