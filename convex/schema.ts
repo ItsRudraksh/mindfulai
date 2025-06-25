@@ -48,6 +48,9 @@ export default defineSchema({
     rating: v.optional(v.number()),
     elevenlabsConversationId: v.optional(v.string()),
     elevenlabsCallSid: v.optional(v.string()),
+    // Track auto-refresh attempts
+    autoRefreshAttempts: v.optional(v.number()),
+    lastAutoRefresh: v.optional(v.number()),
     metadata: v.optional(
       v.object({
         tavusSessionId: v.optional(v.string()),

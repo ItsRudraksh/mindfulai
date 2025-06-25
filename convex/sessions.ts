@@ -19,6 +19,7 @@ export const createSession = mutation({
       ...args,
       status: "active",
       metadata: {},
+      autoRefreshAttempts: 0,
     });
   },
 });
@@ -34,7 +35,6 @@ export const endSession = mutation({
         tavusSessionId: v.optional(v.string()),
         elevenlabsConversationId: v.optional(v.string()),
         recordingUrl: v.optional(v.string()),
-        tavusConversationData: v.optional(v.any()),
       })
     ),
   },
@@ -68,7 +68,6 @@ export const updateSessionMetadata = mutation({
     metadata: v.object({
       tavusSessionId: v.optional(v.string()),
       recordingUrl: v.optional(v.string()),
-      tavusConversationData: v.optional(v.any()),
     }),
   },
   handler: async (ctx, args) => {
@@ -205,11 +204,12 @@ export const getActiveSession = query({
   },
 });
 
-// New mutation to store complete Tavus conversation data
+// New mutation to store complete Tavus conversation data with auto-refresh tracking
 export const storeTavusConversationData = mutation({
   args: {
     sessionId: v.id("sessions"),
     tavusConversationData: v.any(),
+    isAutoRefresh: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -263,7 +263,8 @@ export const storeTavusConversationData = mutation({
       recordingUrl: recordingUrl || existingMetadata.recordingUrl,
     };
 
-    return await ctx.db.patch(args.sessionId, {
+    // Update auto-refresh tracking if this is an auto-refresh
+    const updates: any = {
       metadata: updatedMetadata,
       notes: sessionNotes || session.notes,
       endTime: new Date(tavusData.updated_at).getTime(),
@@ -271,6 +272,47 @@ export const storeTavusConversationData = mutation({
         recordingEvent.properties.duration * 1000 : // Convert seconds to milliseconds
         session.duration,
       status: "completed",
-    });
+    };
+
+    if (args.isAutoRefresh) {
+      updates.autoRefreshAttempts = (session.autoRefreshAttempts || 0) + 1;
+      updates.lastAutoRefresh = Date.now();
+    }
+
+    return await ctx.db.patch(args.sessionId, updates);
+  },
+});
+
+// Check if session can be auto-refreshed
+export const canAutoRefreshSession = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Session not found or unauthorized");
+    }
+
+    const attempts = session.autoRefreshAttempts || 0;
+    const lastRefresh = session.lastAutoRefresh || 0;
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefresh;
+
+    // Can refresh if:
+    // 1. Less than 3 attempts made
+    // 2. At least 30 seconds since last refresh (to avoid spam)
+    // 3. Session is video type and has Tavus session ID
+    return {
+      canRefresh: attempts < 3 && 
+                  timeSinceLastRefresh > 30000 && 
+                  session.type === "video" && 
+                  session.metadata?.tavusSessionId,
+      attemptsRemaining: Math.max(0, 3 - attempts),
+      timeSinceLastRefresh,
+    };
   },
 });

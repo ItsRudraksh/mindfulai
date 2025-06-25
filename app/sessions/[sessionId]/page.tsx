@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Play, Pause, Volume2, VolumeX, Eye, FileText, Brain } from 'lucide-react';
+import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Play, Pause, Volume2, VolumeX, Eye, FileText, Brain, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -25,10 +25,65 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcriptSummary, setTranscriptSummary] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
   const sessionId = params.sessionId as Id<"sessions">;
   const session = useQuery(api.sessions.getSessionById, { sessionId });
+  const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, { sessionId });
+  const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
 
+  // Auto-refresh logic for video sessions
+  useEffect(() => {
+    const performAutoRefresh = async () => {
+      if (!session || !canAutoRefresh?.canRefresh || isAutoRefreshing) return;
+
+      setIsAutoRefreshing(true);
+      try {
+        const response = await fetch('/api/tavus/conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'status',
+            conversationId: session.metadata?.tavusSessionId,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.conversation) {
+            await storeTavusConversationDataMutation({
+              sessionId: session._id,
+              tavusConversationData: data.conversation,
+              isAutoRefresh: true,
+            });
+            toast.success('Session data updated automatically');
+          }
+        }
+      } catch (error) {
+        console.error('Auto-refresh error:', error);
+      } finally {
+        setIsAutoRefreshing(false);
+      }
+    };
+
+    // Only auto-refresh if we can and should
+    if (canAutoRefresh?.canRefresh && session?.type === 'video' && session?.metadata?.tavusSessionId) {
+      // Check if we have incomplete data (no events or no recording)
+      const hasIncompleteData = !session.metadata?.tavusConversationData?.events ||
+                               session.metadata?.tavusConversationData?.events?.length === 0 ||
+                               !session.metadata?.tavusConversationData?.events?.find((e: any) => 
+                                 e.event_type === "application.recording_ready"
+                               );
+
+      if (hasIncompleteData) {
+        // Delay auto-refresh by 5 seconds to allow page to load
+        const timer = setTimeout(performAutoRefresh, 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [session, canAutoRefresh, isAutoRefreshing, storeTavusConversationDataMutation]);
+
+  // Voice session summary loading
   useEffect(() => {
     const fetchConversationDetails = async () => {
       if (session && session.type === 'voice' && session.elevenlabsConversationId && !transcriptSummary) {
@@ -141,6 +196,51 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     link.click();
   };
 
+  const handleVideoDownload = () => {
+    if (!session?.metadata?.recordingUrl) return;
+
+    const link = document.createElement('a');
+    link.href = session.metadata.recordingUrl;
+    link.download = `therapy-video-session-${new Date(session?.startTime || 0).toISOString().split('T')[0]}.mp4`;
+    link.target = '_blank';
+    link.click();
+  };
+
+  const handleManualRefresh = async () => {
+    if (!session?.metadata?.tavusSessionId || isAutoRefreshing) return;
+
+    setIsAutoRefreshing(true);
+    try {
+      const response = await fetch('/api/tavus/conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'status',
+          conversationId: session.metadata.tavusSessionId,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.conversation) {
+          await storeTavusConversationDataMutation({
+            sessionId: session._id,
+            tavusConversationData: data.conversation,
+            isAutoRefresh: false,
+          });
+          toast.success('Session data refreshed successfully');
+        }
+      } else {
+        throw new Error('Failed to refresh session data');
+      }
+    } catch (error) {
+      console.error('Manual refresh error:', error);
+      toast.error('Failed to refresh session data');
+    } finally {
+      setIsAutoRefreshing(false);
+    }
+  };
+
   // Extract Tavus conversation data
   const tavusData = session?.metadata?.tavusConversationData;
   const recordingEvent = tavusData?.events?.find((event: any) => 
@@ -187,9 +287,28 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                 </div>
               </div>
             </div>
-            <Badge variant="secondary" className={getStatusColor(session.status)}>
-              {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              {isAutoRefreshing && (
+                <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-200">
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Updating...
+                </Badge>
+              )}
+              {canAutoRefresh && canAutoRefresh.attemptsRemaining > 0 && session.type === 'video' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualRefresh}
+                  disabled={isAutoRefreshing}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh ({canAutoRefresh.attemptsRemaining} left)
+                </Button>
+              )}
+              <Badge variant="secondary" className={getStatusColor(session.status)}>
+                {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
@@ -316,21 +435,63 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </TabsContent>
 
                     <TabsContent value="recording" className="space-y-4">
-                      {recordingEvent?.properties ? (
+                      {session.metadata?.recordingUrl ? (
+                        <div className="space-y-4">
+                          {/* Video Player */}
+                          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                            <video
+                              controls
+                              className="w-full h-full"
+                              poster="/api/placeholder/800/450"
+                            >
+                              <source src={session.metadata.recordingUrl} type="video/mp4" />
+                              Your browser does not support the video tag.
+                            </video>
+                          </div>
+                          
+                          {/* Recording Info */}
+                          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                            <div>
+                              <h4 className="font-medium">Session Recording</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Duration: {recordingEvent?.properties?.duration || 'Unknown'} seconds
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleVideoDownload}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(session.metadata?.recordingUrl, '_blank')}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : recordingEvent?.properties ? (
                         <div className="text-center py-8">
                           <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Video className="h-8 w-8 text-muted-foreground" />
                           </div>
-                          <h3 className="font-medium mb-2">Session Recording Available</h3>
+                          <h3 className="font-medium mb-2">Recording Processing</h3>
                           <p className="text-sm text-muted-foreground mb-4">
                             Duration: {recordingEvent.properties.duration} seconds
                           </p>
                           <p className="text-xs text-muted-foreground mb-4">
-                            Stored in: {recordingEvent.properties.bucket_name}
+                            Recording is being processed and will be available soon.
                           </p>
                           <Button variant="outline" disabled>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download Recording (Coming Soon)
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Processing...
                           </Button>
                         </div>
                       ) : (
@@ -463,6 +624,14 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     <span className="text-sm font-medium">{tavusData.events?.length || 0}</span>
                   </div>
                 )}
+                {canAutoRefresh && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Auto-refresh</span>
+                    <span className="text-xs">
+                      {canAutoRefresh.attemptsRemaining}/3 remaining
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -514,6 +683,11 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                   {tavusData && (
                     <p className="text-muted-foreground">
                       This session includes AI perception analysis and complete conversation data for comprehensive insights.
+                    </p>
+                  )}
+                  {canAutoRefresh && canAutoRefresh.attemptsRemaining > 0 && (
+                    <p className="text-muted-foreground">
+                      Session data will automatically refresh up to 3 times to capture complete information.
                     </p>
                   )}
                 </div>
