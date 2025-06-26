@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { extractPublicIdFromUrl } from "../lib/cloudinary";
+import { StorageId } from "convex/server";
 
 export const createJournalEntry = mutation({
   args: {
@@ -132,10 +132,15 @@ export const processEntryImages = action({
 
     // Process each image URL found in the content
     for (const imageUrl of imageUrls) {
-      // Skip non-base64 images that are already in Cloudinary
-      if (imageUrl.startsWith('http') && imageUrl.includes('cloudinary.com')) {
+      // Skip non-base64 images that are already in Convex storage
+      if (imageUrl.startsWith('https://') && imageUrl.includes('convex.cloud')) {
         // Find the image in our database
-        const matchingImage = existingImages.find(img => img.imageUrl === imageUrl);
+        const matchingImage = existingImages.find(img => {
+          // Get the storage ID from the URL
+          const urlParts = imageUrl.split('/');
+          const storageId = urlParts[urlParts.length - 1];
+          return img.storageId === storageId;
+        });
         
         if (matchingImage) {
           // Mark as in use and update last used timestamp
@@ -144,52 +149,28 @@ export const processEntryImages = action({
             isInUse: true,
             lastUsedAt: Date.now(),
           });
-        } else {
-          // This is a Cloudinary image we don't have in our database
-          // Extract the public ID and add it to our database
-          const publicId = extractPublicIdFromUrl(imageUrl);
-          if (publicId) {
-            await ctx.runMutation("journalEntries:trackImage", {
-              journalEntryId: args.entryId,
-              imageUrl,
-              publicId,
-              isInUse: true,
-            });
-          }
         }
         continue;
       }
 
-      // Handle base64 images - these need to be uploaded to Cloudinary
+      // Handle base64 images - these need to be uploaded to Convex storage
       if (imageUrl.startsWith('data:image')) {
         try {
-          // Upload to Cloudinary via our API route
-          const response = await fetch(`${process.env.SITE_URL}/api/cloudinary/upload`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              base64Image: imageUrl,
-              folder: `journal-images/${args.userId}`,
-            }),
-          });
-
-          if (!response.ok) {
-            console.error('Failed to upload image to Cloudinary:', await response.text());
-            continue;
-          }
-
-          const result = await response.json();
+          // Convert base64 to binary
+          const base64Data = imageUrl.split(',')[1];
+          const binaryData = Buffer.from(base64Data, 'base64');
           
-          if (result.success) {
+          // Upload to Convex storage
+          const storageId = await ctx.storage.store(binaryData);
+          
+          // Get the URL for the stored file
+          const url = await ctx.storage.getUrl(storageId);
+          
+          if (url) {
             // Track the new image in our database
             await ctx.runMutation("journalEntries:trackImage", {
               journalEntryId: args.entryId,
-              imageUrl: result.url,
-              publicId: result.publicId,
-              width: result.width,
-              height: result.height,
+              storageId,
               isInUse: true,
             });
 
@@ -197,7 +178,7 @@ export const processEntryImages = action({
             await ctx.runMutation("journalEntries:replaceImageUrl", {
               entryId: args.entryId,
               oldUrl: imageUrl,
-              newUrl: result.url,
+              newUrl: url,
             });
           }
         } catch (error) {
@@ -217,8 +198,7 @@ export const processEntryImages = action({
 export const trackImage = mutation({
   args: {
     journalEntryId: v.id("journalEntries"),
-    imageUrl: v.string(),
-    publicId: v.string(),
+    storageId: v.string(),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     isInUse: v.boolean(),
@@ -234,8 +214,7 @@ export const trackImage = mutation({
     return await ctx.db.insert("journalImages", {
       userId,
       journalEntryId: args.journalEntryId,
-      imageUrl: args.imageUrl,
-      publicId: args.publicId,
+      storageId: args.storageId,
       uploadedAt: now,
       lastUsedAt: now,
       width: args.width,
@@ -337,23 +316,13 @@ export const cleanupUnusedImages = action({
     // Delete each unused image
     for (const image of unusedImages) {
       try {
-        // Delete from Cloudinary
-        const response = await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            publicId: image.publicId,
-          }),
+        // Delete from Convex storage
+        await ctx.storage.delete(image.storageId as StorageId);
+        
+        // Delete from our database
+        await ctx.runMutation("journalEntries:deleteImage", {
+          imageId: image._id,
         });
-
-        if (response.ok) {
-          // Delete from our database
-          await ctx.runMutation("journalEntries:deleteImage", {
-            imageId: image._id,
-          });
-        }
       } catch (error) {
         console.error('Error deleting unused image:', error);
       }
@@ -424,23 +393,15 @@ export const getUnusedImages = query({
 export const deleteEntryImages = action({
   args: {
     imageIds: v.array(v.id("journalImages")),
-    publicIds: v.array(v.string()),
+    storageIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    // Delete images from Cloudinary
-    for (const publicId of args.publicIds) {
+    // Delete images from Convex storage
+    for (const storageId of args.storageIds) {
       try {
-        await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            publicId,
-          }),
-        });
+        await ctx.storage.delete(storageId as StorageId);
       } catch (error) {
-        console.error(`Error deleting image ${publicId} from Cloudinary:`, error);
+        console.error(`Error deleting image ${storageId} from storage:`, error);
       }
     }
 
@@ -449,6 +410,53 @@ export const deleteEntryImages = action({
       await ctx.runMutation("journalEntries:deleteImage", {
         imageId,
       });
+    }
+  },
+});
+
+// Generate a URL for an image in storage
+export const getImageUrl = query({
+  args: {
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId as StorageId);
+  },
+});
+
+// Upload a base64 image to storage
+export const uploadImage = action({
+  args: {
+    base64Image: v.string(),
+    journalEntryId: v.id("journalEntries"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Convert base64 to binary
+      const base64Data = args.base64Image.split(',')[1];
+      const binaryData = Buffer.from(base64Data, 'base64');
+      
+      // Upload to Convex storage
+      const storageId = await ctx.storage.store(binaryData);
+      
+      // Get the URL for the stored file
+      const url = await ctx.storage.getUrl(storageId);
+      
+      if (url) {
+        // Track the new image in our database
+        const imageId = await ctx.runMutation("journalEntries:trackImage", {
+          journalEntryId: args.journalEntryId,
+          storageId,
+          isInUse: true,
+        });
+
+        return { success: true, url, storageId, imageId };
+      }
+      
+      return { success: false, error: "Failed to get URL for uploaded image" };
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return { success: false, error: "Failed to upload image" };
     }
   },
 });
@@ -510,7 +518,7 @@ export const deleteJournalEntry = mutation({
     if (images.length > 0) {
       await ctx.scheduler.runAfter(0, "journalEntries:deleteEntryImages", {
         imageIds: images.map(img => img._id),
-        publicIds: images.map(img => img.publicId),
+        storageIds: images.map(img => img.storageId),
       });
     }
 

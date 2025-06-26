@@ -30,9 +30,7 @@ import {
   CheckSquare,
   Subscript,
   Superscript,
-  Calculator,
   ChevronDown,
-  Smile,
   Youtube
 } from 'lucide-react';
 import {

@@ -12,7 +12,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { motion } from 'framer-motion';
-import { useMutation } from 'convex/react';
+import { useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -38,6 +38,7 @@ import Youtube from '@tiptap/extension-youtube';
 import EditorToolbar from './editor-toolbar';
 import EditorBubbleMenu from './editor-bubble-menu';
 import EditorFloatingMenu from './editor-floating-menu';
+import SlashCommand from './slash-command';
 
 interface JournalEditorProps {
   entryId: Id<"journalEntries">;
@@ -178,39 +179,32 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [pendingImageUploads, setPendingImageUploads] = useState<Map<string, string>>(new Map());
+  const [slashCommandOpen, setSlashCommandOpen] = useState(false);
+  const [slashCommandRange, setSlashCommandRange] = useState<{ from: number, to: number } | null>(null);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const slashCommandRef = useRef<HTMLDivElement>(null);
+  const slashCommandHandlerRef = useRef<any>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
+  const uploadImage = useAction(api.journalEntries.uploadImage);
 
-  // Handle image upload to Cloudinary
+  // Handle image upload to Convex storage
   const handleImageStabilized = async (imageUrl: string) => {
     if (!imageUrl.startsWith('data:image')) return;
     
     try {
-      const response = await fetch('/api/cloudinary/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          base64Image: imageUrl,
-          folder: 'journal-images',
-        }),
+      const result = await uploadImage({
+        base64Image: imageUrl,
+        journalEntryId: entryId,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image to Cloudinary');
-      }
-
-      const data = await response.json();
       
-      if (data.success) {
-        // Store the mapping of base64 to Cloudinary URL
+      if (result.success) {
+        // Store the mapping of base64 to Convex URL
         setPendingImageUploads(prev => {
           const newMap = new Map(prev);
-          newMap.set(imageUrl, data.url);
+          newMap.set(imageUrl, result.url);
           return newMap;
         });
         
@@ -225,7 +219,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
             if (node.type.name === 'image' && node.attrs.src === imageUrl) {
               tr.setNodeMarkup(pos, undefined, {
                 ...node.attrs,
-                src: data.url,
+                src: result.url,
               });
               hasChanges = true;
             }
@@ -240,7 +234,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error uploading image to Cloudinary:', error);
+      console.error('Error uploading image to Convex storage:', error);
     }
   };
 
@@ -369,6 +363,29 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     },
   });
 
+  // Monitor slash command state
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateSlashCommandState = () => {
+      const { state } = editor;
+      const pluginState = slashCommandPluginKey.getState(state);
+      
+      if (pluginState?.open && pluginState?.range) {
+        setSlashCommandOpen(true);
+        setSlashCommandRange(pluginState.range);
+      } else {
+        setSlashCommandOpen(false);
+        setSlashCommandRange(null);
+      }
+    };
+
+    editor.on('transaction', updateSlashCommandState);
+    return () => {
+      editor.off('transaction', updateSlashCommandState);
+    };
+  }, [editor]);
+
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -422,6 +439,28 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     };
     input.click();
   };
+
+  // Handle slash command keyboard events
+  const handleSlashCommandKeyDown = (event: KeyboardEvent) => {
+    if (!slashCommandOpen || !slashCommandHandlerRef.current) return false;
+    return slashCommandHandlerRef.current.onKeyDown(event);
+  };
+
+  // Add keyboard event listener for slash command
+  useEffect(() => {
+    if (!editor || !slashCommandOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (slashCommandOpen) {
+        handleSlashCommandKeyDown(event);
+      }
+    };
+
+    editor.view.dom.addEventListener('keydown', handleKeyDown);
+    return () => {
+      editor.view.dom.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [editor, slashCommandOpen]);
 
   // Save on unmount
   useEffect(() => {
@@ -484,6 +523,24 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           className="glass-card border border-border/20 rounded-lg overflow-hidden min-h-[600px] relative"
         >
           <EditorContent editor={editor} />
+          
+          {/* Slash Command Menu */}
+          {slashCommandOpen && slashCommandRange && (
+            <div
+              className="absolute z-50"
+              style={{
+                left: editor.view.coordsAtPos(slashCommandRange.from).left,
+                top: editor.view.coordsAtPos(slashCommandRange.from).bottom,
+              }}
+            >
+              <SlashCommand
+                editor={editor}
+                range={slashCommandRange}
+                menuRef={slashCommandRef}
+                ref={slashCommandHandlerRef}
+              />
+            </div>
+          )}
         </motion.div>
 
         {/* Bubble Menu */}
