@@ -77,7 +77,7 @@ const SlashCommandExtension = Extension.create({
           init() {
             return {
               open: false,
-              range: null,
+              range: null as { from: number; to: number } | null,
             };
           },
           apply(tr, prev) {
@@ -152,7 +152,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         // Disable default history to use our own
         history: false,
       }),
-      
+
       // Enhanced Image with better styling
       Image.configure({
         HTMLAttributes: {
@@ -160,7 +160,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         },
         allowBase64: true,
       }),
-      
+
       // Enhanced Link with click handling
       Link.configure({
         openOnClick: true,
@@ -172,7 +172,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           rel: 'noopener noreferrer',
         },
       }),
-      
+
       // Enhanced Placeholder
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -189,14 +189,14 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         },
         includeChildren: true,
       }),
-      
+
       // Text styling
       TextStyle,
       Color,
       FontFamily.configure({
         types: ['textStyle'],
       }),
-      
+
       // Enhanced Highlight
       Highlight.configure({
         multicolor: true,
@@ -204,10 +204,10 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'px-1 py-0.5 rounded',
         },
       }),
-      
+
       // Character count
       CharacterCount,
-      
+
       // Code blocks with syntax highlighting
       CodeBlockLowlight.configure({
         lowlight,
@@ -215,7 +215,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'bg-muted/50 rounded-lg p-4 my-4 overflow-x-auto',
         },
       }),
-      
+
       // Collapsible Details sections
       Details.configure({
         HTMLAttributes: {
@@ -232,14 +232,14 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'p-4 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors font-medium',
         },
       }),
-      
+
       // Drag handle for reordering
       DragHandle.configure({
-        HTMLAttributes: {
-          class: 'drag-handle opacity-0 hover:opacity-100 transition-opacity',
-        },
+        // HTMLAttributes: {
+        //   class: 'drag-handle opacity-0 hover:opacity-100 transition-opacity',
+        // },
       }),
-      
+
       // Emoji support
       Emoji.configure({
         enableEmoticons: true,
@@ -287,7 +287,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
               '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞',
               '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧'
             ];
-            
+
             return emojis
               .filter(emoji => emoji.includes(query.toLowerCase()))
               .slice(0, 10);
@@ -339,7 +339,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           },
         },
       }),
-      
+
       // File handler for drag & drop
       FileHandler.configure({
         allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
@@ -376,22 +376,22 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           });
         },
       }),
-      
+
       // Mathematics support
       Mathematics.configure({
-        HTMLAttributes: {
-          class: 'math-node bg-muted/30 px-2 py-1 rounded mx-1',
-        },
+        // HTMLAttributes: {
+        //   class: 'math-node bg-muted/30 px-2 py-1 rounded mx-1',
+        // },
         katexOptions: {
           throwOnError: false,
           displayMode: false,
         },
       }),
-      
+
       // Subscript and Superscript
       Subscript,
       Superscript,
-      
+
       // Table support
       Table.configure({
         resizable: true,
@@ -414,7 +414,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'border-b border-border',
         },
       }),
-      
+
       // Task lists
       TaskList.configure({
         HTMLAttributes: {
@@ -427,27 +427,26 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'task-item flex items-start gap-2 my-1',
         },
       }),
-      
+
       // Text alignment
       TextAlign.configure({
         types: ['heading', 'paragraph'],
         alignments: ['left', 'center', 'right', 'justify'],
       }),
-      
+
       // Typography enhancements
       Typography.configure({
         openDoubleQuote: '"',
         closeDoubleQuote: '"',
-        openSingleQuote: ''',
-        closeSingleQuote: ''',
+        openSingleQuote: '\'',
+        closeSingleQuote: '\'',
         ellipsis: '…',
         emDash: '—',
-        enDash: '–',
       }),
-      
+
       // Underline
       Underline,
-      
+
       // YouTube embeds
       Youtube.configure({
         nocookie: true,
@@ -458,7 +457,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'youtube-embed rounded-lg my-4 mx-auto',
         },
       }),
-      
+
       // Bubble and Floating menus
       BubbleMenu.configure({
         element: document.createElement('div'),
@@ -466,7 +465,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       FloatingMenu.configure({
         element: document.createElement('div'),
       }),
-      
+
       // Slash command extension
       SlashCommandExtension,
     ],
@@ -507,15 +506,15 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     onUpdate: ({ editor }) => {
       // Check for slash command using the plugin state
       const pluginState = slashCommandPluginKey.getState(editor.state);
-      
+
       if (pluginState?.open && pluginState?.range) {
         setSlashCommandRange(pluginState.range);
-        
+
         // Calculate position safely
         try {
           const coords = editor.view.coordsAtPos(pluginState.range.from);
           const editorRect = editorRef.current?.getBoundingClientRect();
-          
+
           if (coords && editorRect) {
             setSlashCommandPosition({
               top: coords.top - editorRect.top + 25,
@@ -676,7 +675,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
         {/* Bubble Menu */}
         <EditorBubbleMenu editor={editor} />
-        
+
         {/* Floating Menu */}
         <EditorFloatingMenu editor={editor} />
       </div>
@@ -763,11 +762,10 @@ const EmojiList = React.forwardRef<any, any>((props, ref) => {
       {props.items.length ? (
         props.items.map((item: string, index: number) => (
           <button
-            className={`w-full text-left p-2 rounded-md transition-all duration-200 flex items-center space-x-2 ${
-              index === selectedIndex
-                ? 'bg-primary/10 text-primary border border-primary/20'
-                : 'hover:bg-muted/50 text-foreground border border-transparent'
-            }`}
+            className={`w-full text-left p-2 rounded-md transition-all duration-200 flex items-center space-x-2 ${index === selectedIndex
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : 'hover:bg-muted/50 text-foreground border border-transparent'
+              }`}
             key={index}
             onClick={() => selectItem(index)}
           >
