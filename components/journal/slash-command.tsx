@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Editor } from '@tiptap/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Type,
   Heading1,
@@ -16,10 +16,6 @@ import {
   Minus,
   CheckSquare,
   Youtube,
-  Calculator,
-  ChevronDown,
-  Smile,
-  FileText,
   AlignLeft,
   AlignCenter,
   AlignRight,

@@ -42,7 +42,6 @@ export const updateJournalEntry = mutation({
       v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))
     ),
     tags: v.optional(v.array(v.string())),
-    images: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -195,7 +194,6 @@ export const processEntryImages = action({
             });
 
             // Update the image URL in the content
-            // This requires a separate function to modify the content
             await ctx.runMutation("journalEntries:replaceImageUrl", {
               entryId: args.entryId,
               oldUrl: imageUrl,
@@ -422,6 +420,39 @@ export const getUnusedImages = query({
   },
 });
 
+// Delete all images associated with a journal entry
+export const deleteEntryImages = action({
+  args: {
+    imageIds: v.array(v.id("journalImages")),
+    publicIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Delete images from Cloudinary
+    for (const publicId of args.publicIds) {
+      try {
+        await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            publicId,
+          }),
+        });
+      } catch (error) {
+        console.error(`Error deleting image ${publicId} from Cloudinary:`, error);
+      }
+    }
+
+    // Delete image records from database
+    for (const imageId of args.imageIds) {
+      await ctx.runMutation("journalEntries:deleteImage", {
+        imageId,
+      });
+    }
+  },
+});
+
 export const getUserJournalEntries = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -484,39 +515,6 @@ export const deleteJournalEntry = mutation({
     }
 
     await ctx.db.delete(args.entryId);
-  },
-});
-
-// Delete all images associated with a journal entry
-export const deleteEntryImages = action({
-  args: {
-    imageIds: v.array(v.id("journalImages")),
-    publicIds: v.array(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Delete images from Cloudinary
-    for (const publicId of args.publicIds) {
-      try {
-        await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            publicId,
-          }),
-        });
-      } catch (error) {
-        console.error(`Error deleting image ${publicId} from Cloudinary:`, error);
-      }
-    }
-
-    // Delete image records from database
-    for (const imageId of args.imageIds) {
-      await ctx.runMutation("journalEntries:deleteImage", {
-        imageId,
-      });
-    }
   },
 });
 
