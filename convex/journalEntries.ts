@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { extractPublicIdFromUrl } from "../lib/cloudinary";
 
 export const createJournalEntry = mutation({
   args: {
@@ -56,10 +57,368 @@ export const updateJournalEntry = mutation({
       throw new Error("Journal entry not found or unauthorized");
     }
 
-    return await ctx.db.patch(entryId, {
+    // Update the journal entry
+    const updatedEntry = await ctx.db.patch(entryId, {
       ...updates,
       updatedAt: Date.now(),
     });
+
+    // If content was updated, process images
+    if (updates.content) {
+      // Schedule image processing
+      await ctx.scheduler.runAfter(0, "journalEntries:processEntryImages", {
+        entryId,
+        userId,
+      });
+    }
+
+    return updatedEntry;
+  },
+});
+
+// Helper function to extract all image URLs from journal content
+function extractImageUrls(content: any): string[] {
+  const urls: string[] = [];
+
+  // Recursive function to traverse the content tree
+  function traverse(node: any) {
+    if (node.type === 'image' && node.attrs?.src) {
+      urls.push(node.attrs.src);
+    }
+
+    if (node.content && Array.isArray(node.content)) {
+      node.content.forEach(traverse);
+    }
+  }
+
+  // Start traversal from the root
+  if (content && content.content) {
+    content.content.forEach(traverse);
+  }
+
+  return urls;
+}
+
+// Process images in a journal entry
+export const processEntryImages = action({
+  args: {
+    entryId: v.id("journalEntries"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get the journal entry
+    const entry = await ctx.runQuery("journalEntries:getJournalEntryById", {
+      entryId: args.entryId,
+    });
+
+    if (!entry) {
+      throw new Error("Journal entry not found");
+    }
+
+    // Extract all image URLs from the content
+    const imageUrls = extractImageUrls(entry.content);
+    
+    // Get all images associated with this entry
+    const existingImages = await ctx.runQuery("journalEntries:getEntryImages", {
+      entryId: args.entryId,
+    });
+
+    // Mark all existing images as not in use initially
+    for (const image of existingImages) {
+      await ctx.runMutation("journalEntries:updateImageUsage", {
+        imageId: image._id,
+        isInUse: false,
+      });
+    }
+
+    // Process each image URL found in the content
+    for (const imageUrl of imageUrls) {
+      // Skip non-base64 images that are already in Cloudinary
+      if (imageUrl.startsWith('http') && imageUrl.includes('cloudinary.com')) {
+        // Find the image in our database
+        const matchingImage = existingImages.find(img => img.imageUrl === imageUrl);
+        
+        if (matchingImage) {
+          // Mark as in use and update last used timestamp
+          await ctx.runMutation("journalEntries:updateImageUsage", {
+            imageId: matchingImage._id,
+            isInUse: true,
+            lastUsedAt: Date.now(),
+          });
+        } else {
+          // This is a Cloudinary image we don't have in our database
+          // Extract the public ID and add it to our database
+          const publicId = extractPublicIdFromUrl(imageUrl);
+          if (publicId) {
+            await ctx.runMutation("journalEntries:trackImage", {
+              journalEntryId: args.entryId,
+              imageUrl,
+              publicId,
+              isInUse: true,
+            });
+          }
+        }
+        continue;
+      }
+
+      // Handle base64 images - these need to be uploaded to Cloudinary
+      if (imageUrl.startsWith('data:image')) {
+        try {
+          // Upload to Cloudinary via our API route
+          const response = await fetch(`${process.env.SITE_URL}/api/cloudinary/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              base64Image: imageUrl,
+              folder: `journal-images/${args.userId}`,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to upload image to Cloudinary:', await response.text());
+            continue;
+          }
+
+          const result = await response.json();
+          
+          if (result.success) {
+            // Track the new image in our database
+            await ctx.runMutation("journalEntries:trackImage", {
+              journalEntryId: args.entryId,
+              imageUrl: result.url,
+              publicId: result.publicId,
+              width: result.width,
+              height: result.height,
+              isInUse: true,
+            });
+
+            // Update the image URL in the content
+            // This requires a separate function to modify the content
+            await ctx.runMutation("journalEntries:replaceImageUrl", {
+              entryId: args.entryId,
+              oldUrl: imageUrl,
+              newUrl: result.url,
+            });
+          }
+        } catch (error) {
+          console.error('Error processing base64 image:', error);
+        }
+      }
+    }
+
+    // Schedule cleanup of unused images after 30 minutes
+    await ctx.scheduler.runAfter(30 * 60 * 1000, "journalEntries:cleanupUnusedImages", {
+      userId: args.userId,
+    });
+  },
+});
+
+// Track a new image in the database
+export const trackImage = mutation({
+  args: {
+    journalEntryId: v.id("journalEntries"),
+    imageUrl: v.string(),
+    publicId: v.string(),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    isInUse: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const now = Date.now();
+    
+    return await ctx.db.insert("journalImages", {
+      userId,
+      journalEntryId: args.journalEntryId,
+      imageUrl: args.imageUrl,
+      publicId: args.publicId,
+      uploadedAt: now,
+      lastUsedAt: now,
+      width: args.width,
+      height: args.height,
+      isInUse: args.isInUse,
+    });
+  },
+});
+
+// Update image usage status
+export const updateImageUsage = mutation({
+  args: {
+    imageId: v.id("journalImages"),
+    isInUse: v.boolean(),
+    lastUsedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const image = await ctx.db.get(args.imageId);
+    if (!image || image.userId !== userId) {
+      throw new Error("Image not found or unauthorized");
+    }
+
+    const updates: any = {
+      isInUse: args.isInUse,
+    };
+
+    if (args.lastUsedAt) {
+      updates.lastUsedAt = args.lastUsedAt;
+    }
+
+    return await ctx.db.patch(args.imageId, updates);
+  },
+});
+
+// Replace an image URL in journal content
+export const replaceImageUrl = mutation({
+  args: {
+    entryId: v.id("journalEntries"),
+    oldUrl: v.string(),
+    newUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.userId !== userId) {
+      throw new Error("Journal entry not found or unauthorized");
+    }
+
+    // Deep clone the content
+    const updatedContent = JSON.parse(JSON.stringify(entry.content));
+
+    // Recursive function to replace image URLs
+    function replaceImageSrc(node: any) {
+      if (node.type === 'image' && node.attrs?.src === args.oldUrl) {
+        node.attrs.src = args.newUrl;
+      }
+
+      if (node.content && Array.isArray(node.content)) {
+        node.content.forEach(replaceImageSrc);
+      }
+    }
+
+    // Start replacement from the root
+    if (updatedContent && updatedContent.content) {
+      updatedContent.content.forEach(replaceImageSrc);
+    }
+
+    // Update the entry with the modified content
+    return await ctx.db.patch(args.entryId, {
+      content: updatedContent,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Clean up unused images
+export const cleanupUnusedImages = action({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Find images that haven't been used for at least 30 minutes
+    const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
+    
+    const unusedImages = await ctx.runQuery("journalEntries:getUnusedImages", {
+      userId: args.userId,
+      cutoffTime: thirtyMinutesAgo,
+    });
+
+    // Delete each unused image
+    for (const image of unusedImages) {
+      try {
+        // Delete from Cloudinary
+        const response = await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            publicId: image.publicId,
+          }),
+        });
+
+        if (response.ok) {
+          // Delete from our database
+          await ctx.runMutation("journalEntries:deleteImage", {
+            imageId: image._id,
+          });
+        }
+      } catch (error) {
+        console.error('Error deleting unused image:', error);
+      }
+    }
+  },
+});
+
+// Delete an image from the database
+export const deleteImage = mutation({
+  args: {
+    imageId: v.id("journalImages"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const image = await ctx.db.get(args.imageId);
+    if (!image || image.userId !== userId) {
+      throw new Error("Image not found or unauthorized");
+    }
+
+    await ctx.db.delete(args.imageId);
+  },
+});
+
+// Get images for a specific journal entry
+export const getEntryImages = query({
+  args: {
+    entryId: v.id("journalEntries"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("journalImages")
+      .withIndex("by_journal_entry", (q) => q.eq("journalEntryId", args.entryId))
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+  },
+});
+
+// Get unused images for cleanup
+export const getUnusedImages = query({
+  args: {
+    userId: v.id("users"),
+    cutoffTime: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("journalImages")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("isInUse"), false),
+          q.lt(q.field("lastUsedAt"), args.cutoffTime)
+        )
+      )
+      .collect();
   },
 });
 
@@ -110,7 +469,54 @@ export const deleteJournalEntry = mutation({
       throw new Error("Journal entry not found or unauthorized");
     }
 
+    // Get all images associated with this entry
+    const images = await ctx.db
+      .query("journalImages")
+      .withIndex("by_journal_entry", (q) => q.eq("journalEntryId", args.entryId))
+      .collect();
+
+    // Schedule image deletion
+    if (images.length > 0) {
+      await ctx.scheduler.runAfter(0, "journalEntries:deleteEntryImages", {
+        imageIds: images.map(img => img._id),
+        publicIds: images.map(img => img.publicId),
+      });
+    }
+
     await ctx.db.delete(args.entryId);
+  },
+});
+
+// Delete all images associated with a journal entry
+export const deleteEntryImages = action({
+  args: {
+    imageIds: v.array(v.id("journalImages")),
+    publicIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Delete images from Cloudinary
+    for (const publicId of args.publicIds) {
+      try {
+        await fetch(`${process.env.SITE_URL}/api/cloudinary/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            publicId,
+          }),
+        });
+      } catch (error) {
+        console.error(`Error deleting image ${publicId} from Cloudinary:`, error);
+      }
+    }
+
+    // Delete image records from database
+    for (const imageId of args.imageIds) {
+      await ctx.runMutation("journalEntries:deleteImage", {
+        imageId,
+      });
+    }
   },
 });
 

@@ -39,7 +39,7 @@ import { createLowlight, common } from 'lowlight';
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
 import EditorBubbleMenu from './editor-bubble-menu';
-import { metadata } from '../../app/layout';
+import { extractPublicIdFromUrl } from '@/lib/cloudinary';
 
 interface JournalEditorProps {
   entryId?: Id<"journalEntries">;
@@ -112,6 +112,74 @@ const SlashCommandExtension = Extension.create({
   },
 });
 
+// Custom extension to handle image uploads to Cloudinary
+const CloudinaryImageUploader = Extension.create({
+  name: 'cloudinaryImageUploader',
+
+  addStorage() {
+    return {
+      pendingUploads: new Map<string, { timestamp: number, uploaded: boolean }>(),
+    };
+  },
+
+  onUpdate() {
+    // This will run on every editor update
+    this.storage.pendingUploads.forEach((data, imageUrl) => {
+      const now = Date.now();
+      
+      // If image has been in editor for more than 10 seconds and not uploaded
+      if (!data.uploaded && now - data.timestamp > 10000) {
+        this.options.onImageStabilized(imageUrl);
+        
+        // Mark as uploaded to prevent duplicate uploads
+        this.storage.pendingUploads.set(imageUrl, {
+          ...data,
+          uploaded: true
+        });
+      }
+    });
+  },
+
+  addProseMirrorPlugins() {
+    const extension = this;
+    
+    return [
+      new Plugin({
+        props: {
+          // Track when images are inserted
+          handleDOMEvents: {
+            paste(view, event) {
+              // Let the default paste handler run first
+              return false;
+            }
+          }
+        },
+        appendTransaction(transactions, oldState, newState) {
+          // Check if any images were added in these transactions
+          let hasNewImages = false;
+          
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name === 'image') {
+              const src = node.attrs.src;
+              
+              // Only track base64 images
+              if (src && src.startsWith('data:image') && !extension.storage.pendingUploads.has(src)) {
+                extension.storage.pendingUploads.set(src, {
+                  timestamp: Date.now(),
+                  uploaded: false
+                });
+                hasNewImages = true;
+              }
+            }
+          });
+          
+          return null;
+        }
+      })
+    ];
+  }
+});
+
 const JournalEditor: React.FC<JournalEditorProps> = ({
   entryId,
   initialContent,
@@ -127,6 +195,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [slashCommandRange, setSlashCommandRange] = useState<any>(null);
   const [slashCommandPosition, setSlashCommandPosition] = useState<{ top: number; left: number } | null>(null);
   const [slashMenuHeight, setSlashMenuHeight] = useState<number>(0);
+  const [pendingImageUploads, setPendingImageUploads] = useState<Map<string, string>>(new Map());
 
   const slashCommandRef = useRef<SlashCommandRef>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -134,6 +203,66 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const slashMenuRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
+
+  // Handle image upload to Cloudinary
+  const handleImageStabilized = async (imageUrl: string) => {
+    if (!imageUrl.startsWith('data:image')) return;
+    
+    try {
+      const response = await fetch('/api/cloudinary/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          base64Image: imageUrl,
+          folder: 'journal-images',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image to Cloudinary');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Store the mapping of base64 to Cloudinary URL
+        setPendingImageUploads(prev => {
+          const newMap = new Map(prev);
+          newMap.set(imageUrl, data.url);
+          return newMap;
+        });
+        
+        // Update the image in the editor
+        if (editor) {
+          // Find all instances of this image and replace them
+          const { state, view } = editor;
+          const { tr } = state;
+          let hasChanges = false;
+          
+          state.doc.descendants((node, pos) => {
+            if (node.type.name === 'image' && node.attrs.src === imageUrl) {
+              tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                src: data.url,
+              });
+              hasChanges = true;
+            }
+          });
+          
+          if (hasChanges) {
+            view.dispatch(tr);
+            
+            // Save the entry with updated content
+            debouncedSave();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading image to Cloudinary:', error);
+    }
+  };
 
   const editor = useEditor({
     extensions: [
@@ -148,7 +277,8 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         HTMLAttributes: {
           class: 'rounded-lg max-w-full h-auto shadow-md my-4 cursor-pointer hover:shadow-lg transition-shadow',
         },
-        allowBase64: true
+        allowBase64: true,
+        draggable: true,
       }),
 
       // Enhanced Link with click handling
@@ -207,7 +337,12 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         },
       }),
 
-      DragHandle,
+      // Drag handle for moving blocks
+      DragHandle.configure({
+        HTMLAttributes: {
+          class: 'tiptap-drag-handle',
+        },
+      }),
 
       // File handler for drag & drop
       FileHandler.configure({
@@ -245,6 +380,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           });
         },
       }),
+      
       // Subscript and Superscript
       Subscript,
       Superscript,
@@ -299,6 +435,11 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
       // Slash command extension
       SlashCommandExtension,
+
+      // Cloudinary image uploader
+      CloudinaryImageUploader.configure({
+        onImageStabilized: handleImageStabilized,
+      }),
     ],
     content: initialContent || {
       type: 'doc',
@@ -311,7 +452,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
+        class: 'tiptap ProseMirror prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
         spellcheck: 'true',
       },
       handleKeyDown: (view, event) => {
@@ -431,15 +572,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         reader.onload = (e) => {
           const url = e.target?.result as string;
           editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
-
-          // Set up a timer to check if the image is still in the editor after 10 seconds
-          // In a real implementation, this would upload to Cloudinary
-          setTimeout(() => {
-            if (editor && editor.isActive('image')) {
-              console.log('Image still in editor after 10 seconds - would upload to Cloudinary');
-              // Here you would upload to Cloudinary and update the src
-            }
-          }, 10000);
         };
         reader.readAsDataURL(file);
       }
