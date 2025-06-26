@@ -56,14 +56,17 @@ interface JournalEditorProps {
 
 const lowlight = createLowlight(common);
 
-// Slash command extension with proper DOM handling
+// Create a plugin key for the slash command
+const slashCommandPluginKey = new PluginKey('slashCommand');
+
+// Slash command extension with proper plugin state handling
 const SlashCommandExtension = Extension.create({
   name: 'slashCommand',
 
   addProseMirrorPlugins() {
     return [
       new Plugin({
-        key: new PluginKey('slashCommand'),
+        key: slashCommandPluginKey,
         state: {
           init() {
             return {
@@ -99,10 +102,10 @@ const SlashCommandExtension = Extension.create({
         },
         props: {
           handleKeyDown: (view, event) => {
-            const { state } = view;
-            const pluginState = this.getState(state);
+            // Get plugin state using the plugin key
+            const pluginState = slashCommandPluginKey.getState(view.state);
 
-            if (!pluginState.open) return false;
+            if (!pluginState?.open) return false;
 
             // Let the slash command component handle the key events
             return false;
@@ -272,22 +275,15 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       },
     },
     onUpdate: ({ editor }) => {
-      // Check for slash command
-      const { state } = editor;
-      const { selection } = state;
-      const { from, to } = selection;
-
-      // Look for '/' at the beginning of a line or after whitespace
-      const textBefore = state.doc.textBetween(Math.max(0, from - 10), from, '');
-      const match = textBefore.match(/\/[\w\s]*$/);
-
-      if (match && selection.empty) {
-        const startPos = from - match[0].length;
-        setSlashCommandRange({ from: startPos, to: from });
+      // Check for slash command using the plugin state
+      const pluginState = slashCommandPluginKey.getState(editor.state);
+      
+      if (pluginState?.open && pluginState?.range) {
+        setSlashCommandRange(pluginState.range);
         
         // Calculate position safely
         try {
-          const coords = editor.view.coordsAtPos(startPos);
+          const coords = editor.view.coordsAtPos(pluginState.range.from);
           const editorRect = editorRef.current?.getBoundingClientRect();
           
           if (coords && editorRect) {
