@@ -3,15 +3,15 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Editor } from '@tiptap/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Type, 
-  Heading1, 
-  Heading2, 
-  Heading3, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Code, 
+import {
+  Type,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
   Image,
   Minus,
   CheckSquare
@@ -153,7 +153,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         }
 
         if (event.key === 'Escape') {
-          return true;
+          return false;
         }
 
         return false;
@@ -184,18 +184,16 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           {filteredCommands.map((command, index) => (
             <motion.button
               key={command.title}
-              className={`w-full text-left p-2 rounded-md transition-colors duration-200 flex items-center space-x-3 ${
-                index === selectedIndex
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted/50 text-foreground'
-              }`}
+              className={`w-full text-left p-2 rounded-md transition-colors duration-200 flex items-center space-x-3 ${index === selectedIndex
+                ? 'bg-primary/10 text-primary'
+                : 'hover:bg-muted/50 text-foreground'
+                }`}
               onClick={() => selectItem(index)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <div className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                index === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
-              }`}>
+              <div className={`w-8 h-8 rounded-md flex items-center justify-center ${index === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
+                }`}>
                 <command.icon className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">

@@ -19,9 +19,34 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { Save, Loader2 } from 'lucide-react';
+import CharacterCount from '@tiptap/extension-character-count';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Details from '@tiptap/extension-details';
+import DetailsContent from '@tiptap/extension-details-content';
+import DetailsSummary from '@tiptap/extension-details-summary';
+import Emoji from '@tiptap/extension-emoji';
+import FileHandler from '@tiptap/extension-file-handler';
+import FontFamily from '@tiptap/extension-font-family';
+import Mathematics from '@tiptap/extension-mathematics';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import Table from '@tiptap/extension-table';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TableRow from '@tiptap/extension-table-row';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import TextAlign from '@tiptap/extension-text-align';
+import Typography from '@tiptap/extension-typography';
+import Underline from '@tiptap/extension-underline';
+import Youtube from '@tiptap/extension-youtube';
+import { createLowlight, common } from 'lowlight';
+// import { common } from 'lowlight/lib/common';
 
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
+import EditorBubbleMenu from './editor-bubble-menu';
+import EditorFloatingMenu from './editor-floating-menu';
 
 interface JournalEditorProps {
   entryId?: Id<"journalEntries">;
@@ -61,6 +86,8 @@ const SlashCommandExtension = Extension.create({
   },
 });
 
+const lowlight = createLowlight(common);
+
 const JournalEditor: React.FC<JournalEditorProps> = ({
   entryId,
   initialContent,
@@ -74,10 +101,10 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSlashCommand, setShowSlashCommand] = useState(false);
   const [slashCommandRange, setSlashCommandRange] = useState<any>(null);
-  
+
   const slashCommandRef = useRef<SlashCommandRef>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  
+  const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
+
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
 
   const editor = useEditor({
@@ -111,6 +138,43 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       Highlight.configure({
         multicolor: true,
       }),
+      CharacterCount,
+      CodeBlockLowlight.configure({
+        lowlight,
+      }),
+      Details,
+      DetailsContent,
+      DetailsSummary,
+      Emoji.configure({
+        // You might want to configure emoji further, e.g., with a emoji picker
+        // For now, basic setup
+      }),
+      FileHandler, // Requires a handler for actual file uploads
+      FontFamily,
+      Mathematics,
+      Subscript,
+      Superscript,
+      Table.configure({
+        resizable: true,
+      }),
+      TableCell,
+      TableHeader,
+      TableRow,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Typography,
+      Underline,
+      Youtube.configure({
+        nocookie: true,
+        width: 640,
+        height: 480,
+        modestBranding: true,
+      }),
     ],
     content: initialContent || {
       type: 'doc',
@@ -135,7 +199,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         if (event.key === '/' && view.state.selection.empty) {
           const { from } = view.state.selection;
           const textBefore = view.state.doc.textBetween(Math.max(0, from - 1), from, '');
-          
+
           if (textBefore === '' || textBefore === '\n') {
             // We'll handle this in the update function
             return false;
@@ -170,6 +234,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       }
 
       // Auto-save
+      console.log("Editor updated, calling debouncedSave()");
       debouncedSave();
     },
   });
@@ -181,25 +246,31 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
     saveTimeoutRef.current = setTimeout(async () => {
       await saveContent();
-    }, 1500);
+    }, 1500); // Re-enable debounce with 1.5 second delay
   }, [editor, title, entryId]);
 
   const saveContent = async () => {
-    if (!editor || !entryId) return;
+    if (!editor || !entryId) {
+      console.log("Save aborted: Editor or entryId not available.", { editor: !!editor, entryId: !!entryId });
+      return;
+    }
 
     setIsSaving(true);
+    console.log("Attempting to save content...");
     try {
       const content = editor.getJSON();
+      console.log("Content to be saved:", content);
       await updateJournalEntry({
         entryId,
         title: title || 'Untitled',
         content,
       });
-      
+
       setLastSaved(new Date());
       if (onSave) {
         onSave(content, title);
       }
+      console.log("Content saved successfully.");
     } catch (error) {
       console.error('Error saving journal entry:', error);
       toast.error('Failed to save journal entry');
@@ -260,7 +331,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           className="text-3xl font-bold bg-transparent border-none outline-none placeholder:text-muted-foreground flex-1 mr-4"
           onBlur={debouncedSave}
         />
-        
+
         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
           {isSaving ? (
             <>
@@ -292,10 +363,18 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         {/* Slash Command Menu */}
         <AnimatePresence>
           {showSlashCommand && slashCommandRange && (
-            <div className="absolute z-50" style={{ 
-              top: '100px', // You'd calculate this based on cursor position
-              left: '50px' 
-            }}>
+            <div
+              className="absolute z-50"
+              style={(() => {
+                if (!editor) return {};
+                const { from } = slashCommandRange;
+                const coords = editor.view.coordsAtPos(from);
+                return {
+                  top: `${coords.top + window.scrollY}px`,
+                  left: `${coords.left + window.scrollX}px`,
+                };
+              })()}
+            >
               <SlashCommand
                 ref={slashCommandRef}
                 editor={editor}
@@ -304,6 +383,10 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
             </div>
           )}
         </AnimatePresence>
+        {/* Bubble Menu */}
+        <EditorBubbleMenu editor={editor} />
+        {/* Floating Menu */}
+        <EditorFloatingMenu editor={editor} />
       </div>
 
       {/* Keyboard Shortcuts Help */}
