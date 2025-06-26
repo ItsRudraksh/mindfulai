@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { elevenLabsClient } from "@/lib/elevenlabs";
+import { getServerSession } from "next-auth/next";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user's global memory if available
+    let globalMemory = "";
+    try {
+      // In a real implementation, you would fetch the user's global memory from your database
+      // For now, we'll use a placeholder
+      // const session = await getServerSession();
+      // if (session?.user?.id) {
+      //   const user = await db.users.findUnique({ where: { id: session.user.id } });
+      //   globalMemory = user?.globalMemory || "";
+      // }
+    } catch (error) {
+      console.error("Error fetching global memory:", error);
+    }
+
+    // Enhance conversation context with global memory if available
+    let enhancedContext = conversationContext;
+    if (globalMemory) {
+      enhancedContext = `${conversationContext}\n\nAdditional context about the user: ${globalMemory}`;
+    }
+
     // Initiate voice call with timeout
     const callPromise = elevenLabsClient.initiateCall({
       agentId: process.env.ELEVENLABS_AGENT_ID!,
@@ -36,7 +58,7 @@ export async function POST(request: NextRequest) {
       conversationInitiationClientData: {
         dynamicVariables: {
           firstName: firstName,
-          conversationContext: conversationContext,
+          conversationContext: enhancedContext,
         },
       },
     });

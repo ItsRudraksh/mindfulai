@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Video, ArrowLeft, MoreVertical, Copy, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { useVideoSession } from '@/contexts/video-session-context';
@@ -24,6 +24,7 @@ import {
 export default function VideoSession() {
   const { state, dispatch, createSession, endSession, restoreSession } = useVideoSession();
   const user = useQuery(api.users.current);
+  const globalMemory = user?.globalMemory;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -71,6 +72,10 @@ export default function VideoSession() {
       const firstName = user.name?.split(' ')[0] || 'there';
       await createSession(state.stateDescription, firstName);
       toast.success('Session created successfully!');
+
+      // After session creation, update global memory
+      // This would typically be handled by a background job after the session ends
+      // but we're setting up the infrastructure here
     } catch (error) {
       toast.error('Failed to create session. Please try again.');
     }
@@ -80,6 +85,23 @@ export default function VideoSession() {
     try {
       await endSession();
       toast.success('Video session ended successfully!');
+
+      // After session ends, update global memory
+      if (user && state.sessionId) {
+        // In a real implementation, this would be handled by a background job
+        // with a delay to ensure all data is processed
+        setTimeout(async () => {
+          try {
+            // This would be the actual call in a complete implementation
+            // await updateGlobalMemoryFromVideoSession({
+            //   userId: user._id,
+            //   sessionId: state.sessionId,
+            // });
+          } catch (error) {
+            console.error('Error updating global memory after video session:', error);
+          }
+        }, 120000); // 2 minute delay
+      }
     } catch (error) {
       toast.error('Failed to end session properly.');
     }
@@ -319,6 +341,14 @@ export default function VideoSession() {
                     <p className="text-xs bg-muted/30 p-2 rounded text-muted-foreground backdrop-blur-subtle">
                       {state.stateDescription}
                     </p>
+                  </div>
+                )}
+                {globalMemory && (
+                  <div>
+                    <span className="text-sm text-muted-foreground block mb-1">Personalization</span>
+                    <Badge variant="outline" className="bg-primary/5">
+                      Global Memory Active
+                    </Badge>
                   </div>
                 )}
               </CardContent>

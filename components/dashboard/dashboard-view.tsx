@@ -8,14 +8,28 @@ import MoodCheckIn from './mood-check-in';
 import QuickActions from './quick-actions';
 import RecentSessions from './recent-sessions';
 import ProgressOverview from './progress-overview';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardView() {
   const [currentMood, setCurrentMood] = useState<string | null>(null);
   const [weeklyProgress, setWeeklyProgress] = useState(65);
   const user = useQuery(api.users.current);
+  const hasCompletedOnboarding = useQuery(api.users.hasCompletedOnboarding);
   const recentSessions = useQuery(api.sessions.getUserSessions) || [];
+  const router = useRouter();
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (hasCompletedOnboarding === false) {
+      router.push('/onboarding');
+    }
+  }, [hasCompletedOnboarding, router]);
+
+  if (hasCompletedOnboarding === false) {
+    return null; // Don't render anything while redirecting
+  }
 
   if (!user) {
     return (

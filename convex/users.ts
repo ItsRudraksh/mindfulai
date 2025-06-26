@@ -42,6 +42,7 @@ export const createUserProfile = mutation({
       email: args.email,
       createdAt: now,
       updatedAt: now,
+      onboardingComplete: false, // New users need to complete onboarding
       preferences: {
         notifications: true,
         theme: "dark",
@@ -95,5 +96,58 @@ export const updateSubscription = mutation({
       subscription: args.subscription,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// New mutation for onboarding
+export const updateUserProfileOnboarding = mutation({
+  args: {
+    dob: v.string(),
+    profession: v.string(),
+    aboutMe: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    return await ctx.db.patch(userId, {
+      ...args,
+      onboardingComplete: true,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Mutation to update global memory
+export const updateGlobalMemory = mutation({
+  args: {
+    globalMemory: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    return await ctx.db.patch(userId, {
+      globalMemory: args.globalMemory,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Query to check if user has completed onboarding
+export const hasCompletedOnboarding = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return false;
+    }
+
+    const user = await ctx.db.get(userId);
+    return !!user?.onboardingComplete;
   },
 });

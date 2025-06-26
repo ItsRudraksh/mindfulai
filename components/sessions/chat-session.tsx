@@ -72,6 +72,7 @@ export default function ChatSession() {
   const deleteMessageMutation = useMutation(api.messages.deleteMessage);
   const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
   const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
+  const updateGlobalMemoryFromChat = useMutation(api.actions.globalMemory.updateGlobalMemoryFromChat);
 
   // Queries
   const conversationMessages = useQuery(
@@ -105,6 +106,20 @@ export default function ChatSession() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Update global memory when leaving the chat page
+  useEffect(() => {
+    return () => {
+      if (chatState.currentConversationId && user) {
+        updateGlobalMemoryFromChat({
+          userId: user._id,
+          conversationId: chatState.currentConversationId,
+        }).catch(error => {
+          console.error('Error updating global memory from chat:', error);
+        });
+      }
+    };
+  }, [chatState.currentConversationId, user, updateGlobalMemoryFromChat]);
+
   const handleCreateNewConversation = async () => {
     const conversationId = await createNewConversation();
     if (conversationId) {
@@ -137,6 +152,9 @@ export default function ChatSession() {
         { role: 'user', content: userMessage }
       ];
 
+      // Get user's global memory if available
+      const globalMemory = user?.globalMemory || "";
+
       // Call AI API with enhanced context management
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -150,6 +168,7 @@ export default function ChatSession() {
             mood: messages.find(m => m.metadata?.flagged)?.metadata?.flagReason,
             previousSessions: chatState.conversations.length,
             rollingSummary: currentConversation?.rollingSummary || "",
+            globalMemory: globalMemory, // Pass global memory to AI
           },
         }),
       });
@@ -220,6 +239,9 @@ export default function ChatSession() {
               content: msg.content
             })) as ChatMessage[];
 
+          // Get user's global memory if available
+          const globalMemory = user?.globalMemory || "";
+
           // Call AI API for regeneration with edited content
           const response = await fetch('/api/chat', {
             method: 'POST',
@@ -232,6 +254,7 @@ export default function ChatSession() {
                 name: user?.name?.split(' ')[0],
                 previousSessions: chatState.conversations.length,
                 rollingSummary: currentConversation?.rollingSummary || "",
+                globalMemory: globalMemory, // Pass global memory to AI
               },
               action: 'regenerate',
             }),
@@ -284,6 +307,9 @@ export default function ChatSession() {
           content: msg.content
         })) as ChatMessage[];
 
+      // Get user's global memory if available
+      const globalMemory = user?.globalMemory || "";
+
       // Call AI API for regeneration
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -296,6 +322,7 @@ export default function ChatSession() {
             name: user?.name?.split(' ')[0],
             previousSessions: chatState.conversations.length,
             rollingSummary: currentConversation?.rollingSummary || "",
+            globalMemory: globalMemory, // Pass global memory to AI
           },
           action: 'regenerate',
         }),

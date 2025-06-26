@@ -19,7 +19,9 @@ import { BackgroundGradientAnimation } from '@/components/ui/background-gradient
 export default function VoiceSession() {
   const { state, dispatch, initiateCall, restoreSession, checkCallStatus } = useVoiceSession();
   const user = useQuery(api.users.current);
+  const globalMemory = user?.globalMemory;
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
+  const updateGlobalMemoryFromVoiceSession = useMutation(api.actions.globalMemory.updateGlobalMemoryFromVoiceSession);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -35,6 +37,24 @@ export default function VoiceSession() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [state.isConnected, state.callStatus]);
+
+  // Update global memory when call is completed
+  useEffect(() => {
+    if (state.callStatus === "done" && state.sessionId && user) {
+      // In a real implementation, this would be handled by a background job
+      // with a delay to ensure all data is processed
+      setTimeout(async () => {
+        try {
+          await updateGlobalMemoryFromVoiceSession({
+            userId: user._id,
+            sessionId: state.sessionId!,
+          });
+        } catch (error) {
+          console.error('Error updating global memory after voice session:', error);
+        }
+      }, 120000); // 2 minute delay
+    }
+  }, [state.callStatus, state.sessionId, user, updateGlobalMemoryFromVoiceSession]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -455,6 +475,14 @@ export default function VoiceSession() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Last Check</span>
                     <span className="text-xs">{formatLastStatusCheck(state.lastStatusCheck)}</span>
+                  </div>
+                )}
+                {globalMemory && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Personalization</span>
+                    <Badge variant="outline" className="bg-primary/5">
+                      Global Memory Active
+                    </Badge>
                   </div>
                 )}
                 <div className="flex justify-between">

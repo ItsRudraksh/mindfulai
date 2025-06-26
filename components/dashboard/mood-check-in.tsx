@@ -39,6 +39,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
   const todaysMoodEntries = useQuery(api.moodEntries.getMoodEntriesForToday);
   const createMoodEntryMutation = useMutation(api.moodEntries.createMoodEntry);
   const updateMoodEntryMutation = useMutation(api.moodEntries.updateMoodEntry);
+  const updateGlobalMemoryFromMood = useMutation(api.actions.globalMemory.updateGlobalMemoryFromMood);
 
   const moods = [
     { id: 'great', icon: Smile, label: 'Great', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20', intensity: 9 },
@@ -60,11 +61,18 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
 
     try {
       // Create mood entry in database
-      await createMoodEntryMutation({
+      const entryId = await createMoodEntryMutation({
         mood: selectedMood.label,
         intensity: selectedMood.intensity,
         notes: `Selected from mood check-in at ${new Date().toLocaleTimeString()}`,
       });
+
+      // Update global memory with new mood entry
+      if (user) {
+        await updateGlobalMemoryFromMood({
+          userId: user._id,
+        });
+      }
 
       toast.success('Mood recorded successfully!');
     } catch (error) {

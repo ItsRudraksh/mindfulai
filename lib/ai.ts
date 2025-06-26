@@ -423,6 +423,7 @@ export async function generateTherapyResponse(
     name?: string;
     mood?: string;
     previousSessions?: number;
+    globalMemory?: string; // Added global memory to context
   },
   rollingSummary?: string
 ): Promise<{ content: string; flagged?: boolean; flagReason?: string }> {
@@ -441,6 +442,12 @@ export async function generateTherapyResponse(
     let contextualBackground = "";
     if (rollingSummary && rollingSummary.trim()) {
       contextualBackground = `\n\nPREVIOUS CONVERSATION CONTEXT:\n${rollingSummary}\n\nThis summary provides background context for the ongoing therapeutic relationship. Use it to maintain continuity and reference previous discussions when relevant.`;
+    }
+
+    // Add global memory context if available
+    let globalMemoryContext = "";
+    if (userContext?.globalMemory) {
+      globalMemoryContext = `\n\nUSER GLOBAL MEMORY:\n${userContext.globalMemory}\n\nThis is the user's comprehensive profile and history. Use this information to personalize your responses and maintain continuity across all interactions. Reference relevant details naturally when appropriate.`;
     }
 
     const systemPrompt = `You are a compassionate, professional AI therapy companion specializing in mental health support. Your role is to provide empathetic, culturally-sensitive therapeutic guidance.
@@ -504,6 +511,7 @@ ${userContext?.name ? `The user's name is ${userContext.name}.` : ""}
 ${userContext?.mood ? `They described their current state as: "${userContext.mood}"` : ""}
 ${userContext?.previousSessions ? `This user has had ${userContext.previousSessions} previous therapy sessions.` : "This appears to be a new user."}
 ${contextualBackground}
+${globalMemoryContext}
 
 Remember: You are a mental health companion. Be genuinely helpful, naturally empathetic, and culturally aware. Use examples thoughtfully, not automatically.`;
 
@@ -623,4 +631,192 @@ export function shouldSummarizeContext(
   // Trigger summarization if total context exceeds ~2000 tokens
   // This leaves room for system prompt and response
   return historyTokens + summaryTokens > 2000;
+}
+
+// New function to generate initial global memory
+export async function generateInitialGlobalMemory(userProfile: {
+  name?: string;
+  dob: string;
+  profession: string;
+  aboutMe: string;
+}): Promise<string> {
+  try {
+    const { name, dob, profession, aboutMe } = userProfile;
+    
+    // Calculate age from DOB
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    const systemPrompt = `You are an expert mental health AI assistant tasked with creating a comprehensive user profile for therapeutic purposes. This profile will be used to personalize future therapy interactions across multiple modalities (text, voice, video).
+
+TASK: Create a detailed, well-structured global memory profile based on the user's onboarding information. This profile will be referenced in future therapy sessions to maintain continuity of care.
+
+GUIDELINES:
+1. Create a comprehensive profile that captures key aspects of the user's identity, background, and mental health context
+2. Structure the information in clear sections with headings
+3. Include factual information provided by the user
+4. Make reasonable inferences about potential therapeutic needs based on their self-description
+5. Identify potential therapeutic approaches that might benefit this user
+6. Keep the total length to approximately 5000 tokens (about 3500-4000 words)
+7. Write in third person, professional clinical style
+8. Include a "Last Updated" timestamp
+
+REQUIRED SECTIONS:
+- Basic Information (name, age, profession)
+- Self-Description (based on their "about me" text)
+- Potential Therapeutic Focus Areas (inferred from their self-description)
+- Communication Style & Preferences (inferred)
+- Potential Therapeutic Approaches
+- Interaction History (initially empty, to be updated later)
+- Session Notes (initially empty, to be updated later)
+- Mood Patterns (initially empty, to be updated later)
+
+IMPORTANT: This is an internal therapeutic profile that will never be shown to the user. It should be written in a professional, clinical style for continuity of therapeutic care.`;
+
+    const userPrompt = `User Onboarding Information:
+Name: ${name || "User"}
+Date of Birth: ${dob}
+Age: ${age}
+Profession: ${profession}
+About Me: "${aboutMe}"
+
+Current Date: ${new Date().toISOString().split('T')[0]}`;
+
+    const completion = await client.chat.completions.create({
+      model: "anthropic/claude-opus-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 5000,
+    });
+
+    const response = completion.choices[0]?.message?.content;
+
+    if (!response) {
+      throw new Error("No response from AI");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Error generating initial global memory:", error);
+    
+    // Create a basic fallback profile if AI generation fails
+    const { name, dob, profession, aboutMe } = userProfile;
+    const today = new Date().toISOString().split('T')[0];
+    
+    return `# User Profile
+Last Updated: ${today}
+
+## Basic Information
+Name: ${name || "User"}
+Date of Birth: ${dob}
+Profession: ${profession}
+
+## Self-Description
+${aboutMe}
+
+## Potential Therapeutic Focus Areas
+To be determined through ongoing interactions.
+
+## Communication Style & Preferences
+To be determined through ongoing interactions.
+
+## Potential Therapeutic Approaches
+- Cognitive Behavioral Therapy
+- Mindfulness-Based Approaches
+- Supportive Therapy
+
+## Interaction History
+No interactions recorded yet.
+
+## Session Notes
+No sessions completed yet.
+
+## Mood Patterns
+No mood data available yet.`;
+  }
+}
+
+// New function to update global memory with new context
+export async function updateGlobalMemoryWithContext(
+  existingMemory: string,
+  newContext: {
+    type: "mood_entries" | "video_session" | "voice_session" | "journal_entries" | "chat_conversation";
+    data: any;
+  }
+): Promise<string> {
+  try {
+    const systemPrompt = `You are an expert mental health AI assistant tasked with maintaining a comprehensive user profile for therapeutic purposes. This profile is used to personalize therapy interactions across multiple modalities (text, voice, video).
+
+TASK: Update the existing global memory profile with new information from a recent user interaction. Integrate this new information seamlessly while maintaining the overall structure and keeping the total length to approximately 5000 tokens.
+
+GUIDELINES:
+1. Preserve the existing structure and sections of the profile
+2. Update the "Last Updated" timestamp
+3. Add the new information to the appropriate section(s)
+4. Summarize older information as needed to maintain the token limit
+5. Identify and note any significant patterns, changes, or insights
+6. Maintain a professional, clinical tone throughout
+7. Keep the total length to approximately 5000 tokens
+
+IMPORTANT: This is an internal therapeutic profile that will never be shown to the user. It should be written in a professional, clinical style for continuity of therapeutic care.`;
+
+    const userPrompt = `Existing Global Memory Profile:
+${existingMemory}
+
+New Information Type: ${newContext.type}
+New Information:
+${JSON.stringify(newContext.data, null, 2)}
+
+Current Date: ${new Date().toISOString().split('T')[0]}`;
+
+    const completion = await client.chat.completions.create({
+      model: "anthropic/claude-opus-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 5000,
+    });
+
+    const response = completion.choices[0]?.message?.content;
+
+    if (!response) {
+      throw new Error("No response from AI");
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Error updating global memory:", error);
+    
+    // Return the existing memory if update fails
+    return existingMemory;
+  }
+}
+
+// Function to generate personalized meditation plans based on global memory
+// This is a placeholder for future implementation
+export async function generatePersonalizedMeditationPlan(
+  globalMemory: string,
+  userPreferences?: {
+    duration?: string;
+    focus?: string;
+    experience?: string;
+  }
+): Promise<any> {
+  // This function would use the global memory to create personalized meditation plans
+  // Implementation to be added in the future
+  return {
+    title: "Personalized Meditation Plan",
+    description: "A meditation plan tailored to your needs",
+    sessions: []
+  };
 }

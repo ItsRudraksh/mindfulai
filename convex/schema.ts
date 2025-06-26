@@ -15,6 +15,12 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
+    // New fields for onboarding and global memory
+    dob: v.optional(v.string()),
+    profession: v.optional(v.string()),
+    aboutMe: v.optional(v.string()),
+    onboardingComplete: v.optional(v.boolean()),
+    globalMemory: v.optional(v.string()),
     subscription: v.optional(
       v.object({
         plan: v.string(),
