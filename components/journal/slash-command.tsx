@@ -12,7 +12,6 @@ import {
   ListOrdered,
   Quote,
   Code,
-  Image,
   Minus,
   CheckSquare,
   Youtube,
@@ -143,31 +142,6 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         category: 'Content',
       },
       // Media
-      {
-        title: 'Image',
-        description: 'Upload an image.',
-        icon: Image,
-        command: () => {
-          editor.chain().focus().deleteRange(range).run();
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = 'image/*';
-          input.onchange = (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                const url = e.target?.result as string;
-                editor.chain().focus().setImage({ src: url, alt: file.name }).run();
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-          input.click();
-        },
-        keywords: ['image', 'photo', 'picture', 'upload'],
-        category: 'Media',
-      },
       {
         title: 'YouTube',
         description: 'Embed a YouTube video.',
@@ -363,7 +337,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
             No matching commands
             {query && (
               <div className="text-xs mt-1">
-                Try searching for: text, heading, list, image
+                Try searching for: text, heading, list
               </div>
             )}
           </div>

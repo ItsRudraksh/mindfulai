@@ -165,23 +165,6 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_created_at", ["createdAt"]),
 
-  // Table for tracking journal images
-  journalImages: defineTable({
-    userId: v.id("users"),
-    journalEntryId: v.optional(v.id("journalEntries")),
-    storageId: v.string(), // Convex storage ID
-    uploadedAt: v.number(),
-    lastUsedAt: v.number(),
-    width: v.optional(v.number()),
-    height: v.optional(v.number()),
-    isInUse: v.boolean(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_journal_entry", ["journalEntryId"])
-    .index("by_storage_id", ["storageId"])
-    .index("by_last_used", ["lastUsedAt"])
-    .index("by_usage_status", ["isInUse"]),
-
   goals: defineTable({
     userId: v.id("users"),
     title: v.string(),

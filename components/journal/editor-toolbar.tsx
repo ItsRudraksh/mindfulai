@@ -19,7 +19,6 @@ import {
   Undo,
   Redo,
   Link,
-  Image,
   Palette,
   Highlighter,
   AlignLeft,
@@ -44,10 +43,9 @@ import { motion } from 'framer-motion';
 
 interface EditorToolbarProps {
   editor: Editor;
-  onImageUpload?: () => void;
 }
 
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) => {
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
   if (!editor) {
     return null;
   }
@@ -397,12 +395,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         title="Add Link (Ctrl+K)"
       >
         <Link className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={onImageUpload || (() => { })}
-        title="Add Image"
-      >
-        <Image className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={insertYoutube}

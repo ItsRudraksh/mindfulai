@@ -3,16 +3,13 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Color } from '@tiptap/extension-color';
 import TextStyle from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
-import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { motion } from 'framer-motion';
-import { useMutation, useAction } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -24,7 +21,6 @@ import BubbleMenu from '@tiptap/extension-bubble-menu';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import DragHandle from '@tiptap/extension-drag-handle';
-import FileHandler from '@tiptap/extension-file-handler';
 import FontFamily from '@tiptap/extension-font-family';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
@@ -100,73 +96,6 @@ const SlashCommandExtension = Extension.create({
   },
 });
 
-// Custom extension to handle image uploads
-const ImageUploadExtension = Extension.create({
-  name: 'imageUpload',
-
-  addStorage() {
-    return {
-      pendingUploads: new Map<string, { timestamp: number, uploaded: boolean }>(),
-    };
-  },
-
-  onUpdate() {
-    // This will run on every editor update
-    this.storage.pendingUploads.forEach((data, imageUrl) => {
-      const now = Date.now();
-      
-      // If image has been in editor for more than 10 seconds and not uploaded
-      if (!data.uploaded && now - data.timestamp > 10000) {
-        this.options.onImageStabilized(imageUrl);
-        
-        // Mark as uploaded to prevent duplicate uploads
-        this.storage.pendingUploads.set(imageUrl, {
-          ...data,
-          uploaded: true
-        });
-      }
-    });
-  },
-
-  addProseMirrorPlugins() {
-    const extension = this;
-    
-    return [
-      new Plugin({
-        props: {
-          handleDOMEvents: {
-            paste(view, event) {
-              // Let the default paste handler run first
-              return false;
-            }
-          }
-        },
-        appendTransaction(transactions, oldState, newState) {
-          // Check if any images were added in these transactions
-          let hasNewImages = false;
-          
-          newState.doc.descendants((node, pos) => {
-            if (node.type.name === 'image') {
-              const src = node.attrs.src;
-              
-              // Only track base64 images
-              if (src && src.startsWith('data:image') && !extension.storage.pendingUploads.has(src)) {
-                extension.storage.pendingUploads.set(src, {
-                  timestamp: Date.now(),
-                  uploaded: false
-                });
-                hasNewImages = true;
-              }
-            }
-          });
-          
-          return null;
-        }
-      })
-    ];
-  }
-});
-
 const JournalEditor: React.FC<JournalEditorProps> = ({
   entryId,
   initialContent,
@@ -178,7 +107,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [title, setTitle] = useState(initialTitle);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [pendingImageUploads, setPendingImageUploads] = useState<Map<string, string>>(new Map());
   const [slashCommandOpen, setSlashCommandOpen] = useState(false);
   const [slashCommandRange, setSlashCommandRange] = useState<{ from: number, to: number } | null>(null);
 
@@ -188,55 +116,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const slashCommandHandlerRef = useRef<any>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
-  const uploadImage = useAction(api.journalEntries.uploadImage);
-
-  // Handle image upload to Convex storage
-  const handleImageStabilized = async (imageUrl: string) => {
-    if (!imageUrl.startsWith('data:image')) return;
-    
-    try {
-      const result = await uploadImage({
-        base64Image: imageUrl,
-        journalEntryId: entryId,
-      });
-      
-      if (result.success) {
-        // Store the mapping of base64 to Convex URL
-        setPendingImageUploads(prev => {
-          const newMap = new Map(prev);
-          newMap.set(imageUrl, result.url);
-          return newMap;
-        });
-        
-        // Update the image in the editor
-        if (editor) {
-          // Find all instances of this image and replace them
-          const { state, view } = editor;
-          const { tr } = state;
-          let hasChanges = false;
-          
-          state.doc.descendants((node, pos) => {
-            if (node.type.name === 'image' && node.attrs.src === imageUrl) {
-              tr.setNodeMarkup(pos, undefined, {
-                ...node.attrs,
-                src: result.url,
-              });
-              hasChanges = true;
-            }
-          });
-          
-          if (hasChanges) {
-            view.dispatch(tr);
-            
-            // Save the entry with updated content
-            debouncedSave();
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error uploading image to Convex storage:', error);
-    }
-  };
 
   const editor = useEditor({
     extensions: [
@@ -244,13 +123,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         heading: {
           levels: [1, 2, 3],
         },
-      }),
-      Image.configure({
-        HTMLAttributes: {
-          class: 'rounded-lg max-w-full h-auto shadow-md my-4 cursor-pointer hover:shadow-lg transition-shadow',
-        },
-        allowBase64: true,
-        draggable: true,
       }),
       Link.configure({
         openOnClick: true,
@@ -285,41 +157,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'tiptap-drag-handle',
         },
       }),
-      FileHandler.configure({
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
-        onDrop: (currentEditor, files, pos) => {
-          files.forEach(file => {
-            const fileReader = new FileReader();
-            fileReader.readAsDataURL(file);
-            fileReader.onload = () => {
-              currentEditor.chain().insertContentAt(pos, {
-                type: 'image',
-                attrs: {
-                  src: fileReader.result,
-                  alt: file.name,
-                  title: file.name,
-                },
-              }).focus().run();
-            };
-          });
-        },
-        onPaste: (currentEditor, files, htmlContent) => {
-          files.forEach(file => {
-            const fileReader = new FileReader();
-            fileReader.readAsDataURL(file);
-            fileReader.onload = () => {
-              currentEditor.chain().insertContent({
-                type: 'image',
-                attrs: {
-                  src: fileReader.result,
-                  alt: file.name,
-                  title: file.name,
-                },
-              }).focus().run();
-            };
-          });
-        },
-      }),
       Subscript,
       Superscript,
       TaskList,
@@ -339,9 +176,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         element: document.createElement('div'),
       }),
       SlashCommandExtension,
-      ImageUploadExtension.configure({
-        onImageStabilized: handleImageStabilized,
-      }),
     ],
     content: initialContent || {
       type: 'doc',
@@ -422,24 +256,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     }
   };
 
-  const handleImageUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const url = e.target?.result as string;
-          editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  };
-
   // Handle slash command keyboard events
   const handleSlashCommandKeyDown = (event: KeyboardEvent) => {
     if (!slashCommandOpen || !slashCommandHandlerRef.current) return false;
@@ -513,7 +329,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       </motion.div>
 
       {/* Toolbar */}
-      <EditorToolbar editor={editor} onImageUpload={handleImageUpload} />
+      <EditorToolbar editor={editor} />
 
       {/* Editor */}
       <div className="relative" ref={editorRef}>
