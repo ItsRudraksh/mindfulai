@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Video, Phone, MessageCircle, Calendar, Brain, Heart } from 'lucide-react';
+import { Video, Phone, MessageCircle, Calendar, Brain, Heart, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function QuickActions() {
@@ -33,6 +33,14 @@ export default function QuickActions() {
       bg: 'bg-purple-50 dark:bg-purple-950/20'
     },
     {
+      icon: BookOpen,
+      title: 'Journal',
+      description: 'Write about your thoughts',
+      href: '/journal',
+      color: 'text-amber-500',
+      bg: 'bg-amber-50 dark:bg-amber-950/20'
+    },
+    {
       icon: Calendar,
       title: 'Schedule Session',
       description: 'Book your next appointment',
@@ -47,14 +55,6 @@ export default function QuickActions() {
       href: '/meditation',
       color: 'text-indigo-500',
       bg: 'bg-indigo-50 dark:bg-indigo-950/20'
-    },
-    {
-      icon: Heart,
-      title: 'Journal',
-      description: 'Write about your thoughts',
-      href: '/journal',
-      color: 'text-pink-500',
-      bg: 'bg-pink-50 dark:bg-pink-950/20'
     }
   ];
 
