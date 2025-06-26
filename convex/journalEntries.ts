@@ -41,6 +41,7 @@ export const updateJournalEntry = mutation({
       v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))
     ),
     tags: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

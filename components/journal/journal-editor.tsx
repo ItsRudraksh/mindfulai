@@ -1,26 +1,30 @@
 "use client";
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Color } from '@tiptap/extension-color';
 import TextStyle from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
-import { motion } from 'framer-motion';
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
-import { Save, Loader2 } from 'lucide-react';
-import { createLowlight, common } from 'lowlight';
+import { Save, Loader2, Smile } from 'lucide-react';
+import tippy from 'tippy.js';
 
 // Import all TipTap extensions
 import BubbleMenu from '@tiptap/extension-bubble-menu';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import DragHandle from '@tiptap/extension-drag-handle';
+import FileHandler from '@tiptap/extension-file-handler';
 import FontFamily from '@tiptap/extension-font-family';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
@@ -30,14 +34,15 @@ import TextAlign from '@tiptap/extension-text-align';
 import Typography from '@tiptap/extension-typography';
 import Underline from '@tiptap/extension-underline';
 import Youtube from '@tiptap/extension-youtube';
+import { createLowlight, common } from 'lowlight';
 
 import EditorToolbar from './editor-toolbar';
+import SlashCommand, { SlashCommandRef } from './slash-command';
 import EditorBubbleMenu from './editor-bubble-menu';
-import EditorFloatingMenu from './editor-floating-menu';
-import SlashCommand from './slash-command';
+import { metadata } from '../../app/layout';
 
 interface JournalEditorProps {
-  entryId: Id<"journalEntries">;
+  entryId?: Id<"journalEntries">;
   initialContent?: any;
   initialTitle?: string;
   onSave?: (content: any, title: string) => void;
@@ -91,6 +96,17 @@ const SlashCommandExtension = Extension.create({
             return next;
           },
         },
+        props: {
+          handleKeyDown: (view, event) => {
+            // Get plugin state using the plugin key
+            const pluginState = slashCommandPluginKey.getState(view.state);
+
+            if (!pluginState?.open) return false;
+
+            // Let the slash command component handle the key events
+            return false;
+          },
+        },
       }),
     ];
   },
@@ -107,13 +123,15 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [title, setTitle] = useState(initialTitle);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [slashCommandOpen, setSlashCommandOpen] = useState(false);
-  const [slashCommandRange, setSlashCommandRange] = useState<{ from: number, to: number } | null>(null);
+  const [showSlashCommand, setShowSlashCommand] = useState(false);
+  const [slashCommandRange, setSlashCommandRange] = useState<any>(null);
+  const [slashCommandPosition, setSlashCommandPosition] = useState<{ top: number; left: number } | null>(null);
+  const [slashMenuHeight, setSlashMenuHeight] = useState<number>(0);
 
+  const slashCommandRef = useRef<SlashCommandRef>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const slashCommandRef = useRef<HTMLDivElement>(null);
-  const slashCommandHandlerRef = useRef<any>(null);
+  const slashMenuRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
 
@@ -124,6 +142,16 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           levels: [1, 2, 3],
         },
       }),
+
+      // Enhanced Image with better styling
+      Image.configure({
+        HTMLAttributes: {
+          class: 'rounded-lg max-w-full h-auto shadow-md my-4 cursor-pointer hover:shadow-lg transition-shadow',
+        },
+        allowBase64: true
+      }),
+
+      // Enhanced Link with click handling
       Link.configure({
         openOnClick: true,
         linkOnPaste: true,
@@ -135,46 +163,141 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         },
         validate: url => /^https?:\/\//.test(url),
       }),
+
+      // Enhanced Placeholder
       Placeholder.configure({
-        placeholder,
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            return 'What\'s the heading?';
+          }
+          if (node.type.name === 'detailsSummary') {
+            return 'Summary...';
+          }
+          if (node.type.name === 'detailsContent') {
+            return 'Details content...';
+          }
+          return placeholder;
+        },
         includeChildren: true,
       }),
+
+      // Text styling
       TextStyle,
       Color,
-      FontFamily,
+      FontFamily.configure({
+        types: ['textStyle'],
+      }),
+
+      // Enhanced Highlight
       Highlight.configure({
         multicolor: true,
+        HTMLAttributes: {
+          class: 'px-1 py-0.5 rounded',
+        },
       }),
+
+      // Character count
       CharacterCount,
+
+      // Code blocks with syntax highlighting
       CodeBlockLowlight.configure({
         lowlight,
         HTMLAttributes: {
-          class: 'bg-muted rounded-lg p-4 my-4 overflow-x-auto',
+          class: 'bg-card rounded-lg p-4 my-4 overflow-x-auto',
         },
       }),
-      DragHandle.configure({
-        HTMLAttributes: {
-          class: 'tiptap-drag-handle',
+
+      DragHandle,
+
+      // File handler for drag & drop
+      FileHandler.configure({
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        onDrop: (currentEditor, files, pos) => {
+          files.forEach(file => {
+            const fileReader = new FileReader();
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor.chain().insertContentAt(pos, {
+                type: 'image',
+                attrs: {
+                  src: fileReader.result,
+                  alt: file.name,
+                  title: file.name,
+                },
+              }).focus().run();
+            };
+          });
+        },
+        onPaste: (currentEditor, files, htmlContent) => {
+          files.forEach(file => {
+            const fileReader = new FileReader();
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor.chain().insertContent({
+                type: 'image',
+                attrs: {
+                  src: fileReader.result,
+                  alt: file.name,
+                  title: file.name,
+                },
+              }).focus().run();
+            };
+          });
         },
       }),
+      // Subscript and Superscript
       Subscript,
       Superscript,
-      TaskList,
+
+      // Task lists
+      TaskList.configure({
+        HTMLAttributes: {
+          class: 'task-list',
+        },
+      }),
       TaskItem.configure({
         nested: true,
+        HTMLAttributes: {
+          class: 'task-item flex items-start gap-2 my-1',
+        },
       }),
+
+      // Text alignment
       TextAlign.configure({
         types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right', 'justify'],
       }),
-      Typography,
+
+      // Typography enhancements
+      Typography.configure({
+        openDoubleQuote: '"',
+        closeDoubleQuote: '"',
+        openSingleQuote: '\'',
+        closeSingleQuote: '\'',
+        ellipsis: '…',
+        emDash: '—',
+      }),
+
+      // Underline
       Underline,
+
+      // YouTube embeds
       Youtube.configure({
         nocookie: true,
+        width: 640,
+        height: 480,
         modestBranding: true,
+        HTMLAttributes: {
+          class: 'youtube-embed rounded-lg my-4 mx-auto',
+        },
       }),
+
+      // Bubble and Floating menus
       BubbleMenu.configure({
         element: document.createElement('div'),
       }),
+
+      // Slash command extension
       SlashCommandExtension,
     ],
     content: initialContent || {
@@ -188,37 +311,78 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'tiptap ProseMirror prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
+        class: 'prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
         spellcheck: 'true',
+      },
+      handleKeyDown: (view, event) => {
+        // Handle slash command navigation
+        if (showSlashCommand && slashCommandRef.current) {
+          const handled = slashCommandRef.current.onKeyDown(event);
+          if (handled) {
+            return true;
+          }
+        }
+
+        // Hide slash command on escape
+        if (event.key === 'Escape' && showSlashCommand) {
+          setShowSlashCommand(false);
+          setSlashCommandRange(null);
+          setSlashCommandPosition(null);
+          return true;
+        }
+
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
+      // Check for slash command using the plugin state
+      const pluginState = slashCommandPluginKey.getState(editor.state);
+
+      if (pluginState?.open && pluginState?.range) {
+        setSlashCommandRange(pluginState.range);
+
+        // Calculate position safely
+        try {
+          const coords = editor.view.coordsAtPos(pluginState.range.from);
+          const editorRect = editorRef.current?.getBoundingClientRect();
+
+          if (coords && editorRect) {
+            let calculatedTop = coords.top - editorRect.top + 25; // Default: 25px below cursor
+            const menuHeight = slashMenuHeight || 300; // Use actual height or estimate
+            const spaceBelow = editorRect.height - (coords.top - editorRect.top);
+
+            // If not enough space below, position above
+            if (spaceBelow < menuHeight && (coords.top - editorRect.top) > menuHeight) {
+              calculatedTop = coords.top - editorRect.top - menuHeight - 10; // 10px above cursor
+            }
+
+            setSlashCommandPosition({
+              top: calculatedTop,
+              left: coords.left - editorRect.left,
+            });
+            setShowSlashCommand(true);
+          }
+        } catch (error) {
+          console.warn('Could not calculate slash command position:', error);
+          setShowSlashCommand(false);
+        }
+      } else {
+        setShowSlashCommand(false);
+        setSlashCommandRange(null);
+        setSlashCommandPosition(null);
+      }
+
+      // Auto-save
       debouncedSave();
     },
   });
 
-  // Monitor slash command state
+  // Measure slash menu height once it's visible
   useEffect(() => {
-    if (!editor) return;
-
-    const updateSlashCommandState = () => {
-      const { state } = editor;
-      const pluginState = slashCommandPluginKey.getState(state);
-      
-      if (pluginState?.open && pluginState?.range) {
-        setSlashCommandOpen(true);
-        setSlashCommandRange(pluginState.range);
-      } else {
-        setSlashCommandOpen(false);
-        setSlashCommandRange(null);
-      }
-    };
-
-    editor.on('transaction', updateSlashCommandState);
-    return () => {
-      editor.off('transaction', updateSlashCommandState);
-    };
-  }, [editor]);
+    if (showSlashCommand && slashMenuRef.current && slashMenuHeight === 0) {
+      setSlashMenuHeight(slashMenuRef.current.offsetHeight);
+    }
+  }, [showSlashCommand, slashMenuHeight]);
 
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -256,27 +420,32 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     }
   };
 
-  // Handle slash command keyboard events
-  const handleSlashCommandKeyDown = (event: KeyboardEvent) => {
-    if (!slashCommandOpen || !slashCommandHandlerRef.current) return false;
-    return slashCommandHandlerRef.current.onKeyDown(event);
-  };
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const url = e.target?.result as string;
+          editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
 
-  // Add keyboard event listener for slash command
-  useEffect(() => {
-    if (!editor || !slashCommandOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (slashCommandOpen) {
-        handleSlashCommandKeyDown(event);
+          // Set up a timer to check if the image is still in the editor after 10 seconds
+          // In a real implementation, this would upload to Cloudinary
+          setTimeout(() => {
+            if (editor && editor.isActive('image')) {
+              console.log('Image still in editor after 10 seconds - would upload to Cloudinary');
+              // Here you would upload to Cloudinary and update the src
+            }
+          }, 10000);
+        };
+        reader.readAsDataURL(file);
       }
     };
-
-    editor.view.dom.addEventListener('keydown', handleKeyDown);
-    return () => {
-      editor.view.dom.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [editor, slashCommandOpen]);
+    input.click();
+  };
 
   // Save on unmount
   useEffect(() => {
@@ -329,7 +498,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       </motion.div>
 
       {/* Toolbar */}
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor} onImageUpload={handleImageUpload} />
 
       {/* Editor */}
       <div className="relative" ref={editorRef}>
@@ -339,31 +508,30 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           className="glass-card border border-border/20 rounded-lg overflow-hidden min-h-[600px] relative"
         >
           <EditorContent editor={editor} />
-          
+
           {/* Slash Command Menu */}
-          {slashCommandOpen && slashCommandRange && (
-            <div
-              className="absolute z-50"
-              style={{
-                left: editor.view.coordsAtPos(slashCommandRange.from).left,
-                top: editor.view.coordsAtPos(slashCommandRange.from).bottom,
-              }}
-            >
-              <SlashCommand
-                editor={editor}
-                range={slashCommandRange}
-                menuRef={slashCommandRef}
-                ref={slashCommandHandlerRef}
-              />
-            </div>
-          )}
+          <AnimatePresence>
+            {showSlashCommand && slashCommandRange && slashCommandPosition && (
+              <div
+                className="absolute z-50"
+                style={{
+                  top: `${slashCommandPosition.top}px`,
+                  left: `${slashCommandPosition.left}px`,
+                }}
+              >
+                <SlashCommand
+                  ref={slashCommandRef}
+                  menuRef={slashMenuRef}
+                  editor={editor}
+                  range={slashCommandRange}
+                />
+              </div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Bubble Menu */}
         <EditorBubbleMenu editor={editor} />
-        
-        {/* Floating Menu */}
-        <EditorFloatingMenu editor={editor} />
       </div>
 
       {/* Character Count */}
