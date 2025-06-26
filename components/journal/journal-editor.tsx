@@ -17,6 +17,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { Save, Loader2, Smile } from 'lucide-react';
+import tippy from 'tippy.js';
 
 // Import all TipTap extensions
 import BubbleMenu from '@tiptap/extension-bubble-menu';
