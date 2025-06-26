@@ -6,7 +6,9 @@ export const createJournalEntry = mutation({
   args: {
     title: v.optional(v.string()),
     content: v.any(), // TipTap JSON content
-    theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))
+    ),
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
@@ -18,14 +20,14 @@ export const createJournalEntry = mutation({
     const now = Date.now();
     return await ctx.db.insert("journalEntries", {
       userId,
-      title: args.title || `Journal Entry - ${new Date(now).toLocaleDateString()}`,
+      title:
+        args.title || `Journal Entry - ${new Date(now).toLocaleDateString()}`,
       content: args.content || { type: "doc", content: [] },
       theme: args.theme || "light",
       tags: args.tags || [],
       isPrivate: true,
       createdAt: now,
       updatedAt: now,
-      images: [], // Will be populated when images are uploaded
     });
   },
 });
@@ -35,7 +37,9 @@ export const updateJournalEntry = mutation({
     entryId: v.id("journalEntries"),
     title: v.optional(v.string()),
     content: v.optional(v.any()),
-    theme: v.optional(v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))
+    ),
     tags: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
   },
@@ -111,9 +115,9 @@ export const deleteJournalEntry = mutation({
 });
 
 export const searchJournalEntries = query({
-  args: { 
+  args: {
     searchTerm: v.string(),
-    limit: v.optional(v.number()) 
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -130,9 +134,13 @@ export const searchJournalEntries = query({
 
     // Simple text search in title and content
     return entries
-      .filter(entry => {
-        const titleMatch = entry.title?.toLowerCase().includes(args.searchTerm.toLowerCase());
-        const contentMatch = JSON.stringify(entry.content).toLowerCase().includes(args.searchTerm.toLowerCase());
+      .filter((entry) => {
+        const titleMatch = entry.title
+          ?.toLowerCase()
+          .includes(args.searchTerm.toLowerCase());
+        const contentMatch = JSON.stringify(entry.content)
+          .toLowerCase()
+          .includes(args.searchTerm.toLowerCase());
         return titleMatch || contentMatch;
       })
       .slice(0, limit);

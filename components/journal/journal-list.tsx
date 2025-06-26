@@ -58,7 +58,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
     api.journalEntries.searchJournalEntries,
     searchTerm.length > 2 ? { searchTerm, limit: 20 } : "skip"
   );
-  
+
   const createJournalEntry = useMutation(api.journalEntries.createJournalEntry);
   const deleteJournalEntry = useMutation(api.journalEntries.deleteJournalEntry);
 
@@ -73,14 +73,15 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
     try {
       const entryId = await createJournalEntry({
         title: `Journal Entry - ${new Date().toLocaleDateString()}`,
+        content: { type: "doc", content: [] },
       });
-      
+
       if (onSelectEntry) {
         onSelectEntry(entryId);
       } else {
         router.push(`/journal/${entryId}`);
       }
-      
+
       toast.success('New journal entry created!');
     } catch (error) {
       console.error('Error creating journal entry:', error);
@@ -102,7 +103,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
     const date = new Date(timestamp);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 24) {
       return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffInHours < 48) {
@@ -116,7 +117,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
 
   const getContentPreview = (content: any) => {
     if (!content || !content.content) return 'No content';
-    
+
     const textContent = content.content
       .map((node: any) => {
         if (node.type === 'paragraph' && node.content) {
@@ -129,13 +130,13 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
       })
       .join(' ')
       .trim();
-    
+
     return textContent.length > 150 ? textContent.substring(0, 150) + '...' : textContent;
   };
 
   const getWordCount = (content: any) => {
     const preview = getContentPreview(content);
-    return preview === 'No content' ? 0 : preview.split(/\s+/).filter(word => word.length > 0).length;
+    return preview === 'No content' ? 0 : preview.split(/\s+/).filter((word: string) => word.length > 0).length;
   };
 
   return (
@@ -155,7 +156,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
             {sortedEntries?.length || 0} entries
           </p>
         </div>
-        
+
         <Button onClick={onCreateNew || handleCreateNew} className="therapeutic-hover ripple-effect">
           <Plus className="h-4 w-4 mr-2" />
           New Entry
@@ -178,7 +179,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
             className="pl-10 glass-input"
           />
         </div>
-        
+
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -220,7 +221,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
                       <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
                         {entry.title || 'Untitled'}
                       </CardTitle>
-                      
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -277,7 +278,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
                       </DropdownMenu>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent
                     className="space-y-4"
                     onClick={() => {
@@ -291,7 +292,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
                     <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                       {getContentPreview(entry.content)}
                     </p>
-                    
+
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1">
@@ -303,7 +304,7 @@ const JournalList: React.FC<JournalListProps> = ({ onCreateNew, onSelectEntry })
                           <span>{getWordCount(entry.content)} words</span>
                         </div>
                       </div>
-                      
+
                       {entry.tags && entry.tags.length > 0 && (
                         <div className="flex gap-1">
                           {entry.tags.slice(0, 2).map((tag) => (

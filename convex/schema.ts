@@ -73,7 +73,11 @@ export default defineSchema({
     rating: v.number(), // 1-5 stars
     feedback: v.optional(v.string()), // Required if rating < 3
     createdAt: v.number(),
-    sessionType: v.union(v.literal("video"), v.literal("voice"), v.literal("chat")),
+    sessionType: v.union(
+      v.literal("video"),
+      v.literal("voice"),
+      v.literal("chat")
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_session", ["sessionId"])
@@ -148,9 +152,12 @@ export default defineSchema({
   journalEntries: defineTable({
     userId: v.id("users"),
     title: v.optional(v.string()),
-    content: v.string(),
+    content: v.any(),
     mood: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    theme: v.optional(
+      v.union(v.literal("light"), v.literal("dark"), v.literal("sepia"))
+    ),
     isPrivate: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
