@@ -23,11 +23,7 @@ import tippy from 'tippy.js';
 import BubbleMenu from '@tiptap/extension-bubble-menu';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import Details from '@tiptap/extension-details';
-import DetailsContent from '@tiptap/extension-details-content';
-import DetailsSummary from '@tiptap/extension-details-summary';
 import DragHandle from '@tiptap/extension-drag-handle';
-import Emoji from '@tiptap/extension-emoji';
 import FileHandler from '@tiptap/extension-file-handler';
 import FontFamily from '@tiptap/extension-font-family';
 import Subscript from '@tiptap/extension-subscript';
@@ -43,6 +39,7 @@ import { createLowlight, common } from 'lowlight';
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
 import EditorBubbleMenu from './editor-bubble-menu';
+import { metadata } from '../../app/layout';
 
 interface JournalEditorProps {
   entryId?: Id<"journalEntries">;
@@ -151,8 +148,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         HTMLAttributes: {
           class: 'rounded-lg max-w-full h-auto shadow-md my-4 cursor-pointer hover:shadow-lg transition-shadow',
         },
-        allowBase64: true,
-        draggable: true,
+        allowBase64: true
       }),
 
       // Enhanced Link with click handling
@@ -211,12 +207,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         },
       }),
 
-      // Drag handle for reordering
-      DragHandle.configure({
-        HTMLAttributes: {
-          class: 'tiptap-drag-handle',
-        },
-      }),
+      DragHandle,
 
       // File handler for drag & drop
       FileHandler.configure({
@@ -440,7 +431,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         reader.onload = (e) => {
           const url = e.target?.result as string;
           editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
-          
+
           // Set up a timer to check if the image is still in the editor after 10 seconds
           // In a real implementation, this would upload to Cloudinary
           setTimeout(() => {
@@ -566,85 +557,11 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+U</kbd> Underline</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+K</kbd> Link</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">/</kbd> Commands</span>
-          <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">:</kbd> Emoji</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Z</kbd> Undo</span>
         </div>
       </motion.div>
     </div>
   );
 };
-
-// Emoji suggestion component
-const EmojiList = React.forwardRef<any, any>((props, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const selectItem = (index: number) => {
-    const item = props.items[index];
-    if (item) {
-      props.command({ native: item }); // Use native instead of emoji
-    }
-  };
-
-  const upHandler = () => {
-    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
-  };
-
-  const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length);
-  };
-
-  const enterHandler = () => {
-    selectItem(selectedIndex);
-  };
-
-  useEffect(() => setSelectedIndex(0), [props.items]);
-
-  React.useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }: { event: KeyboardEvent }) => {
-      if (event.key === 'ArrowUp') {
-        upHandler();
-        return true;
-      }
-
-      if (event.key === 'ArrowDown') {
-        downHandler();
-        return true;
-      }
-
-      if (event.key === 'Enter') {
-        enterHandler();
-        return true;
-      }
-
-      return false;
-    },
-  }));
-
-  return (
-    <div className="glass-card border border-border/20 rounded-lg shadow-lg p-2 min-w-[200px] max-h-[200px] overflow-y-auto bg-background/95 backdrop-blur-md">
-      {props.items.length ? (
-        props.items.map((item: string, index: number) => (
-          <button
-            className={`w-full text-left p-2 rounded-md transition-all duration-200 flex items-center space-x-2 ${index === selectedIndex
-              ? 'bg-primary/10 text-primary border border-primary/20'
-              : 'hover:bg-muted/50 text-foreground border border-transparent'
-              }`}
-            key={index}
-            onClick={() => selectItem(index)}
-          >
-            <span className="text-lg">{item}</span>
-          </button>
-        ))
-      ) : (
-        <div className="text-center py-4 text-muted-foreground text-sm">
-          <Smile className="w-6 h-6 mx-auto mb-2 opacity-50" />
-          No emojis found
-        </div>
-      )}
-    </div>
-  );
-});
-
-EmojiList.displayName = 'EmojiList';
 
 export default JournalEditor;

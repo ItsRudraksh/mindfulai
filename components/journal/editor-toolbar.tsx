@@ -103,15 +103,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
     }
   };
 
-  const insertEmoji = () => {
-    // Trigger emoji picker by inserting a colon
-    editor.chain().focus().insertContent(':').run();
-  };
-
-  const insertDetails = () => {
-    editor.chain().focus().setDetails().run();
-  };
-
   const fontFamilies = [
     { name: 'Default', value: '' },
     { name: 'Inter', value: 'Inter' },
@@ -414,12 +405,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         title="Add Image"
       >
         <Image className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={insertEmoji}
-        title="Insert Emoji (:)"
-      >
-        <Smile className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={insertYoutube}
