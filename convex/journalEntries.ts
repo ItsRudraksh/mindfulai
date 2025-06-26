@@ -156,29 +156,18 @@ export const processEntryImages = action({
       // Handle base64 images - these need to be uploaded to Convex storage
       if (imageUrl.startsWith('data:image')) {
         try {
-          // Convert base64 to binary
-          const base64Data = imageUrl.split(',')[1];
-          const binaryData = Buffer.from(base64Data, 'base64');
+          // Upload to Convex storage using the uploadImage action
+          const result = await ctx.runAction("journalEntries:uploadImage", {
+            base64Image: imageUrl,
+            journalEntryId: args.entryId,
+          });
           
-          // Upload to Convex storage
-          const storageId = await ctx.storage.store(binaryData);
-          
-          // Get the URL for the stored file
-          const url = await ctx.storage.getUrl(storageId);
-          
-          if (url) {
-            // Track the new image in our database
-            await ctx.runMutation("journalEntries:trackImage", {
-              journalEntryId: args.entryId,
-              storageId,
-              isInUse: true,
-            });
-
+          if (result.success && result.url) {
             // Update the image URL in the content
             await ctx.runMutation("journalEntries:replaceImageUrl", {
               entryId: args.entryId,
               oldUrl: imageUrl,
-              newUrl: url,
+              newUrl: result.url,
             });
           }
         } catch (error) {
@@ -432,12 +421,25 @@ export const uploadImage = action({
   },
   handler: async (ctx, args) => {
     try {
-      // Convert base64 to binary
-      const base64Data = args.base64Image.split(',')[1];
-      const binaryData = Buffer.from(base64Data, 'base64');
+      // Extract the base64 data and MIME type
+      const matches = args.base64Image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      
+      if (!matches || matches.length !== 3) {
+        return { success: false, error: "Invalid base64 image format" };
+      }
+      
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      
+      // Convert base64 to Uint8Array (browser-compatible)
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
       
       // Upload to Convex storage
-      const storageId = await ctx.storage.store(binaryData);
+      const storageId = await ctx.storage.store(bytes);
       
       // Get the URL for the stored file
       const url = await ctx.storage.getUrl(storageId);
