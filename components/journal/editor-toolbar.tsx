@@ -25,18 +25,23 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignJustify,
   Type,
   Table,
   CheckSquare,
   Subscript,
   Superscript,
-  Calculator
+  Calculator,
+  ChevronDown,
+  Smile,
+  Youtube
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
 
@@ -80,7 +85,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
   const addLink = () => {
     const url = window.prompt('Enter URL:');
     if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
+      editor.chain().focus().setLink({ href: url, target: '_blank' }).run();
     }
   };
 
@@ -102,6 +107,40 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
       editor.chain().focus().setMath({ latex }).run();
     }
   };
+
+  const insertYoutube = () => {
+    const url = window.prompt('Enter YouTube URL:');
+    if (url) {
+      editor.chain().focus().setYoutubeVideo({ src: url }).run();
+    }
+  };
+
+  const insertEmoji = () => {
+    // Trigger emoji picker by inserting a colon
+    editor.chain().focus().insertContent(':').run();
+  };
+
+  const insertDetails = () => {
+    editor.chain().focus().setDetails().run();
+  };
+
+  const fontFamilies = [
+    { name: 'Default', value: '' },
+    { name: 'Inter', value: 'Inter' },
+    { name: 'Roboto', value: 'Roboto' },
+    { name: 'Open Sans', value: 'Open Sans' },
+    { name: 'Lato', value: 'Lato' },
+    { name: 'Montserrat', value: 'Montserrat' },
+    { name: 'Poppins', value: 'Poppins' },
+    { name: 'Source Sans Pro', value: 'Source Sans Pro' },
+    { name: 'Nunito', value: 'Nunito' },
+    { name: 'Playfair Display', value: 'Playfair Display' },
+    { name: 'Merriweather', value: 'Merriweather' },
+    { name: 'Georgia', value: 'Georgia' },
+    { name: 'Times New Roman', value: 'Times New Roman' },
+    { name: 'Courier New', value: 'Courier New' },
+    { name: 'Monaco', value: 'Monaco' },
+  ];
 
   return (
     <motion.div
@@ -127,11 +166,39 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* Headings */}
+      {/* Font Family */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 px-2">
             <Type className="h-4 w-4 mr-1" />
+            <span className="text-xs">Font</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="glass-card max-h-60 overflow-y-auto">
+          {fontFamilies.map((font) => (
+            <DropdownMenuItem
+              key={font.value}
+              onClick={() => {
+                if (font.value) {
+                  editor.chain().focus().setFontFamily(font.value).run();
+                } else {
+                  editor.chain().focus().unsetFontFamily().run();
+                }
+              }}
+              className={`${editor.isActive('textStyle', { fontFamily: font.value }) ? 'bg-primary/10' : ''}`}
+              style={{ fontFamily: font.value || 'inherit' }}
+            >
+              {font.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Headings */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Heading1 className="h-4 w-4 mr-1" />
             <span className="text-xs">Style</span>
           </Button>
         </DropdownMenuTrigger>
@@ -257,27 +324,43 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* Text Alignment */}
-      <ToolbarButton
-        onClick={() => editor.chain().focus().setTextAlign('left').run()}
-        isActive={editor.isActive({ textAlign: 'left' })}
-        title="Align Left"
-      >
-        <AlignLeft className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={() => editor.chain().focus().setTextAlign('center').run()}
-        isActive={editor.isActive({ textAlign: 'center' })}
-        title="Align Center"
-      >
-        <AlignCenter className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={() => editor.chain().focus().setTextAlign('right').run()}
-        isActive={editor.isActive({ textAlign: 'right' })}
-        title="Align Right"
-      >
-        <AlignRight className="h-4 w-4" />
-      </ToolbarButton>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Text Alignment">
+            <AlignLeft className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="glass-card">
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            className={editor.isActive({ textAlign: 'left' }) ? 'bg-primary/10' : ''}
+          >
+            <AlignLeft className="h-4 w-4 mr-2" />
+            Align Left
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            className={editor.isActive({ textAlign: 'center' }) ? 'bg-primary/10' : ''}
+          >
+            <AlignCenter className="h-4 w-4 mr-2" />
+            Align Center
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            className={editor.isActive({ textAlign: 'right' }) ? 'bg-primary/10' : ''}
+          >
+            <AlignRight className="h-4 w-4 mr-2" />
+            Align Right
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            className={editor.isActive({ textAlign: 'justify' }) ? 'bg-primary/10' : ''}
+          >
+            <AlignJustify className="h-4 w-4 mr-2" />
+            Justify
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -345,16 +428,34 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         <Image className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
+        onClick={insertEmoji}
+        title="Insert Emoji (:)"
+      >
+        <Smile className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
         onClick={insertTable}
         title="Insert Table"
       >
         <Table className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
+        onClick={insertDetails}
+        title="Insert Collapsible Section"
+      >
+        <ChevronDown className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
         onClick={insertMath}
         title="Insert Math Formula"
       >
         <Calculator className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={insertYoutube}
+        title="Insert YouTube Video"
+      >
+        <Youtube className="h-4 w-4" />
       </ToolbarButton>
     </motion.div>
   );

@@ -17,7 +17,14 @@ import {
   CheckSquare,
   Table,
   Youtube,
-  Calculator
+  Calculator,
+  ChevronDown,
+  Smile,
+  FileText,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify
 } from 'lucide-react';
 
 interface SlashCommandProps {
@@ -31,6 +38,7 @@ interface CommandItem {
   icon: React.ComponentType<any>;
   command: () => void;
   keywords: string[];
+  category: string;
 }
 
 export interface SlashCommandRef {
@@ -43,6 +51,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
     const [query, setQuery] = useState('');
 
     const commands: CommandItem[] = [
+      // Basic blocks
       {
         title: 'Text',
         description: 'Just start typing with plain text.',
@@ -51,6 +60,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setParagraph().run();
         },
         keywords: ['text', 'paragraph', 'p'],
+        category: 'Basic',
       },
       {
         title: 'Heading 1',
@@ -60,6 +70,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
         },
         keywords: ['heading', 'h1', 'title'],
+        category: 'Basic',
       },
       {
         title: 'Heading 2',
@@ -69,6 +80,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
         },
         keywords: ['heading', 'h2', 'subtitle'],
+        category: 'Basic',
       },
       {
         title: 'Heading 3',
@@ -78,7 +90,10 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();
         },
         keywords: ['heading', 'h3'],
+        category: 'Basic',
       },
+      
+      // Lists
       {
         title: 'Bullet List',
         description: 'Create a simple bullet list.',
@@ -87,6 +102,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).toggleBulletList().run();
         },
         keywords: ['list', 'bullet', 'ul'],
+        category: 'Lists',
       },
       {
         title: 'Numbered List',
@@ -96,6 +112,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).toggleOrderedList().run();
         },
         keywords: ['list', 'numbered', 'ordered', 'ol'],
+        category: 'Lists',
       },
       {
         title: 'Task List',
@@ -105,7 +122,10 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).toggleTaskList().run();
         },
         keywords: ['task', 'todo', 'checklist', 'checkbox'],
+        category: 'Lists',
       },
+      
+      // Content blocks
       {
         title: 'Quote',
         description: 'Capture a quote.',
@@ -114,6 +134,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setBlockquote().run();
         },
         keywords: ['quote', 'blockquote'],
+        category: 'Content',
       },
       {
         title: 'Code Block',
@@ -123,24 +144,44 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setCodeBlock().run();
         },
         keywords: ['code', 'codeblock'],
+        category: 'Content',
       },
       {
-        title: 'Table',
-        description: 'Insert a table.',
-        icon: Table,
+        title: 'Details',
+        description: 'Create a collapsible section.',
+        icon: ChevronDown,
         command: () => {
-          editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+          editor.chain().focus().deleteRange(range).setDetails().run();
         },
-        keywords: ['table', 'grid'],
+        keywords: ['details', 'collapsible', 'toggle', 'expand'],
+        category: 'Content',
       },
+      
+      // Media
       {
-        title: 'Math',
-        description: 'Insert mathematical notation.',
-        icon: Calculator,
+        title: 'Image',
+        description: 'Upload an image.',
+        icon: Image,
         command: () => {
-          editor.chain().focus().deleteRange(range).setMath({ latex: 'E = mc^2' }).run();
+          editor.chain().focus().deleteRange(range).run();
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const url = e.target?.result as string;
+                editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+          input.click();
         },
-        keywords: ['math', 'latex', 'equation'],
+        keywords: ['image', 'photo', 'picture', 'upload'],
+        category: 'Media',
       },
       {
         title: 'YouTube',
@@ -153,6 +194,32 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           }
         },
         keywords: ['youtube', 'video', 'embed'],
+        category: 'Media',
+      },
+      
+      // Advanced
+      {
+        title: 'Table',
+        description: 'Insert a table.',
+        icon: Table,
+        command: () => {
+          editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+        },
+        keywords: ['table', 'grid'],
+        category: 'Advanced',
+      },
+      {
+        title: 'Math',
+        description: 'Insert mathematical notation.',
+        icon: Calculator,
+        command: () => {
+          const latex = prompt('Enter LaTeX formula:', 'E = mc^2');
+          if (latex) {
+            editor.chain().focus().deleteRange(range).setMath({ latex }).run();
+          }
+        },
+        keywords: ['math', 'latex', 'equation'],
+        category: 'Advanced',
       },
       {
         title: 'Divider',
@@ -162,13 +229,66 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
           editor.chain().focus().deleteRange(range).setHorizontalRule().run();
         },
         keywords: ['divider', 'hr', 'rule', 'line'],
+        category: 'Advanced',
+      },
+      
+      // Alignment
+      {
+        title: 'Align Left',
+        description: 'Align text to the left.',
+        icon: AlignLeft,
+        command: () => {
+          editor.chain().focus().deleteRange(range).setTextAlign('left').run();
+        },
+        keywords: ['align', 'left'],
+        category: 'Alignment',
+      },
+      {
+        title: 'Align Center',
+        description: 'Center align text.',
+        icon: AlignCenter,
+        command: () => {
+          editor.chain().focus().deleteRange(range).setTextAlign('center').run();
+        },
+        keywords: ['align', 'center'],
+        category: 'Alignment',
+      },
+      {
+        title: 'Align Right',
+        description: 'Align text to the right.',
+        icon: AlignRight,
+        command: () => {
+          editor.chain().focus().deleteRange(range).setTextAlign('right').run();
+        },
+        keywords: ['align', 'right'],
+        category: 'Alignment',
+      },
+      {
+        title: 'Justify',
+        description: 'Justify text alignment.',
+        icon: AlignJustify,
+        command: () => {
+          editor.chain().focus().deleteRange(range).setTextAlign('justify').run();
+        },
+        keywords: ['align', 'justify'],
+        category: 'Alignment',
       },
     ];
 
     const filteredCommands = commands.filter(command =>
       command.title.toLowerCase().includes(query.toLowerCase()) ||
-      command.keywords.some(keyword => keyword.includes(query.toLowerCase()))
+      command.keywords.some(keyword => keyword.includes(query.toLowerCase())) ||
+      command.category.toLowerCase().includes(query.toLowerCase())
     );
+
+    // Group commands by category
+    const groupedCommands = filteredCommands.reduce((acc, command) => {
+      if (!acc[command.category]) {
+        acc[command.category] = [];
+      }
+      acc[command.category].push(command);
+      return acc;
+    }, {} as Record<string, CommandItem[]>);
 
     const selectItem = (index: number) => {
       const command = filteredCommands[index];
@@ -228,46 +348,68 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.95 }}
         transition={{ duration: 0.15 }}
-        className="glass-card border border-border/20 rounded-lg shadow-lg p-2 min-w-[320px] max-w-[400px] max-h-[300px] overflow-y-auto bg-background/95 backdrop-blur-md"
+        className="glass-card border border-border/20 rounded-lg shadow-lg p-2 min-w-[380px] max-w-[450px] max-h-[400px] overflow-y-auto bg-background/95 backdrop-blur-md"
       >
-        <div className="text-xs text-muted-foreground mb-2 px-2 font-medium">
-          Basic blocks
-        </div>
-        <div className="space-y-1">
-          {filteredCommands.map((command, index) => (
-            <motion.button
-              key={command.title}
-              className={`w-full text-left p-3 rounded-md transition-all duration-200 flex items-center space-x-3 ${
-                index === selectedIndex
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'hover:bg-muted/50 text-foreground border border-transparent'
-              }`}
-              onClick={() => selectItem(index)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div
-                className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                  index === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
-                }`}
-              >
-                <command.icon className="w-4 h-4" />
+        {Object.keys(groupedCommands).length > 0 ? (
+          Object.entries(groupedCommands).map(([category, categoryCommands]) => (
+            <div key={category} className="mb-3 last:mb-0">
+              <div className="text-xs text-muted-foreground mb-2 px-2 font-medium uppercase tracking-wide">
+                {category}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm">{command.title}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {command.description}
-                </div>
+              <div className="space-y-1">
+                {categoryCommands.map((command, categoryIndex) => {
+                  const globalIndex = filteredCommands.indexOf(command);
+                  return (
+                    <motion.button
+                      key={command.title}
+                      className={`w-full text-left p-3 rounded-md transition-all duration-200 flex items-center space-x-3 ${
+                        globalIndex === selectedIndex
+                          ? 'bg-primary/10 text-primary border border-primary/20'
+                          : 'hover:bg-muted/50 text-foreground border border-transparent'
+                      }`}
+                      onClick={() => selectItem(globalIndex)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-md flex items-center justify-center ${
+                          globalIndex === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
+                        }`}
+                      >
+                        <command.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{command.title}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {command.description}
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
-            </motion.button>
-          ))}
-        </div>
-        {filteredCommands.length === 0 && (
+            </div>
+          ))
+        ) : (
           <div className="text-center py-6 text-muted-foreground text-sm">
             <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
             No matching commands
+            {query && (
+              <div className="text-xs mt-1">
+                Try searching for: text, heading, list, table, image
+              </div>
+            )}
           </div>
         )}
+        
+        {/* Help text */}
+        <div className="border-t border-border/20 mt-2 pt-2 text-xs text-muted-foreground px-2">
+          <div className="flex items-center justify-between">
+            <span>↑↓ Navigate</span>
+            <span>↵ Select</span>
+            <span>Esc Close</span>
+          </div>
+        </div>
       </motion.div>
     );
   }
