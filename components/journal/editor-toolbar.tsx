@@ -27,7 +27,6 @@ import {
   AlignRight,
   AlignJustify,
   Type,
-  Table,
   CheckSquare,
   Subscript,
   Superscript,
@@ -55,12 +54,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
     return null;
   }
 
-  const ToolbarButton = ({ 
-    onClick, 
-    isActive = false, 
-    disabled = false, 
-    children, 
-    title 
+  const ToolbarButton = ({
+    onClick,
+    isActive = false,
+    disabled = false,
+    children,
+    title
   }: {
     onClick: () => void;
     isActive?: boolean;
@@ -95,17 +94,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
 
   const setHighlight = (color: string) => {
     editor.chain().focus().setHighlight({ color }).run();
-  };
-
-  const insertTable = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  };
-
-  const insertMath = () => {
-    const latex = window.prompt('Enter LaTeX formula:', 'E = mc^2');
-    if (latex) {
-      editor.chain().focus().setMath({ latex }).run();
-    }
   };
 
   const insertYoutube = () => {
@@ -374,8 +362,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         <DropdownMenuContent className="glass-card">
           <div className="grid grid-cols-6 gap-1 p-2">
             {[
-              '#000000', '#374151', '#DC2626', '#EA580C', '#D97706', '#65A30D',
-              '#059669', '#0891B2', '#2563EB', '#7C3AED', '#C026D3', '#DC2626'
+              '#000000', '#374151', '#EA580C', '#D97706', '#65A30D',
+              '#059669', '#0891B2', '#2563EB', '#7C3AED', '#C026D3'
             ].map((color) => (
               <button
                 key={color}
@@ -422,7 +410,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         <Link className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        onClick={onImageUpload || (() => {})}
+        onClick={onImageUpload || (() => { })}
         title="Add Image"
       >
         <Image className="h-4 w-4" />
@@ -432,24 +420,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         title="Insert Emoji (:)"
       >
         <Smile className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={insertTable}
-        title="Insert Table"
-      >
-        <Table className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={insertDetails}
-        title="Insert Collapsible Section"
-      >
-        <ChevronDown className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={insertMath}
-        title="Insert Math Formula"
-      >
-        <Calculator className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={insertYoutube}

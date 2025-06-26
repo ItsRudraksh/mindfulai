@@ -15,7 +15,7 @@ export default function JournalEntryPage() {
   const router = useRouter();
   const params = useParams();
   const entryId = params.entryId as Id<"journalEntries">;
-  
+
   const journalEntry = useQuery(api.journalEntries.getJournalEntryById, { entryId });
 
   if (journalEntry === undefined) {
@@ -96,7 +96,7 @@ export default function JournalEntryPage() {
 
 function RedirectToSignIn() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/auth/signin');
   }, [router]);

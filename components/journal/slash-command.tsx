@@ -15,7 +15,6 @@ import {
   Image,
   Minus,
   CheckSquare,
-  Table,
   Youtube,
   Calculator,
   ChevronDown,
@@ -30,6 +29,7 @@ import {
 interface SlashCommandProps {
   editor: Editor;
   range: any;
+  menuRef: React.RefObject<HTMLDivElement | null>;
 }
 
 interface CommandItem {
@@ -46,7 +46,7 @@ export interface SlashCommandRef {
 }
 
 const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
-  ({ editor, range }, ref) => {
+  ({ editor, range, menuRef }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [query, setQuery] = useState('');
 
@@ -92,7 +92,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         keywords: ['heading', 'h3'],
         category: 'Basic',
       },
-      
+
       // Lists
       {
         title: 'Bullet List',
@@ -124,7 +124,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         keywords: ['task', 'todo', 'checklist', 'checkbox'],
         category: 'Lists',
       },
-      
+
       // Content blocks
       {
         title: 'Quote',
@@ -146,17 +146,6 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         keywords: ['code', 'codeblock'],
         category: 'Content',
       },
-      {
-        title: 'Details',
-        description: 'Create a collapsible section.',
-        icon: ChevronDown,
-        command: () => {
-          editor.chain().focus().deleteRange(range).setDetails().run();
-        },
-        keywords: ['details', 'collapsible', 'toggle', 'expand'],
-        category: 'Content',
-      },
-      
       // Media
       {
         title: 'Image',
@@ -196,31 +185,6 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         keywords: ['youtube', 'video', 'embed'],
         category: 'Media',
       },
-      
-      // Advanced
-      {
-        title: 'Table',
-        description: 'Insert a table.',
-        icon: Table,
-        command: () => {
-          editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-        },
-        keywords: ['table', 'grid'],
-        category: 'Advanced',
-      },
-      {
-        title: 'Math',
-        description: 'Insert mathematical notation.',
-        icon: Calculator,
-        command: () => {
-          const latex = prompt('Enter LaTeX formula:', 'E = mc^2');
-          if (latex) {
-            editor.chain().focus().deleteRange(range).setMath({ latex }).run();
-          }
-        },
-        keywords: ['math', 'latex', 'equation'],
-        category: 'Advanced',
-      },
       {
         title: 'Divider',
         description: 'Visually divide blocks.',
@@ -231,7 +195,7 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
         keywords: ['divider', 'hr', 'rule', 'line'],
         category: 'Advanced',
       },
-      
+
       // Alignment
       {
         title: 'Align Left',
@@ -329,7 +293,6 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
       setSelectedIndex(0);
     }, [query]);
 
-    // Extract query from the range
     useEffect(() => {
       if (editor && range) {
         try {
@@ -342,13 +305,22 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
       }
     }, [editor, range]);
 
+    useEffect(() => {
+      if (menuRef.current) {
+        const selectedItem = menuRef.current.querySelector(`[data-index="${selectedIndex}"]`);
+        if (selectedItem) {
+          selectedItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }, [selectedIndex]);
+
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-        transition={{ duration: 0.15 }}
-        className="glass-card border border-border/20 rounded-lg shadow-lg p-2 min-w-[380px] max-w-[450px] max-h-[400px] overflow-y-auto bg-background/95 backdrop-blur-md"
+        ref={menuRef}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        className="glass-card border border-border/20 rounded-lg shadow-lg p-2 min-w-[300px] max-w-[400px] max-h-[300px] overflow-y-auto"
       >
         {Object.keys(groupedCommands).length > 0 ? (
           Object.entries(groupedCommands).map(([category, categoryCommands]) => (
@@ -362,19 +334,18 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
                   return (
                     <motion.button
                       key={command.title}
-                      className={`w-full text-left p-3 rounded-md transition-all duration-200 flex items-center space-x-3 ${
-                        globalIndex === selectedIndex
-                          ? 'bg-primary/10 text-primary border border-primary/20'
-                          : 'hover:bg-muted/50 text-foreground border border-transparent'
-                      }`}
+                      data-index={globalIndex}
+                      className={`w-full text-left p-3 rounded-md transition-all duration-200 flex items-center space-x-3 ${globalIndex === selectedIndex
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'hover:bg-muted/50 text-foreground border border-transparent'
+                        }`}
                       onClick={() => selectItem(globalIndex)}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <div
-                        className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                          globalIndex === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
-                        }`}
+                        className={`w-8 h-8 rounded-md flex items-center justify-center ${globalIndex === selectedIndex ? 'bg-primary/20' : 'bg-muted/30'
+                          }`}
                       >
                         <command.icon className="w-4 h-4" />
                       </div>
@@ -396,12 +367,12 @@ const SlashCommand = forwardRef<SlashCommandRef, SlashCommandProps>(
             No matching commands
             {query && (
               <div className="text-xs mt-1">
-                Try searching for: text, heading, list, table, image
+                Try searching for: text, heading, list, image
               </div>
             )}
           </div>
         )}
-        
+
         {/* Help text */}
         <div className="border-t border-border/20 mt-2 pt-2 text-xs text-muted-foreground px-2">
           <div className="flex items-center justify-between">

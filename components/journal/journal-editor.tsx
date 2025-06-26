@@ -29,15 +29,9 @@ import DetailsSummary from '@tiptap/extension-details-summary';
 import DragHandle from '@tiptap/extension-drag-handle';
 import Emoji from '@tiptap/extension-emoji';
 import FileHandler from '@tiptap/extension-file-handler';
-import FloatingMenu from '@tiptap/extension-floating-menu';
 import FontFamily from '@tiptap/extension-font-family';
-import Mathematics from '@tiptap/extension-mathematics';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import Table from '@tiptap/extension-table';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TableRow from '@tiptap/extension-table-row';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import TextAlign from '@tiptap/extension-text-align';
@@ -49,7 +43,6 @@ import { createLowlight, common } from 'lowlight';
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
 import EditorBubbleMenu from './editor-bubble-menu';
-import EditorFloatingMenu from './editor-floating-menu';
 
 interface JournalEditorProps {
   entryId?: Id<"journalEntries">;
@@ -136,10 +129,12 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [showSlashCommand, setShowSlashCommand] = useState(false);
   const [slashCommandRange, setSlashCommandRange] = useState<any>(null);
   const [slashCommandPosition, setSlashCommandPosition] = useState<{ top: number; left: number } | null>(null);
+  const [slashMenuHeight, setSlashMenuHeight] = useState<number>(0);
 
   const slashCommandRef = useRef<SlashCommandRef>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const slashMenuRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
 
@@ -211,23 +206,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         lowlight,
         HTMLAttributes: {
           class: 'bg-muted/50 rounded-lg p-4 my-4 overflow-x-auto',
-        },
-      }),
-
-      // Collapsible Details sections
-      Details.configure({
-        HTMLAttributes: {
-          class: 'my-4 border border-border rounded-lg overflow-hidden',
-        },
-      }),
-      DetailsContent.configure({
-        HTMLAttributes: {
-          class: 'p-4 bg-muted/20',
-        },
-      }),
-      DetailsSummary.configure({
-        HTMLAttributes: {
-          class: 'p-4 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors font-medium',
         },
       }),
 
@@ -374,44 +352,9 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           });
         },
       }),
-
-      // Mathematics support
-      Mathematics.configure({
-        // HTMLAttributes: {
-        //   class: 'math-node bg-muted/30 px-2 py-1 rounded mx-1',
-        // },
-        katexOptions: {
-          throwOnError: false,
-          displayMode: false,
-        },
-      }),
-
       // Subscript and Superscript
       Subscript,
       Superscript,
-
-      // Table support
-      Table.configure({
-        resizable: true,
-        HTMLAttributes: {
-          class: 'border-collapse border border-border my-4 w-full',
-        },
-      }),
-      TableCell.configure({
-        HTMLAttributes: {
-          class: 'border border-border p-2',
-        },
-      }),
-      TableHeader.configure({
-        HTMLAttributes: {
-          class: 'border border-border p-2 bg-muted/50 font-semibold',
-        },
-      }),
-      TableRow.configure({
-        HTMLAttributes: {
-          class: 'border-b border-border',
-        },
-      }),
 
       // Task lists
       TaskList.configure({
@@ -458,9 +401,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
       // Bubble and Floating menus
       BubbleMenu.configure({
-        element: document.createElement('div'),
-      }),
-      FloatingMenu.configure({
         element: document.createElement('div'),
       }),
 
@@ -514,8 +454,17 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           const editorRect = editorRef.current?.getBoundingClientRect();
 
           if (coords && editorRect) {
+            let calculatedTop = coords.top - editorRect.top + 25; // Default: 25px below cursor
+            const menuHeight = slashMenuHeight || 300; // Use actual height or estimate
+            const spaceBelow = editorRect.height - (coords.top - editorRect.top);
+
+            // If not enough space below, position above
+            if (spaceBelow < menuHeight && (coords.top - editorRect.top) > menuHeight) {
+              calculatedTop = coords.top - editorRect.top - menuHeight - 10; // 10px above cursor
+            }
+
             setSlashCommandPosition({
-              top: coords.top - editorRect.top + 25,
+              top: calculatedTop,
               left: coords.left - editorRect.left,
             });
             setShowSlashCommand(true);
@@ -534,6 +483,13 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       debouncedSave();
     },
   });
+
+  // Measure slash menu height once it's visible
+  useEffect(() => {
+    if (showSlashCommand && slashMenuRef.current && slashMenuHeight === 0) {
+      setSlashMenuHeight(slashMenuRef.current.offsetHeight);
+    }
+  }, [showSlashCommand, slashMenuHeight]);
 
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -663,6 +619,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
               >
                 <SlashCommand
                   ref={slashCommandRef}
+                  menuRef={slashMenuRef}
                   editor={editor}
                   range={slashCommandRange}
                 />
@@ -673,9 +630,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
         {/* Bubble Menu */}
         <EditorBubbleMenu editor={editor} />
-
-        {/* Floating Menu */}
-        <EditorFloatingMenu editor={editor} />
       </div>
 
       {/* Character Count */}
