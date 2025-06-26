@@ -149,8 +149,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         heading: {
           levels: [1, 2, 3],
         },
-        // Disable default history to use our own
-        history: false,
       }),
 
       // Enhanced Image with better styling

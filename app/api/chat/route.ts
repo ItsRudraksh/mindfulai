@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
       userContext,
       action,
       conversationId,
+      existingSummary,
     } = await request.json();
 
     if (action === "regenerate") {
@@ -52,7 +53,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { existingSummary } = await request.json();
       const summary = await generateConversationSummary(
         conversationHistory,
         existingSummary
