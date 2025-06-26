@@ -132,7 +132,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [slashMenuHeight, setSlashMenuHeight] = useState<number>(0);
 
   const slashCommandRef = useRef<SlashCommandRef>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
 
@@ -152,6 +152,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           class: 'rounded-lg max-w-full h-auto shadow-md my-4 cursor-pointer hover:shadow-lg transition-shadow',
         },
         allowBase64: true,
+        draggable: true,
       }),
 
       // Enhanced Link with click handling
@@ -164,6 +165,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
           target: '_blank',
           rel: 'noopener noreferrer',
         },
+        validate: url => /^https?:\/\//.test(url),
       }),
 
       // Enhanced Placeholder
@@ -205,114 +207,14 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       CodeBlockLowlight.configure({
         lowlight,
         HTMLAttributes: {
-          class: 'bg-muted/50 rounded-lg p-4 my-4 overflow-x-auto',
+          class: 'bg-card rounded-lg p-4 my-4 overflow-x-auto',
         },
       }),
 
       // Drag handle for reordering
       DragHandle.configure({
-        // HTMLAttributes: {
-        //   class: 'drag-handle opacity-0 hover:opacity-100 transition-opacity',
-        // },
-      }),
-
-      // Emoji support
-      Emoji.configure({
-        enableEmoticons: true,
-        suggestion: {
-          items: ({ query }: { query: string }) => {
-            const emojis = [
-              '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
-              '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
-              '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
-              '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
-              '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
-              '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
-              '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
-              '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
-              '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
-              '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
-              '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
-              '😾', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎',
-              '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟',
-              '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️',
-              '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏',
-              '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴',
-              '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐',
-              '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑',
-              '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢',
-              '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕',
-              '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱',
-              '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐',
-              '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🈳', '🈂️',
-              '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '🚻', '🚮', '🎦',
-              '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙',
-              '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣',
-              '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️',
-              '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️',
-              '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️',
-              '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄',
-              '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱',
-              '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝',
-              '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣',
-              '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳',
-              '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨',
-              '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊',
-              '🔔', '🔕', '📣', '📢', '👁‍🗨', '💬', '💭', '🗯️', '♠️', '♣️',
-              '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔',
-              '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞',
-              '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧'
-            ];
-
-            return emojis
-              .filter(emoji => emoji.includes(query.toLowerCase()))
-              .slice(0, 10);
-          },
-          render: () => {
-            let component: any;
-            let popup: any;
-
-            return {
-              onStart: (props: any) => {
-                component = new ReactRenderer(EmojiList, {
-                  props,
-                  editor: props.editor,
-                });
-
-                popup = tippy('body', {
-                  getReferenceClientRect: props.clientRect,
-                  appendTo: () => document.body,
-                  content: component.element,
-                  showOnCreate: true,
-                  interactive: true,
-                  trigger: 'manual',
-                  placement: 'bottom-start',
-                });
-              },
-
-              onUpdate(props: any) {
-                component.updateProps(props);
-
-                popup[0].setProps({
-                  getReferenceClientRect: props.clientRect,
-                });
-              },
-
-              onKeyDown(props: any) {
-                if (props.event.key === 'Escape') {
-                  popup[0].hide();
-                  return true;
-                }
-
-                return component.ref?.onKeyDown(props);
-              },
-
-              onExit() {
-                popup[0].destroy();
-                component.destroy();
-              },
-            };
-          },
+        HTMLAttributes: {
+          class: 'tiptap-drag-handle',
         },
       }),
 
@@ -538,6 +440,15 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         reader.onload = (e) => {
           const url = e.target?.result as string;
           editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
+          
+          // Set up a timer to check if the image is still in the editor after 10 seconds
+          // In a real implementation, this would upload to Cloudinary
+          setTimeout(() => {
+            if (editor && editor.isActive('image')) {
+              console.log('Image still in editor after 10 seconds - would upload to Cloudinary');
+              // Here you would upload to Cloudinary and update the src
+            }
+          }, 10000);
         };
         reader.readAsDataURL(file);
       }
@@ -670,7 +581,7 @@ const EmojiList = React.forwardRef<any, any>((props, ref) => {
   const selectItem = (index: number) => {
     const item = props.items[index];
     if (item) {
-      props.command({ emoji: item });
+      props.command({ native: item }); // Use native instead of emoji
     }
   };
 
