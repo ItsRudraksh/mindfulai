@@ -11,8 +11,6 @@ import TextStyle from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import tippy from 'tippy.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -41,7 +39,6 @@ import Typography from '@tiptap/extension-typography';
 import Underline from '@tiptap/extension-underline';
 import Youtube from '@tiptap/extension-youtube';
 import { createLowlight, common } from 'lowlight';
-// import { common } from 'lowlight/lib/common';
 
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
@@ -57,7 +54,9 @@ interface JournalEditorProps {
   className?: string;
 }
 
-// Slash command extension
+const lowlight = createLowlight(common);
+
+// Slash command extension with proper DOM handling
 const SlashCommandExtension = Extension.create({
   name: 'slashCommand',
 
@@ -65,28 +64,54 @@ const SlashCommandExtension = Extension.create({
     return [
       new Plugin({
         key: new PluginKey('slashCommand'),
-        view() {
-          return {
-            update: (view, prevState) => {
-              const { state } = view;
-              const { selection } = state;
-              const { from, to } = selection;
+        state: {
+          init() {
+            return {
+              open: false,
+              range: null,
+            };
+          },
+          apply(tr, prev) {
+            const { selection } = tr;
+            const next = { ...prev };
 
-              // Check if we're at the start of a line and typed '/'
-              const text = state.doc.textBetween(from - 1, to, '');
-              if (text === '/') {
-                // Show slash command menu
-                this.showSlashCommand(view, from - 1, to);
+            // Check if we should show slash command
+            if (selection.empty) {
+              const { from } = selection;
+              const textBefore = tr.doc.textBetween(Math.max(0, from - 10), from, '');
+              const match = textBefore.match(/\/[\w\s]*$/);
+
+              if (match) {
+                const startPos = from - match[0].length;
+                next.open = true;
+                next.range = { from: startPos, to: from };
+              } else {
+                next.open = false;
+                next.range = null;
               }
-            },
-          };
+            } else {
+              next.open = false;
+              next.range = null;
+            }
+
+            return next;
+          },
+        },
+        props: {
+          handleKeyDown: (view, event) => {
+            const { state } = view;
+            const pluginState = this.getState(state);
+
+            if (!pluginState.open) return false;
+
+            // Let the slash command component handle the key events
+            return false;
+          },
         },
       }),
     ];
   },
 });
-
-const lowlight = createLowlight(common);
 
 const JournalEditor: React.FC<JournalEditorProps> = ({
   entryId,
@@ -101,9 +126,11 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSlashCommand, setShowSlashCommand] = useState(false);
   const [slashCommandRange, setSlashCommandRange] = useState<any>(null);
+  const [slashCommandPosition, setSlashCommandPosition] = useState<{ top: number; left: number } | null>(null);
 
   const slashCommandRef = useRef<SlashCommandRef>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
 
@@ -145,13 +172,47 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       Details,
       DetailsContent,
       DetailsSummary,
-      Emoji.configure({
-        // You might want to configure emoji further, e.g., with a emoji picker
-        // For now, basic setup
+      Emoji,
+      FileHandler.configure({
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        onDrop: (currentEditor, files, pos) => {
+          files.forEach(file => {
+            const fileReader = new FileReader();
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor.chain().insertContentAt(pos, {
+                type: 'image',
+                attrs: {
+                  src: fileReader.result,
+                },
+              }).focus().run();
+            };
+          });
+        },
+        onPaste: (currentEditor, files, htmlContent) => {
+          files.forEach(file => {
+            const fileReader = new FileReader();
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor.chain().insertContent({
+                type: 'image',
+                attrs: {
+                  src: fileReader.result,
+                },
+              }).focus().run();
+            };
+          });
+        },
       }),
-      FileHandler, // Requires a handler for actual file uploads
       FontFamily,
-      Mathematics,
+      Mathematics.configure({
+        HTMLAttributes: {
+          class: 'math-node',
+        },
+        katexOptions: {
+          throwOnError: false,
+        },
+      }),
       Subscript,
       Superscript,
       Table.configure({
@@ -175,6 +236,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         height: 480,
         modestBranding: true,
       }),
+      SlashCommandExtension,
     ],
     content: initialContent || {
       type: 'doc',
@@ -192,23 +254,17 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       handleKeyDown: (view, event) => {
         // Handle slash command navigation
         if (showSlashCommand && slashCommandRef.current) {
-          return slashCommandRef.current.onKeyDown(event);
-        }
-
-        // Show slash command on '/' at start of line
-        if (event.key === '/' && view.state.selection.empty) {
-          const { from } = view.state.selection;
-          const textBefore = view.state.doc.textBetween(Math.max(0, from - 1), from, '');
-
-          if (textBefore === '' || textBefore === '\n') {
-            // We'll handle this in the update function
-            return false;
+          const handled = slashCommandRef.current.onKeyDown(event);
+          if (handled) {
+            return true;
           }
         }
 
         // Hide slash command on escape
         if (event.key === 'Escape' && showSlashCommand) {
           setShowSlashCommand(false);
+          setSlashCommandRange(null);
+          setSlashCommandPosition(null);
           return true;
         }
 
@@ -221,20 +277,37 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       const { selection } = state;
       const { from, to } = selection;
 
-      // Look for '/' at the beginning of a line
+      // Look for '/' at the beginning of a line or after whitespace
       const textBefore = state.doc.textBetween(Math.max(0, from - 10), from, '');
       const match = textBefore.match(/\/[\w\s]*$/);
 
-      if (match) {
+      if (match && selection.empty) {
         const startPos = from - match[0].length;
         setSlashCommandRange({ from: startPos, to: from });
-        setShowSlashCommand(true);
+        
+        // Calculate position safely
+        try {
+          const coords = editor.view.coordsAtPos(startPos);
+          const editorRect = editorRef.current?.getBoundingClientRect();
+          
+          if (coords && editorRect) {
+            setSlashCommandPosition({
+              top: coords.top - editorRect.top + 25,
+              left: coords.left - editorRect.left,
+            });
+            setShowSlashCommand(true);
+          }
+        } catch (error) {
+          console.warn('Could not calculate slash command position:', error);
+          setShowSlashCommand(false);
+        }
       } else {
         setShowSlashCommand(false);
+        setSlashCommandRange(null);
+        setSlashCommandPosition(null);
       }
 
       // Auto-save
-      console.log("Editor updated, calling debouncedSave()");
       debouncedSave();
     },
   });
@@ -246,20 +319,17 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
 
     saveTimeoutRef.current = setTimeout(async () => {
       await saveContent();
-    }, 1500); // Re-enable debounce with 1.5 second delay
+    }, 1500);
   }, [editor, title, entryId]);
 
   const saveContent = async () => {
     if (!editor || !entryId) {
-      console.log("Save aborted: Editor or entryId not available.", { editor: !!editor, entryId: !!entryId });
       return;
     }
 
     setIsSaving(true);
-    console.log("Attempting to save content...");
     try {
       const content = editor.getJSON();
-      console.log("Content to be saved:", content);
       await updateJournalEntry({
         entryId,
         title: title || 'Untitled',
@@ -270,7 +340,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       if (onSave) {
         onSave(content, title);
       }
-      console.log("Content saved successfully.");
     } catch (error) {
       console.error('Error saving journal entry:', error);
       toast.error('Failed to save journal entry');
@@ -351,43 +420,51 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
       <EditorToolbar editor={editor} onImageUpload={handleImageUpload} />
 
       {/* Editor */}
-      <div className="relative">
+      <div className="relative" ref={editorRef}>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="glass-card border border-border/20 rounded-lg overflow-hidden min-h-[600px]"
+          className="glass-card border border-border/20 rounded-lg overflow-hidden min-h-[600px] relative"
         >
           <EditorContent editor={editor} />
+
+          {/* Slash Command Menu */}
+          <AnimatePresence>
+            {showSlashCommand && slashCommandRange && slashCommandPosition && (
+              <div
+                className="absolute z-50"
+                style={{
+                  top: `${slashCommandPosition.top}px`,
+                  left: `${slashCommandPosition.left}px`,
+                }}
+              >
+                <SlashCommand
+                  ref={slashCommandRef}
+                  editor={editor}
+                  range={slashCommandRange}
+                />
+              </div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        {/* Slash Command Menu */}
-        <AnimatePresence>
-          {showSlashCommand && slashCommandRange && (
-            <div
-              className="absolute z-50"
-              style={(() => {
-                if (!editor) return {};
-                const { from } = slashCommandRange;
-                const coords = editor.view.coordsAtPos(from);
-                return {
-                  top: `${coords.top + window.scrollY}px`,
-                  left: `${coords.left + window.scrollX}px`,
-                };
-              })()}
-            >
-              <SlashCommand
-                ref={slashCommandRef}
-                editor={editor}
-                range={slashCommandRange}
-              />
-            </div>
-          )}
-        </AnimatePresence>
         {/* Bubble Menu */}
         <EditorBubbleMenu editor={editor} />
+        
         {/* Floating Menu */}
         <EditorFloatingMenu editor={editor} />
       </div>
+
+      {/* Character Count */}
+      {editor.extensionManager.extensions.find(ext => ext.name === 'characterCount') && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-2 text-xs text-muted-foreground text-right"
+        >
+          {editor.storage.characterCount.characters()} characters, {editor.storage.characterCount.words()} words
+        </motion.div>
+      )}
 
       {/* Keyboard Shortcuts Help */}
       <motion.div
@@ -398,6 +475,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         <div className="flex flex-wrap gap-4">
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+B</kbd> Bold</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+I</kbd> Italic</span>
+          <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+U</kbd> Underline</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+K</kbd> Link</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">/</kbd> Commands</span>
           <span><kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Z</kbd> Undo</span>

@@ -25,7 +25,12 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Type
+  Type,
+  Table,
+  CheckSquare,
+  Subscript,
+  Superscript,
+  Calculator
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -87,6 +92,17 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
     editor.chain().focus().setHighlight({ color }).run();
   };
 
+  const insertTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  };
+
+  const insertMath = () => {
+    const latex = window.prompt('Enter LaTeX formula:', 'E = mc^2');
+    if (latex) {
+      editor.chain().focus().setMath({ latex }).run();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -97,14 +113,14 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        title="Undo"
+        title="Undo (Ctrl+Z)"
       >
         <Undo className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        title="Redo"
+        title="Redo (Ctrl+Y)"
       >
         <Redo className="h-4 w-4" />
       </ToolbarButton>
@@ -157,16 +173,23 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         isActive={editor.isActive('bold')}
-        title="Bold"
+        title="Bold (Ctrl+B)"
       >
         <Bold className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         isActive={editor.isActive('italic')}
-        title="Italic"
+        title="Italic (Ctrl+I)"
       >
         <Italic className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        isActive={editor.isActive('underline')}
+        title="Underline (Ctrl+U)"
+      >
+        <Underline className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleStrike().run()}
@@ -181,6 +204,22 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         title="Inline Code"
       >
         <Code className="h-4 w-4" />
+      </ToolbarButton>
+
+      {/* Subscript/Superscript */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleSubscript().run()}
+        isActive={editor.isActive('subscript')}
+        title="Subscript"
+      >
+        <Subscript className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleSuperscript().run()}
+        isActive={editor.isActive('superscript')}
+        title="Superscript"
+      >
+        <Superscript className="h-4 w-4" />
       </ToolbarButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
@@ -201,11 +240,43 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        isActive={editor.isActive('taskList')}
+        title="Task List"
+      >
+        <CheckSquare className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         isActive={editor.isActive('blockquote')}
         title="Quote"
       >
         <Quote className="h-4 w-4" />
+      </ToolbarButton>
+
+      <Separator orientation="vertical" className="h-6 mx-1" />
+
+      {/* Text Alignment */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        isActive={editor.isActive({ textAlign: 'left' })}
+        title="Align Left"
+      >
+        <AlignLeft className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+        isActive={editor.isActive({ textAlign: 'center' })}
+        title="Align Center"
+      >
+        <AlignCenter className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+        isActive={editor.isActive({ textAlign: 'right' })}
+        title="Align Right"
+      >
+        <AlignRight className="h-4 w-4" />
       </ToolbarButton>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
@@ -259,11 +330,11 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* Media */}
+      {/* Media & Advanced */}
       <ToolbarButton
         onClick={addLink}
         isActive={editor.isActive('link')}
-        title="Add Link"
+        title="Add Link (Ctrl+K)"
       >
         <Link className="h-4 w-4" />
       </ToolbarButton>
@@ -272,6 +343,18 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor, onImageUpload }) 
         title="Add Image"
       >
         <Image className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={insertTable}
+        title="Insert Table"
+      >
+        <Table className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={insertMath}
+        title="Insert Math Formula"
+      >
+        <Calculator className="h-4 w-4" />
       </ToolbarButton>
     </motion.div>
   );
