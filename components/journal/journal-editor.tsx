@@ -12,12 +12,11 @@ import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation } from 'convex/react';
+import { useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
-import { Save, Loader2, Smile } from 'lucide-react';
-import tippy from 'tippy.js';
+import { Save, Loader2 } from 'lucide-react';
 
 // Import all TipTap extensions
 import BubbleMenu from '@tiptap/extension-bubble-menu';
@@ -39,7 +38,6 @@ import { createLowlight, common } from 'lowlight';
 import EditorToolbar from './editor-toolbar';
 import SlashCommand, { SlashCommandRef } from './slash-command';
 import EditorBubbleMenu from './editor-bubble-menu';
-import { metadata } from '../../app/layout';
 
 interface JournalEditorProps {
   entryId?: Id<"journalEntries">;
@@ -134,6 +132,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const slashMenuRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
+  const triggerUpdateGlobalMemoryFromJournal = useAction(api.globalMemory.updateGlobalMemoryFromJournal);
 
   const editor = useEditor({
     extensions: [
@@ -311,7 +310,7 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
+        class: 'tiptap ProseMirror prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-4',
         spellcheck: 'true',
       },
       handleKeyDown: (view, event) => {
@@ -447,15 +446,22 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
     input.click();
   };
 
-  // Save on unmount
+  // Save on unmount and update global memory
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
-        saveContent();
+        saveContent().then(() => {
+          // Update global memory when leaving the journal page
+          if (entryId) {
+            triggerUpdateGlobalMemoryFromJournal({ userId: 'current' }).catch(error => {
+              console.error('Error updating global memory from journal:', error);
+            });
+          }
+        });
       }
     };
-  }, []);
+  }, [entryId, triggerUpdateGlobalMemoryFromJournal]);
 
   if (!editor) {
     return (
