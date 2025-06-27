@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Phone, PhoneOff, ArrowLeft, RefreshCw, Activity, Database } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { useVoiceSession } from '@/contexts/voice-session-context';
@@ -21,7 +21,7 @@ export default function VoiceSession() {
   const user = useQuery(api.users.current);
   const globalMemory = user?.globalMemory;
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
-  const updateGlobalMemoryFromVoiceSession = useMutation(api.actions.globalMemory.updateGlobalMemoryFromVoiceSession);
+  const triggerUpdateGlobalMemoryFromVoiceSession = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromVoiceSession);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -45,7 +45,7 @@ export default function VoiceSession() {
       // with a delay to ensure all data is processed
       setTimeout(async () => {
         try {
-          await updateGlobalMemoryFromVoiceSession({
+          await triggerUpdateGlobalMemoryFromVoiceSession({
             userId: user._id,
             sessionId: state.sessionId!,
           });
@@ -54,7 +54,7 @@ export default function VoiceSession() {
         }
       }, 120000); // 2 minute delay
     }
-  }, [state.callStatus, state.sessionId, user, updateGlobalMemoryFromVoiceSession]);
+  }, [state.callStatus, state.sessionId, user, triggerUpdateGlobalMemoryFromVoiceSession]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -275,14 +275,14 @@ export default function VoiceSession() {
                   <div className="relative">
                     <motion.div
                       className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.callStatus === "in-progress"
-                          ? 'bg-green-100/80 dark:bg-green-950/40'
-                          : state.callStatus === "initiated" || state.callStatus === "processing"
-                            ? 'bg-yellow-100/80 dark:bg-yellow-950/40'
-                            : state.callStatus === "done"
-                              ? 'bg-blue-100/80 dark:bg-blue-950/40'
-                              : state.callStatus === "failed"
-                                ? 'bg-red-100/80 dark:bg-red-950/40'
-                                : 'bg-white/20'
+                        ? 'bg-green-100/80 dark:bg-green-950/40'
+                        : state.callStatus === "initiated" || state.callStatus === "processing"
+                          ? 'bg-yellow-100/80 dark:bg-yellow-950/40'
+                          : state.callStatus === "done"
+                            ? 'bg-blue-100/80 dark:bg-blue-950/40'
+                            : state.callStatus === "failed"
+                              ? 'bg-red-100/80 dark:bg-red-950/40'
+                              : 'bg-white/20'
                         }`}
                       animate={
                         state.callStatus === "in-progress"
@@ -294,14 +294,14 @@ export default function VoiceSession() {
                       transition={{ duration: 2, repeat: Infinity }}
                     >
                       <Phone className={`h-16 w-16 ${state.callStatus === "in-progress"
-                          ? 'text-green-600'
-                          : state.callStatus === "initiated" || state.callStatus === "processing"
-                            ? 'text-yellow-600'
-                            : state.callStatus === "done"
-                              ? 'text-blue-600'
-                              : state.callStatus === "failed"
-                                ? 'text-red-600'
-                                : 'text-white'
+                        ? 'text-green-600'
+                        : state.callStatus === "initiated" || state.callStatus === "processing"
+                          ? 'text-yellow-600'
+                          : state.callStatus === "done"
+                            ? 'text-blue-600'
+                            : state.callStatus === "failed"
+                              ? 'text-red-600'
+                              : 'text-white'
                         }`} />
                     </motion.div>
 

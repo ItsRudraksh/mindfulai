@@ -14,10 +14,10 @@ export async function POST(request: NextRequest) {
 
     // Convert transcript to chat messages format
     const messages = transcript
-      .filter((msg: any) => msg.role !== 'system')
+      .filter((msg: any) => msg.role !== "system")
       .map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
+        role: msg.role === "user" ? "user" : "assistant",
+        content: msg.content,
       }));
 
     if (messages.length === 0) {
@@ -28,14 +28,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate comprehensive AI summary
-    const summary = await generateTherapySessionSummary(messages, sessionType, userContext);
+    const summary = await generateTherapySessionSummary(
+      messages,
+      sessionType,
+      userContext
+    );
 
     return NextResponse.json({
       success: true,
       summary: summary,
     });
   } catch (error) {
-    console.error('AI summary generation error:', error);
+    console.error("AI summary generation error:", error);
     return NextResponse.json(
       { error: "Failed to generate AI summary" },
       { status: 500 }
@@ -67,35 +71,42 @@ ${conversation}
 
 Provide a detailed, professional summary (4-6 paragraphs) that would be valuable for therapeutic continuity and user reflection. Use empathetic, supportive language while maintaining clinical accuracy.`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-opus-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional therapy assistant specializing in creating comprehensive, empathetic session summaries that support therapeutic continuity and user growth."
-          },
-          {
-            role: "user",
-            content: summaryPrompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 800,
-      }),
-    });
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "anthropic/claude-sonnet-4",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a professional therapy assistant specializing in creating comprehensive, empathetic session summaries that support therapeutic continuity and user growth.",
+            },
+            {
+              role: "user",
+              content: summaryPrompt,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 800,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`AI API error: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "Unable to generate summary at this time.";
+    return (
+      data.choices[0]?.message?.content ||
+      "Unable to generate summary at this time."
+    );
   } catch (error) {
     console.error("AI summary generation error:", error);
     return "This session covered important therapeutic topics and provided valuable support. A detailed summary could not be generated at this time, but the conversation contributed to your ongoing mental health journey.";

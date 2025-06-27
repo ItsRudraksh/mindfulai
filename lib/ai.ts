@@ -303,7 +303,7 @@ ${moodHistoryContext}
 Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and encouragement.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Current mood: "${mood}"` },
@@ -390,7 +390,7 @@ Consider this emotional journey when providing your insight.`;
     const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ""}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? "Take into account their mood patterns today to provide more personalized reflection." : ""} Respond in the same language and style as the input.`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: [
         {
           role: "system",
@@ -523,7 +523,7 @@ Remember: You are a mental health companion. Be genuinely helpful, naturally emp
     ];
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: messages,
       temperature: 0.7,
       max_tokens: 500,
@@ -582,7 +582,7 @@ export async function generateConversationSummary(
     }
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: [
         {
           role: "system",
@@ -642,13 +642,16 @@ export async function generateInitialGlobalMemory(userProfile: {
 }): Promise<string> {
   try {
     const { name, dob, profession, aboutMe } = userProfile;
-    
+
     // Calculate age from DOB
     const birthDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--;
     }
 
@@ -685,16 +688,15 @@ Age: ${age}
 Profession: ${profession}
 About Me: "${aboutMe}"
 
-Current Date: ${new Date().toISOString().split('T')[0]}`;
+Current Date: ${new Date().toISOString().split("T")[0]}`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 5000,
     });
 
     const response = completion.choices[0]?.message?.content;
@@ -706,11 +708,11 @@ Current Date: ${new Date().toISOString().split('T')[0]}`;
     return response;
   } catch (error) {
     console.error("Error generating initial global memory:", error);
-    
+
     // Create a basic fallback profile if AI generation fails
     const { name, dob, profession, aboutMe } = userProfile;
-    const today = new Date().toISOString().split('T')[0];
-    
+    const today = new Date().toISOString().split("T")[0];
+
     return `# User Profile
 Last Updated: ${today}
 
@@ -748,7 +750,12 @@ No mood data available yet.`;
 export async function updateGlobalMemoryWithContext(
   existingMemory: string,
   newContext: {
-    type: "mood_entries" | "video_session" | "voice_session" | "journal_entries" | "chat_conversation";
+    type:
+      | "mood_entries"
+      | "video_session"
+      | "voice_session"
+      | "journal_entries"
+      | "chat_conversation";
     data: any;
   }
 ): Promise<string> {
@@ -775,16 +782,15 @@ New Information Type: ${newContext.type}
 New Information:
 ${JSON.stringify(newContext.data, null, 2)}
 
-Current Date: ${new Date().toISOString().split('T')[0]}`;
+Current Date: ${new Date().toISOString().split("T")[0]}`;
 
     const completion = await client.chat.completions.create({
-      model: "anthropic/claude-opus-4",
+      model: "anthropic/claude-sonnet-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 5000,
     });
 
     const response = completion.choices[0]?.message?.content;
@@ -796,7 +802,7 @@ Current Date: ${new Date().toISOString().split('T')[0]}`;
     return response;
   } catch (error) {
     console.error("Error updating global memory:", error);
-    
+
     // Return the existing memory if update fails
     return existingMemory;
   }
@@ -817,6 +823,6 @@ export async function generatePersonalizedMeditationPlan(
   return {
     title: "Personalized Meditation Plan",
     description: "A meditation plan tailored to your needs",
-    sessions: []
+    sessions: [],
   };
 }

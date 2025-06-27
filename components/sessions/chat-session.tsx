@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Send, Bot, User as UserIcon, ArrowLeft, MoreVertical, Sparkles, 
+import {
+  Send, Bot, User as UserIcon, ArrowLeft, MoreVertical, Sparkles,
   Edit3, RotateCcw, Trash2, MessageSquare, Plus, Archive, Star
 } from 'lucide-react';
 import {
@@ -29,7 +29,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { ChatMessage } from '@/lib/ai';
@@ -54,7 +54,7 @@ interface Message {
 export default function ChatSession() {
   const user = useQuery(api.users.current);
   const { state: chatState, createNewConversation, switchConversation } = useChat();
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -62,7 +62,7 @@ export default function ChatSession() {
   const [editingMessageId, setEditingMessageId] = useState<Id<"messages"> | null>(null);
   const [editContent, setEditContent] = useState('');
   const [showConversationList, setShowConversationList] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Mutations
@@ -72,7 +72,7 @@ export default function ChatSession() {
   const deleteMessageMutation = useMutation(api.messages.deleteMessage);
   const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
   const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
-  const updateGlobalMemoryFromChat = useMutation(api.actions.globalMemory.updateGlobalMemoryFromChat);
+  const triggerUpdateGlobalMemoryFromChat = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromChat);
 
   // Queries
   const conversationMessages = useQuery(
@@ -89,7 +89,7 @@ export default function ChatSession() {
   useEffect(() => {
     if (conversationMessages) {
       setMessages(conversationMessages as Message[]);
-      
+
       // Build conversation history for AI context
       const history: ChatMessage[] = conversationMessages
         .slice(-10) // Last 10 messages for context
@@ -110,7 +110,7 @@ export default function ChatSession() {
   useEffect(() => {
     return () => {
       if (chatState.currentConversationId && user) {
-        updateGlobalMemoryFromChat({
+        triggerUpdateGlobalMemoryFromChat({
           userId: user._id,
           conversationId: chatState.currentConversationId,
         }).catch(error => {
@@ -118,7 +118,7 @@ export default function ChatSession() {
         });
       }
     };
-  }, [chatState.currentConversationId, user, updateGlobalMemoryFromChat]);
+  }, [chatState.currentConversationId, user, triggerUpdateGlobalMemoryFromChat]);
 
   const handleCreateNewConversation = async () => {
     const conversationId = await createNewConversation();
@@ -178,7 +178,7 @@ export default function ChatSession() {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         // Create AI message
         await createMessageMutation({
@@ -220,15 +220,15 @@ export default function ChatSession() {
       });
       setEditingMessageId(null);
       setEditContent('');
-      
+
       // After editing a user message, regenerate the AI response that follows
       const messageIndex = messages.findIndex(m => m._id === messageId);
       const nextMessage = messages[messageIndex + 1];
-      
+
       if (nextMessage && nextMessage.sender === 'ai') {
         // Find the user message that prompted this AI response
         const userMessage = messages[messageIndex];
-        
+
         if (userMessage && userMessage.sender === 'user') {
           // Get conversation history up to this point
           const historyUpToPoint = messages
@@ -262,7 +262,7 @@ export default function ChatSession() {
 
           if (response.ok) {
             const data = await response.json();
-            
+
             if (data.success) {
               await regenerateMessageMutation({
                 messageId: nextMessage._id,
@@ -275,7 +275,7 @@ export default function ChatSession() {
           }
         }
       }
-      
+
       toast.success('Message edited successfully');
     } catch (error) {
       console.error('Error editing message:', error);
@@ -289,11 +289,11 @@ export default function ChatSession() {
 
     try {
       setIsTyping(true);
-      
+
       // Find the user message that prompted this AI response
       const messageIndex = messages.findIndex(m => m._id === messageId);
       const userMessage = messages[messageIndex - 1];
-      
+
       if (!userMessage || userMessage.sender !== 'user') {
         throw new Error('Cannot find corresponding user message');
       }
@@ -333,7 +333,7 @@ export default function ChatSession() {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         await regenerateMessageMutation({
           messageId,
@@ -363,13 +363,13 @@ export default function ChatSession() {
       if (message.sender === 'user') {
         const messageIndex = messages.findIndex(m => m._id === messageId);
         const messagesToDelete = messages.slice(messageIndex);
-        
+
         // Delete all messages from this point onwards
-        await deleteMessagesAfterMutation({ 
+        await deleteMessagesAfterMutation({
           conversationId: chatState.currentConversationId!,
-          fromTimestamp: message.timestamp 
+          fromTimestamp: message.timestamp
         });
-        
+
         toast.success(`Deleted ${messagesToDelete.length} message(s)`);
       } else {
         // Just delete the AI message
@@ -493,11 +493,10 @@ export default function ChatSession() {
                       <motion.div
                         key={conversation._id}
                         whileHover={{ scale: 1.02 }}
-                        className={`p-3 rounded-lg cursor-pointer transition-all therapeutic-hover ${
-                          chatState.currentConversationId === conversation._id
-                            ? 'bg-primary/10 border border-primary/20'
-                            : 'bg-muted/30 hover:bg-muted/50'
-                        }`}
+                        className={`p-3 rounded-lg cursor-pointer transition-all therapeutic-hover ${chatState.currentConversationId === conversation._id
+                          ? 'bg-primary/10 border border-primary/20'
+                          : 'bg-muted/30 hover:bg-muted/50'
+                          }`}
                         onClick={() => {
                           switchConversation(conversation._id);
                           setShowConversationList(false);
@@ -543,9 +542,8 @@ export default function ChatSession() {
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`flex items-start space-x-3 max-w-[80%] ${
-                      message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                    }`}>
+                    <div className={`flex items-start space-x-3 max-w-[80%] ${message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
+                      }`}>
                       <Avatar className="w-8 h-8 flex-shrink-0">
                         <AvatarFallback className="backdrop-blur-subtle">
                           {message.sender === 'user' ? (
@@ -555,14 +553,13 @@ export default function ChatSession() {
                           )}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="space-y-2">
-                        <motion.div 
-                          className={`rounded-lg p-4 backdrop-blur-subtle relative group ${
-                            message.sender === 'user'
-                              ? 'bg-primary/80 text-primary-foreground'
-                              : 'bg-muted/80 text-foreground border border-purple-200/30'
-                          }`}
+                        <motion.div
+                          className={`rounded-lg p-4 backdrop-blur-subtle relative group ${message.sender === 'user'
+                            ? 'bg-primary/80 text-primary-foreground'
+                            : 'bg-muted/80 text-foreground border border-purple-200/30'
+                            }`}
                           whileHover={{ scale: 1.01 }}
                           transition={{ duration: 0.2 }}
                         >
@@ -599,21 +596,19 @@ export default function ChatSession() {
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">
                                 {message.content}
                               </p>
-                              
+
                               {/* Message Actions */}
-                              <div className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity ${
-                                message.sender === 'user' ? 'bg-white/20 rounded-full p-1' : ''
-                              }`}>
+                              <div className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity ${message.sender === 'user' ? 'bg-white/20 rounded-full p-1' : ''
+                                }`}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className={`h-6 w-6 p-0 ${
-                                        message.sender === 'user' 
-                                          ? 'text-white hover:bg-white/20' 
-                                          : 'hover:bg-muted/50'
-                                      }`}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={`h-6 w-6 p-0 ${message.sender === 'user'
+                                        ? 'text-white hover:bg-white/20'
+                                        : 'hover:bg-muted/50'
+                                        }`}
                                     >
                                       <MoreVertical className="h-3 w-3" />
                                     </Button>
@@ -653,7 +648,7 @@ export default function ChatSession() {
                               </div>
                             </>
                           )}
-                          
+
                           {/* Message Status Indicators */}
                           <div className="flex items-center justify-between mt-2">
                             <p className="text-xs opacity-70">
@@ -665,7 +660,7 @@ export default function ChatSession() {
                                 <span className="ml-2 text-xs opacity-60">(regenerated)</span>
                               )}
                             </p>
-                            
+
                             {message.metadata?.flagged && (
                               <Badge variant="outline" className="text-xs">
                                 Guided Response

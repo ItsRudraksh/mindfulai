@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Heart, ArrowRight, Calendar, Briefcase, User, Loader2 } from 'lucide-react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { Authenticated, Unauthenticated } from "convex/react";
@@ -19,7 +19,7 @@ export default function OnboardingPage() {
   const user = useQuery(api.users.current);
   const hasCompletedOnboarding = useQuery(api.users.hasCompletedOnboarding);
   const updateUserProfileOnboarding = useMutation(api.users.updateUserProfileOnboarding);
-  const createInitialGlobalMemory = useMutation(api.actions.globalMemory.createInitialGlobalMemory);
+  const createInitialGlobalMemory = useAction(api.globalMemory.createInitialGlobalMemory);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,14 +59,14 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.aboutMe.trim()) {
       toast.error('Please tell us a bit about yourself');
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Update user profile with onboarding data
       await updateUserProfileOnboarding({
@@ -114,7 +114,7 @@ export default function OnboardingPage() {
             className="w-full max-w-2xl"
           >
             <div className="text-center mb-8">
-              <motion.div 
+              <motion.div
                 className="flex items-center justify-center mb-4"
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
@@ -151,7 +151,7 @@ export default function OnboardingPage() {
                           <p className="text-sm text-muted-foreground">This helps us provide age-appropriate support</p>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="dob">Date of Birth</Label>
                         <Input
@@ -185,7 +185,7 @@ export default function OnboardingPage() {
                           <p className="text-sm text-muted-foreground">Understanding your work context helps us provide relevant support</p>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="profession">Profession or Field</Label>
                         <Input
@@ -219,7 +219,7 @@ export default function OnboardingPage() {
                           <p className="text-sm text-muted-foreground">This helps us personalize your mental health support</p>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="aboutMe">About Me</Label>
                         <Textarea
@@ -248,9 +248,9 @@ export default function OnboardingPage() {
                   {/* Navigation Buttons */}
                   <div className="flex justify-between pt-4">
                     {step > 1 ? (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={handleBack}
                         className="therapeutic-hover"
                         disabled={isSubmitting}
@@ -260,10 +260,10 @@ export default function OnboardingPage() {
                     ) : (
                       <div></div> // Empty div for spacing
                     )}
-                    
+
                     {step < 3 ? (
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={handleNext}
                         className="therapeutic-hover ripple-effect"
                       >
@@ -271,8 +271,8 @@ export default function OnboardingPage() {
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     ) : (
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="therapeutic-hover ripple-effect"
                         disabled={isSubmitting}
                       >
@@ -309,7 +309,7 @@ export default function OnboardingPage() {
 
 function RedirectToSignIn() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/auth/signin');
   }, [router]);

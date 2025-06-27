@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         flagged: aiResponse.flagged,
         flagReason: aiResponse.flagReason,
         metadata: {
-          aiModel: "anthropic/claude-opus-4",
+          aiModel: "anthropic/claude-sonnet-4",
           regenerated: true,
         },
       });
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       updatedSummary:
         updatedSummary !== rollingSummary ? updatedSummary : undefined,
       metadata: {
-        aiModel: "anthropic/claude-opus-4",
+        aiModel: "anthropic/claude-sonnet-4",
         contextSummarized: needsSummarization,
       },
     });

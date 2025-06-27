@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Smile, Meh, Frown, Heart, Zap, Video, Phone, MessageCircle, PenTool, Brain, Wind, ArrowRight, Sparkles, Lightbulb, Target } from 'lucide-react';
 import Link from 'next/link';
 import { generateMoodActivityRecommendations, generateMoodInsight, type MoodRecommendation } from '@/lib/ai';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 
@@ -39,7 +39,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
   const todaysMoodEntries = useQuery(api.moodEntries.getMoodEntriesForToday);
   const createMoodEntryMutation = useMutation(api.moodEntries.createMoodEntry);
   const updateMoodEntryMutation = useMutation(api.moodEntries.updateMoodEntry);
-  const updateGlobalMemoryFromMood = useMutation(api.actions.globalMemory.updateGlobalMemoryFromMood);
+  const triggerUpdateGlobalMemoryFromMood = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromMood);
 
   const moods = [
     { id: 'great', icon: Smile, label: 'Great', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/20', intensity: 9 },
@@ -69,7 +69,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
 
       // Update global memory with new mood entry
       if (user) {
-        await updateGlobalMemoryFromMood({
+        await triggerUpdateGlobalMemoryFromMood({
           userId: user._id,
         });
       }
@@ -85,7 +85,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
     if (!selectedMoodData) return;
 
     setIsLoadingRecommendations(true);
-    
+
     try {
       // Convert today's mood entries to the format expected by AI
       const moodHistory = todaysMoodEntries?.map(entry => ({
@@ -105,9 +105,9 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
         },
         moodHistory
       );
-      
+
       setRecommendations(moodRecommendations);
-      
+
       // Update the latest mood entry with recommendations used
       if (todaysMoodEntries && todaysMoodEntries.length > 0) {
         const latestEntry = todaysMoodEntries[0];
@@ -130,7 +130,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
     if (!selectedMoodData) return;
 
     setIsLoadingInsight(true);
-    
+
     try {
       // Convert today's mood entries to the format expected by AI
       const moodHistory = todaysMoodEntries?.map(entry => ({
@@ -147,9 +147,9 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
         `Current intensity: ${selectedMoodData.intensity}/10`,
         moodHistory
       );
-      
+
       setMoodInsight(insight);
-      
+
       // Update the latest mood entry with AI insight
       if (todaysMoodEntries && todaysMoodEntries.length > 0) {
         const latestEntry = todaysMoodEntries[0];
@@ -216,8 +216,8 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                   onClick={() => handleMoodSelection(mood.id)}
                   className={`
                     flex flex-col items-center p-4 rounded-lg border-glass transition-all duration-350 ease-in-out therapeutic-hover ripple-effect
-                    ${currentMood === mood.id 
-                      ? 'border-primary bg-primary/10 shadow-therapeutic' 
+                    ${currentMood === mood.id
+                      ? 'border-primary bg-primary/10 shadow-therapeutic'
                       : 'border-border hover:border-muted-foreground'
                     }
                   `}
@@ -309,10 +309,10 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                           <Sparkles className="h-4 w-4 text-primary" />
                           <span className="text-sm font-medium">Recommended for you:</span>
                         </div>
-                        
+
                         {recommendations.topRecommendations.map((activity, index) => {
                           const IconComponent = getIconComponent(activity.icon);
-                          
+
                           return (
                             <motion.div
                               key={activity.id}
@@ -327,14 +327,14 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                               >
                                 <Link href={activity.route}>
                                   <div className="flex items-center space-x-4 w-full">
-                                    <motion.div 
+                                    <motion.div
                                       className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"
                                       whileHover={{ rotate: 5 }}
                                       transition={{ duration: 0.2 }}
                                     >
                                       <IconComponent className="h-6 w-6 text-primary" />
                                     </motion.div>
-                                    
+
                                     <div className="flex-1 text-left">
                                       <h4 className="font-semibold text-sm mb-1">{activity.name}</h4>
                                       <p className="text-xs text-muted-foreground mb-2">{activity.description}</p>
@@ -347,7 +347,7 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
                                         </span>
                                       </div>
                                     </div>
-                                    
+
                                     <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                   </div>
                                 </Link>
@@ -382,9 +382,9 @@ export default function MoodCheckIn({ currentMood, setCurrentMood }: MoodCheckIn
 
                 {/* Reset button */}
                 <div className="flex gap-2 justify-center pt-4">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={resetMoodSelection}
                     className="calming-hover text-xs"
                   >
