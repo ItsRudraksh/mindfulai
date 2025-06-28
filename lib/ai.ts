@@ -774,7 +774,8 @@ export async function updateGlobalMemoryWithContext(
       | "video_session"
       | "voice_session"
       | "journal_entries"
-      | "chat_conversation";
+      | "chat_conversation"
+      | "meditation_session";
     data: any;
   }
 ): Promise<string> {
@@ -830,23 +831,123 @@ IMPORTANT: This is an internal therapeutic profile that will never be shown to t
   }
 }
 
-// Function to generate personalized meditation plans based on global memory
-// This is a placeholder for future implementation
-export async function generatePersonalizedMeditationPlan(
+// Function to generate personalized meditation script
+export async function generatePersonalizedMeditation(
   globalMemory: string,
-  userPreferences?: {
-    duration?: string;
-    focus?: string;
-    experience?: string;
+  preferences: {
+    duration: string;
+    focus: string;
+    customRequest?: string;
+    userName?: string;
   }
-): Promise<any> {
-  // This function would use the global memory to create personalized meditation plans
-  // Implementation to be added in the future
-  return {
-    title: "Personalized Meditation Plan",
-    description: "A meditation plan tailored to your needs",
-    sessions: [],
-  };
+): Promise<string> {
+  try {
+    const systemPrompt = `You are an expert meditation guide and mental health AI assistant. Your task is to create a personalized, soothing meditation script based on the user's global memory profile and current preferences.
+
+CRITICAL REQUIREMENTS:
+1. **Natural Pauses**: Use " [...] " (with spaces) to indicate natural breathing pauses and moments of silence
+2. **Soothing Tone**: Write in a calm, gentle, reassuring voice that promotes relaxation
+3. **Personalization**: Use the global memory to tailor the meditation to the user's specific needs, personality, and current state
+4. **Duration Matching**: Create content appropriate for the requested duration
+5. **Focus Area**: Center the meditation around the specified focus area
+6. **Natural Flow**: Ensure smooth transitions between different parts of the meditation
+
+MEDITATION STRUCTURE:
+1. **Opening** (10-15% of script): Welcome, settling in, initial breathing
+2. **Body Awareness** (20-25%): Progressive relaxation or body scan
+3. **Core Focus** (40-50%): Main meditation content based on focus area
+4. **Integration** (15-20%): Bringing awareness back, gentle closing
+
+PAUSE GUIDELINES:
+- Use " [...] " for 2-3 second pauses
+- Place pauses after breathing instructions
+- Add pauses between major sections
+- Include pauses to allow processing of guidance
+- Use pauses to create a natural, unhurried rhythm
+
+PERSONALIZATION APPROACH:
+- Reference relevant aspects from their global memory naturally
+- Adapt language style to match their communication preferences
+- Include metaphors or imagery that would resonate with their background
+- Address any specific concerns or patterns mentioned in their profile
+
+FOCUS AREAS:
+- **Stress Relief**: Progressive muscle relaxation, releasing tension
+- **Anxiety Reduction**: Grounding techniques, present moment awareness
+- **Better Sleep**: Body relaxation, calming imagery, letting go
+- **Focus & Concentration**: Mindful attention, mental clarity
+- **Emotional Balance**: Heart-centered awareness, self-compassion
+- **Self-Compassion**: Loving-kindness, inner acceptance
+- **General Mindfulness**: Breath awareness, present moment
+
+Remember: This meditation will be converted to speech, so write as if you're speaking directly to the person in a warm, caring voice.`;
+
+    const userPrompt = `User Global Memory Profile:
+${globalMemory}
+
+Meditation Preferences:
+- Duration: ${preferences.duration}
+- Focus Area: ${preferences.focus}
+- User Name: ${preferences.userName || 'there'}
+${preferences.customRequest ? `- Special Request: ${preferences.customRequest}` : ''}
+
+Create a personalized meditation script that incorporates relevant aspects from their profile while focusing on ${preferences.focus}. Remember to include natural pauses using " [...] " and maintain a soothing, calming tone throughout.`;
+
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: userPrompt,
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.7,
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 4000,
+      },
+    });
+
+    const responseText = response.text;
+
+    if (!responseText) {
+      throw new Error("No response from AI");
+    }
+
+    return responseText;
+  } catch (error) {
+    console.error("Error generating personalized meditation:", error);
+
+    // Fallback meditation script
+    const userName = preferences.userName || 'there';
+    return `Welcome ${userName} to this moment of peace and relaxation. [...] 
+
+Find a comfortable position, whether sitting or lying down. [...] Allow your eyes to gently close, or soften your gaze downward. [...]
+
+Let's begin by taking three deep, cleansing breaths together. [...] Breathe in slowly through your nose. [...] And breathe out gently through your mouth. [...] 
+
+Again, breathe in. [...] And out. [...] One more time, breathing in calm and peace. [...] And breathing out any tension or stress. [...]
+
+Now allow your breathing to return to its natural rhythm. [...] There's nothing you need to do except be here in this moment. [...] 
+
+Starting from the top of your head, imagine a warm, golden light beginning to relax every part of your body. [...] Feel this gentle warmth moving down through your forehead, releasing any tension. [...] 
+
+Let this peaceful energy flow down through your face, your jaw, your neck. [...] Feel your shoulders dropping and releasing. [...] 
+
+Continue to breathe naturally as this calming presence moves down through your arms, your chest, your back. [...] Each breath brings deeper relaxation. [...]
+
+Allow this peaceful feeling to flow through your entire body, bringing you into a state of complete calm and tranquility. [...] 
+
+Rest here for a few moments in this peaceful space you've created. [...] 
+
+When you're ready, begin to gently wiggle your fingers and toes. [...] Take a deep breath in. [...] And slowly open your eyes, carrying this sense of peace with you. [...]
+
+Thank you for taking this time for yourself today.`;
+  }
 }
 
 export async function generateTherapySessionSummary(

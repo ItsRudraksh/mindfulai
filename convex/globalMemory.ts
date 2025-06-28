@@ -366,6 +366,57 @@ export const updateGlobalMemoryFromChat = internalAction({
   },
 });
 
+// Update global memory from meditation session
+export const updateGlobalMemoryFromMeditation = internalAction({
+  args: {
+    userId: v.id("users"),
+    meditationData: v.object({
+      script: v.string(),
+      duration: v.number(),
+      preferences: v.object({
+        duration: v.string(),
+        focus: v.string(),
+        customRequest: v.optional(v.string()),
+      }),
+      completedAt: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Get user's global memory
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
+      if (!user || !user.globalMemory) {
+        return { success: false, error: "Global memory not found" };
+      }
+
+      // Update global memory
+      const updatedMemory = await updateGlobalMemoryWithContext(
+        user.globalMemory,
+        {
+          type: "meditation_session",
+          data: args.meditationData,
+        }
+      );
+
+      // Save updated memory
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
+        globalMemory: updatedMemory,
+      });
+
+      return {
+        success: true,
+        message: "Global memory updated with meditation session data",
+      };
+    } catch (error) {
+      console.error("Error updating global memory from meditation:", error);
+      return { success: false, error: "Failed to update global memory" };
+    }
+  },
+});
+
 // New public action to trigger mood memory update
 export const triggerUpdateGlobalMemoryFromMood = action({
   args: {
@@ -446,6 +497,32 @@ export const triggerUpdateGlobalMemoryFromJournal = action({
     return {
       success: true,
       message: "Journal global memory update triggered",
+    };
+  },
+});
+
+export const triggerUpdateGlobalMemoryFromMeditation = action({
+  args: {
+    userId: v.id("users"),
+    meditationData: v.object({
+      script: v.string(),
+      duration: v.number(),
+      preferences: v.object({
+        duration: v.string(),
+        focus: v.string(),
+        customRequest: v.optional(v.string()),
+      }),
+      completedAt: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runAction(internal.globalMemory.updateGlobalMemoryFromMeditation, {
+      userId: args.userId,
+      meditationData: args.meditationData,
+    });
+    return {
+      success: true,
+      message: "Meditation global memory update triggered",
     };
   },
 });
