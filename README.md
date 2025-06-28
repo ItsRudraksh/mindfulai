@@ -180,13 +180,13 @@ sequenceDiagram
 
     U->>S: Complete Mood Entry
     S->>GM: Update with mood patterns
-    
+
     U->>S: End Video/Voice Session
     S->>GM: Update with session insights
-    
+
     U->>S: Leave Journal Page
     S->>GM: Update with journal insights
-    
+
     U->>S: Complete Chat Session
     S->>GM: Update with conversation summary
 
@@ -205,19 +205,19 @@ flowchart TD
     A[User Selects Preferences] --> B[Duration & Focus Area]
     B --> C[Optional Custom Request]
     C --> D[Fetch Global Memory]
-    
+
     D --> E[AI Script Generation]
     E --> F[Gemini 2.5 Flash API]
     F --> G[Personalized Script with Pauses]
-    
+
     G --> H[ElevenLabs TTS]
     H --> I[Natural Voice Synthesis]
     I --> J[Audio Player Interface]
-    
+
     J --> K{Session Complete?}
     K -->|Yes| L[Update Global Memory]
     K -->|No| M[Continue Playing]
-    
+
     L --> N[Store Session Data]
     M --> J
 
@@ -683,38 +683,6 @@ We welcome contributions from the community! Please read our [Contributing Guide
 
 ---
 
-## 📈 Roadmap
-
-### **Q1 2024**
-
-- [ ] Group therapy sessions with global memory sharing
-- [ ] Advanced analytics dashboard with memory insights
-- [ ] Mobile app development
-- [ ] Integration with wearable devices for biometric data
-
-### **Q2 2024**
-
-- [ ] Multi-language support with cultural adaptation
-- [ ] Therapist collaboration tools with memory sharing
-- [ ] Advanced crisis intervention with memory context
-- [ ] API for third-party integrations
-
-### **Q3 2024**
-
-- [ ] VR therapy sessions with immersive environments
-- [ ] AI-powered therapy plans based on global memory
-- [ ] Insurance integration and billing
-- [ ] Clinical trial partnerships
-
-### **Q4 2024**
-
-- [ ] Advanced meditation features (guided imagery, binaural beats)
-- [ ] Peer support communities with privacy controls
-- [ ] Professional therapist matching based on memory profiles
-- [ ] Advanced analytics and reporting for healthcare providers
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -746,7 +714,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for mental health awareness and support**
 
-*Featuring advanced AI personalization through global memory management*
+_Featuring advanced AI personalization through global memory management_
 
 [![GitHub stars](https://img.shields.io/github/stars/your-username/mindful-ai?style=social)](https://github.com/your-username/mindful-ai)
 [![Twitter Follow](https://img.shields.io/twitter/follow/MindfulAI?style=social)](https://twitter.com/MindfulAI)
