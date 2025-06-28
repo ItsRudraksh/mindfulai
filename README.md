@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Framer Motion](https://img.shields.io/badge/Framer-Motion-black?style=flat-square&logo=framer)](https://www.framer.com/motion/)
 
-**A revolutionary mental health platform combining AI therapy, real-time video sessions, voice calls, and intelligent mood tracking with advanced context management.**
+**A revolutionary mental health platform combining AI therapy, real-time video sessions, voice calls, intelligent mood tracking, and personalized meditation with advanced global memory management.**
 
 [🚀 Live Demo](#) • [📖 Documentation](#features) • [🛠️ Installation](#installation) • [🤝 Contributing](#contributing)
 
@@ -20,11 +20,11 @@
 
 ## 🌟 Platform Overview
 
-MindfulAI represents the next generation of digital mental health support, seamlessly integrating multiple AI-powered therapeutic modalities with sophisticated context management and personalized insights. Our platform provides 24/7 mental health support through various channels while maintaining therapeutic continuity and user privacy.
+MindfulAI represents the next generation of digital mental health support, seamlessly integrating multiple AI-powered therapeutic modalities with sophisticated global memory management and personalized insights. Our platform provides 24/7 mental health support through various channels while maintaining therapeutic continuity and user privacy through an advanced global memory system that learns and adapts to each user's unique needs.
 
 ### 🎯 Core Mission
 
-Democratize access to quality mental health support through cutting-edge AI technology, making therapeutic assistance available anytime, anywhere, while maintaining the highest standards of privacy and clinical effectiveness.
+Democratize access to quality mental health support through cutting-edge AI technology, making therapeutic assistance available anytime, anywhere, while maintaining the highest standards of privacy and clinical effectiveness through personalized, context-aware interactions.
 
 ---
 
@@ -47,29 +47,32 @@ graph TB
 
     subgraph "AI Services Layer"
         H[Claude 3.5 Sonnet]
-        I[OpenRouter API]
+        I[Gemini 2.5 Flash]
         J[Content Guardrails]
-        K[Context Management]
+        K[Global Memory System]
     end
 
     subgraph "External AI Platforms"
         L[Tavus - Video AI]
         M[ElevenLabs - Voice AI]
-        N[Anthropic Claude]
+        N[OpenRouter API]
     end
 
     subgraph "Database Layer"
         O[Convex Database]
         P[Real-time Sync]
         Q[ACID Transactions]
+        R[Global Memory Storage]
     end
 
     subgraph "Core Features"
-        R[Video Therapy]
-        S[Voice Sessions]
-        T[Chat Therapy]
-        U[Mood Tracking]
-        V[Smart Recommendations]
+        S[Video Therapy]
+        T[Voice Sessions]
+        U[Chat Therapy]
+        V[Mood Tracking]
+        W[Smart Recommendations]
+        X[Personalized Meditation]
+        Y[Journal System]
     end
 
     A --> E
@@ -88,17 +91,21 @@ graph TB
     G --> O
     O --> P
     P --> Q
+    Q --> R
 
-    K --> R
     K --> S
     K --> T
     K --> U
     K --> V
+    K --> W
+    K --> X
+    K --> Y
 
     style A fill:#3b82f6,stroke:#1e40af,color:#fff
     style H fill:#10b981,stroke:#059669,color:#fff
     style O fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style R fill:#f59e0b,stroke:#d97706,color:#fff
+    style K fill:#f59e0b,stroke:#d97706,color:#fff
+    style X fill:#ec4899,stroke:#db2777,color:#fff
 ```
 
 ---
@@ -112,12 +119,21 @@ graph TB
 - **Text Chat**: Intelligent messaging with context-aware responses
 - **Seamless Switching**: Move between modalities while maintaining context
 
-### 🧠 **Advanced Context Management**
+### 🧠 **Advanced Global Memory System**
 
-- **Rolling Summaries**: Intelligent conversation summarization
-- **Context Preservation**: Maintains therapeutic relationship across sessions
-- **Smart Token Management**: Efficient context handling for optimal AI performance
-- **Conversation Continuity**: Never lose therapeutic progress
+- **Comprehensive User Profiling**: 5000-token global memory for deep personalization
+- **Onboarding Integration**: Captures user background, personality, and preferences
+- **Cross-Session Continuity**: Maintains therapeutic relationship across all interactions
+- **Intelligent Updates**: Automatically updates from mood entries, sessions, and journal entries
+- **Context-Aware Responses**: All AI interactions leverage global memory for personalization
+
+### 🧘‍♀️ **Personalized Meditation**
+
+- **AI-Generated Scripts**: Custom meditation scripts based on global memory
+- **Natural Voice Synthesis**: ElevenLabs TTS with natural pauses and soothing delivery
+- **Multiple Focus Areas**: Stress relief, anxiety reduction, sleep, focus, emotional balance
+- **Adaptive Duration**: 3-20 minute sessions based on user preference
+- **Progress Tracking**: Session completion updates global memory for future personalization
 
 ### 📊 **Intelligent Mood Tracking**
 
@@ -125,6 +141,15 @@ graph TB
 - **AI-Powered Insights**: Personalized reflections based on mood patterns
 - **Smart Recommendations**: Activity suggestions tailored to current emotional state
 - **Pattern Recognition**: Identify triggers and emotional trends
+- **Global Memory Integration**: Mood patterns inform all future interactions
+
+### 📝 **Advanced Journal System**
+
+- **Rich Text Editor**: TipTap-powered editor with full formatting capabilities
+- **Real-time Saving**: Auto-save functionality with conflict resolution
+- **Search & Organization**: Full-text search and tagging system
+- **Privacy Controls**: Secure, encrypted journal entries
+- **Memory Integration**: Journal insights automatically update global memory
 
 ### 🔒 **Enterprise-Grade Security**
 
@@ -135,35 +160,84 @@ graph TB
 
 ---
 
-## 🔄 AI Conversation Flow
+## 🔄 Global Memory System Flow
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant F as Frontend
-    participant API as Chat API
-    participant AI as Claude AI
-    participant DB as Convex DB
-    participant CTX as Context Manager
+    participant O as Onboarding
+    participant GM as Global Memory
+    participant AI as AI Services
+    participant DB as Database
+    participant S as Sessions
 
-    U->>F: Send message
-    F->>API: POST /api/chat
-    API->>DB: Fetch conversation history
-    API->>CTX: Check context size
+    U->>O: Complete Onboarding
+    O->>AI: Generate Initial Profile
+    AI-->>GM: Create Global Memory (5000 tokens)
+    GM->>DB: Store Global Memory
 
-    alt Context too large
-        CTX->>AI: Summarize older messages
-        AI-->>CTX: Return summary
-        CTX->>DB: Update rolling summary
+    Note over GM: Global Memory Updates Triggered By:
+
+    U->>S: Complete Mood Entry
+    S->>GM: Update with mood patterns
+    
+    U->>S: End Video/Voice Session
+    S->>GM: Update with session insights
+    
+    U->>S: Leave Journal Page
+    S->>GM: Update with journal insights
+    
+    U->>S: Complete Chat Session
+    S->>GM: Update with conversation summary
+
+    GM->>AI: Enhanced Context for All Interactions
+    AI-->>U: Personalized Responses
+
+    Note over GM: All AI interactions use<br/>Global Memory for personalization
+```
+
+---
+
+## 🧘‍♀️ Meditation System Architecture
+
+```mermaid
+flowchart TD
+    A[User Selects Preferences] --> B[Duration & Focus Area]
+    B --> C[Optional Custom Request]
+    C --> D[Fetch Global Memory]
+    
+    D --> E[AI Script Generation]
+    E --> F[Gemini 2.5 Flash API]
+    F --> G[Personalized Script with Pauses]
+    
+    G --> H[ElevenLabs TTS]
+    H --> I[Natural Voice Synthesis]
+    I --> J[Audio Player Interface]
+    
+    J --> K{Session Complete?}
+    K -->|Yes| L[Update Global Memory]
+    K -->|No| M[Continue Playing]
+    
+    L --> N[Store Session Data]
+    M --> J
+
+    subgraph "Meditation Features"
+        O[Natural Pauses [...]]
+        P[Soothing Voice Settings]
+        Q[Progress Tracking]
+        R[Volume Controls]
+        S[Replay Options]
     end
 
-    API->>AI: Generate response with context
-    AI-->>API: Return therapeutic response
-    API->>DB: Save message & update summary
-    API-->>F: Return response + metadata
-    F-->>U: Display AI response
+    I --> O
+    I --> P
+    J --> Q
+    J --> R
+    J --> S
 
-    Note over CTX: Smart context management ensures<br/>optimal AI performance
+    style E fill:#10b981,stroke:#059669,color:#fff
+    style H fill:#3b82f6,stroke:#1e40af,color:#fff
+    style L fill:#f59e0b,stroke:#d97706,color:#fff
 ```
 
 ---
@@ -178,8 +252,8 @@ flowchart TD
     C -->|Get Recommendations| D[Fetch Today's Mood History]
     C -->|Reflect on Mood| E[Fetch Today's Mood History]
 
-    D --> F[AI Analyzes Patterns]
-    E --> G[AI Generates Insight]
+    D --> F[AI Analyzes Patterns + Global Memory]
+    E --> G[AI Generates Insight + Global Memory]
 
     F --> H[Return Top 2 Activities]
     G --> I[Return Personalized Reflection]
@@ -191,7 +265,7 @@ flowchart TD
     K --> M[User Reflects]
 
     L --> N[Track Recommendation Usage]
-    M --> O[Store Insight for Future Context]
+    M --> O[Update Global Memory]
 
     subgraph "Available Activities"
         P[Video Therapy]
@@ -212,6 +286,7 @@ flowchart TD
     style A fill:#3b82f6,stroke:#1e40af,color:#fff
     style F fill:#10b981,stroke:#059669,color:#fff
     style G fill:#f59e0b,stroke:#d97706,color:#fff
+    style O fill:#ec4899,stroke:#db2777,color:#fff
 ```
 
 ---
@@ -225,6 +300,11 @@ erDiagram
         string name
         string email
         string image
+        string dob
+        string profession
+        string aboutMe
+        boolean onboardingComplete
+        string globalMemory
         number createdAt
         object subscription
         object preferences
@@ -240,6 +320,8 @@ erDiagram
         string mood
         string notes
         string elevenlabsConversationId
+        string aiSummary
+        string voiceSessionSummary
         object metadata
     }
 
@@ -277,10 +359,22 @@ erDiagram
         array recommendationsUsed
     }
 
+    journalEntries {
+        string _id PK
+        string userId FK
+        string title
+        any content
+        array tags
+        boolean isPrivate
+        number createdAt
+        number updatedAt
+    }
+
     users ||--o{ sessions : "has many"
     users ||--o{ chatConversations : "has many"
     users ||--o{ messages : "has many"
     users ||--o{ moodEntries : "has many"
+    users ||--o{ journalEntries : "has many"
     sessions ||--o{ chatConversations : "belongs to"
     chatConversations ||--o{ messages : "has many"
 ```
@@ -297,6 +391,7 @@ erDiagram
 - **Animations**: Framer Motion for smooth micro-interactions
 - **UI Components**: Radix UI + shadcn/ui
 - **Icons**: Lucide React
+- **Rich Text**: TipTap editor with full formatting
 
 ### **Backend & Database**
 
@@ -304,12 +399,14 @@ erDiagram
 - **Authentication**: Convex Auth with multi-provider support
 - **Real-time**: Built-in subscriptions and live queries
 - **Type Safety**: End-to-end TypeScript
+- **Background Jobs**: Convex actions for delayed processing
 
 ### **AI & External Services**
 
-- **Primary AI**: Claude 3.7 Sonnet via OpenRouter & Gemini 2.5 Flash via Gemini API
+- **Primary AI**: Claude 3.5 Sonnet via OpenRouter
+- **Secondary AI**: Gemini 2.5 Flash for meditation scripts
 - **Video AI**: Tavus for realistic avatar conversations
-- **Voice AI**: ElevenLabs for natural phone conversations
+- **Voice AI**: ElevenLabs for natural phone conversations and meditation audio
 - **Content Safety**: Custom guardrails and topic boundaries
 
 ### **Development & Deployment**
@@ -361,14 +458,14 @@ NEXT_PUBLIC_CONVEX_URL=https://your-convex-deployment.convex.cloud
 
 # AI Services
 OPENROUTER_API_KEY=your-openrouter-api-key
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 
 # Tavus AI (Video Therapy)
 TAVUS_API_KEY=your-tavus-api-key
 TAVUS_REPLICA_ID=your-tavus-replica-id
 TAVUS_PERSONA_ID=your-tavus-persona-id
 
-# ElevenLabs (Voice AI)
+# ElevenLabs (Voice AI & Meditation)
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
 ELEVENLABS_VOICE_ID=your-elevenlabs-voice-id
 ELEVENLABS_AGENT_ID=your-elevenlabs-agent-id
@@ -385,7 +482,7 @@ SITE_URL=http://localhost:3000
 
 ### **Therapeutic Design Principles**
 
-- **Calming Colors**: Soft blues, greens, and warm neutrals
+- **Calming Colors**: Soft blues, greens, purples, and warm neutrals
 - **Glassmorphism**: Subtle transparency and blur effects
 - **Micro-interactions**: Gentle animations that provide feedback
 - **Accessibility**: WCAG 2.1 AA compliant design
@@ -399,7 +496,68 @@ SITE_URL=http://localhost:3000
 .floating-card       /* Elevated card with shadow */
 .ripple-effect       /* Button press feedback */
 .animate-gentle-pulse /* Subtle pulsing animation */
+.backdrop-blur-therapeutic /* 15px blur for glass effects */
 ```
+
+---
+
+## 🧠 Global Memory System
+
+### **Memory Structure**
+
+The global memory system maintains a comprehensive 5000-token profile for each user, including:
+
+- **Basic Information**: Demographics, profession, calculated age
+- **Personality Profile**: Self-description, habits, behavioral patterns
+- **Therapeutic History**: Session summaries, progress notes
+- **Mood Patterns**: Emotional trends and triggers
+- **Interaction Preferences**: Communication style, preferred modalities
+- **Session Notes**: Key insights from therapy sessions
+- **Journal Insights**: Themes and patterns from journal entries
+
+### **Update Triggers**
+
+Global memory is automatically updated when:
+
+1. **Mood Entries**: After creating mood entries (with recent history context)
+2. **Video Sessions**: When sessions end and transcript is available
+3. **Voice Sessions**: After call completion with transcript summary
+4. **Journal Activity**: When user leaves journal page with recent entries
+5. **Chat Sessions**: After conversation summary updates
+
+### **Personalization Impact**
+
+Global memory enhances:
+
+- **Therapy Sessions**: Contextual responses based on user history
+- **Meditation Scripts**: Personalized content and focus areas
+- **Mood Recommendations**: Activities tailored to user patterns
+- **Communication Style**: AI adapts to user's preferred interaction style
+
+---
+
+## 🧘‍♀️ Meditation Feature
+
+### **Personalization Engine**
+
+- **Global Memory Integration**: Scripts generated using comprehensive user profile
+- **Adaptive Content**: Meditation style adapts to user's personality and needs
+- **Focus Areas**: 7 specialized meditation types (stress, anxiety, sleep, focus, etc.)
+- **Duration Flexibility**: 3-20 minute sessions based on user preference
+
+### **Audio Generation**
+
+- **Natural Pauses**: Scripts include " [...] " for breathing spaces
+- **ElevenLabs TTS**: High-quality voice synthesis optimized for meditation
+- **Voice Settings**: Stability: 50%, Similarity: 75%, Speed: 0.9 for calming delivery
+- **Real-time Generation**: Custom audio created for each session
+
+### **User Experience**
+
+- **Intuitive Interface**: Simple preference selection with beautiful animations
+- **Full Audio Controls**: Play/pause, restart, volume, progress tracking
+- **Session Management**: Replay, create new, or complete with memory update
+- **Progress Integration**: Completed sessions update global memory for future personalization
 
 ---
 
@@ -411,6 +569,7 @@ SITE_URL=http://localhost:3000
 - HIPAA-compliant data handling procedures
 - Regular security audits and penetration testing
 - Minimal data collection principle
+- Global memory stored securely with encryption
 
 ### **AI Safety**
 
@@ -418,6 +577,7 @@ SITE_URL=http://localhost:3000
 - Therapeutic focus maintained through system prompts
 - Crisis detection and emergency resource routing
 - Regular model safety evaluations
+- Global memory access controls
 
 ### **Privacy Features**
 
@@ -425,6 +585,7 @@ SITE_URL=http://localhost:3000
 - Data export and deletion rights
 - Transparent privacy policy
 - User consent management
+- Global memory user control
 
 ---
 
@@ -441,7 +602,8 @@ SITE_URL=http://localhost:3000
 
 - **Chat Messages**: < 3 seconds average
 - **Mood Recommendations**: < 5 seconds
-- **Context Summarization**: < 2 seconds
+- **Global Memory Updates**: < 2 seconds background
+- **Meditation Generation**: < 15 seconds (including audio)
 - **Voice Call Initiation**: < 10 seconds
 
 ---
@@ -481,10 +643,11 @@ CMD ["npm", "start"]
 
 ### **Test Coverage**
 
-- Unit tests for AI functions
+- Unit tests for AI functions and global memory
 - Integration tests for API routes
 - E2E tests for critical user flows
 - Performance testing for AI response times
+- Global memory consistency tests
 
 ```bash
 # Run tests
@@ -524,24 +687,31 @@ We welcome contributions from the community! Please read our [Contributing Guide
 
 ### **Q1 2024**
 
-- [ ] Group therapy sessions
-- [ ] Advanced analytics dashboard
+- [ ] Group therapy sessions with global memory sharing
+- [ ] Advanced analytics dashboard with memory insights
 - [ ] Mobile app development
-- [ ] Integration with wearable devices
+- [ ] Integration with wearable devices for biometric data
 
 ### **Q2 2024**
 
-- [ ] Multi-language support
-- [ ] Therapist collaboration tools
-- [ ] Advanced crisis intervention
+- [ ] Multi-language support with cultural adaptation
+- [ ] Therapist collaboration tools with memory sharing
+- [ ] Advanced crisis intervention with memory context
 - [ ] API for third-party integrations
 
 ### **Q3 2024**
 
-- [ ] VR therapy sessions
-- [ ] AI-powered therapy plans
-- [ ] Insurance integration
+- [ ] VR therapy sessions with immersive environments
+- [ ] AI-powered therapy plans based on global memory
+- [ ] Insurance integration and billing
 - [ ] Clinical trial partnerships
+
+### **Q4 2024**
+
+- [ ] Advanced meditation features (guided imagery, binaural beats)
+- [ ] Peer support communities with privacy controls
+- [ ] Professional therapist matching based on memory profiles
+- [ ] Advanced analytics and reporting for healthcare providers
 
 ---
 
@@ -554,8 +724,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Anthropic** for Claude AI technology
+- **Google** for Gemini AI capabilities
 - **Tavus** for video AI capabilities
-- **ElevenLabs** for voice AI technology
+- **ElevenLabs** for voice AI and meditation audio technology
 - **Convex** for real-time database infrastructure
 - **Vercel** for deployment platform
 - **Open source community** for amazing tools and libraries
@@ -574,6 +745,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
 
 **Built with ❤️ for mental health awareness and support**
+
+*Featuring advanced AI personalization through global memory management*
 
 [![GitHub stars](https://img.shields.io/github/stars/your-username/mindful-ai?style=social)](https://github.com/your-username/mindful-ai)
 [![Twitter Follow](https://img.shields.io/twitter/follow/MindfulAI?style=social)](https://twitter.com/MindfulAI)
