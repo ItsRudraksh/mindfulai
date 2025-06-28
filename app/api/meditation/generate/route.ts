@@ -27,21 +27,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate audio using ElevenLabs
-    const audioResponse = await fetch("https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM", {
+    const audioResponse = await fetch("https://api.elevenlabs.io/v1/text-to-speech/rfkTsdZrVWEVhDycUYn9?output_format=mp3_44100_128", {
       method: "POST",
       headers: {
-        "Accept": "audio/mpeg",
         "Content-Type": "application/json",
-        "xi-api-key": process.env.ELEVENLABS_API_KEY!,
+        "xi-api-key": `${process.env.ELEVENLABS_API_KEY}`,
       },
       body: JSON.stringify({
-        text: script,
+        text: `${script}`,
         model_id: "eleven_multilingual_v2",
         voice_settings: {
-          stability: 0.8,
-          similarity_boost: 0.8,
-          style: 0.2,
-          use_speaker_boost: true
+          "stability": 50,
+          "use_speaker_boost": true,
+          "similarity_boost": 75,
+          "style": 0,
+          "speed": 0.9
         }
       }),
     });
