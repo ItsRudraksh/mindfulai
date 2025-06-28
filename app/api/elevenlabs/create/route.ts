@@ -7,13 +7,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { phoneNumber, firstName, conversationContext } = body;
-
-    if (!phoneNumber || !firstName || !conversationContext) {
+    const { phone_number, task, user_name, conversation_context } = body;
+    if (!phone_number || !task || !user_name) {
       return NextResponse.json(
         {
-          error:
-            "Missing required fields: phoneNumber, firstName, conversationContext",
+          error: "Missing required fields: phone_number, task, user_name",
         },
         { status: 400 }
       );
@@ -30,34 +28,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's global memory if available
-    let globalMemory = "";
-    try {
-      // In a real implementation, you would fetch the user's global memory from your database
-      // For now, we'll use a placeholder
-      // const session = await getServerSession();
-      // if (session?.user?.id) {
-      //   const user = await db.users.findUnique({ where: { id: session.user.id } });
-      //   globalMemory = user?.globalMemory || "";
-      // }
-    } catch (error) {
-      console.error("Error fetching global memory:", error);
-    }
-
     // Enhance conversation context with global memory if available
-    let enhancedContext = conversationContext;
-    if (globalMemory) {
-      enhancedContext = `${conversationContext}\n\nAdditional context about the user: ${globalMemory}`;
+    let enhancedContext = task;
+    if (conversation_context) {
+      enhancedContext = `${task}\n\nHere is some additional context about the user and their past conversations, please use this to have a better and more informed conversation:\n${conversation_context}`;
     }
 
     // Initiate voice call with timeout
     const callPromise = elevenLabsClient.initiateCall({
       agentId: process.env.ELEVENLABS_AGENT_ID!,
       agentPhoneNumberId: process.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID!,
-      toNumber: phoneNumber,
+      toNumber: phone_number,
       conversationInitiationClientData: {
         dynamicVariables: {
-          firstName: firstName,
+          firstName: user_name,
           conversationContext: enhancedContext,
         },
       },

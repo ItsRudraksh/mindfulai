@@ -70,7 +70,7 @@ export default function VideoSession() {
 
     try {
       const firstName = user.name?.split(' ')[0] || 'there';
-      await createSession(state.stateDescription, firstName);
+      await createSession(state.stateDescription, firstName, globalMemory || '');
       toast.success('Session created successfully!');
 
       // After session creation, update global memory
@@ -85,23 +85,6 @@ export default function VideoSession() {
     try {
       await endSession();
       toast.success('Video session ended successfully!');
-
-      // After session ends, update global memory
-      if (user && state.sessionId) {
-        // In a real implementation, this would be handled by a background job
-        // with a delay to ensure all data is processed
-        setTimeout(async () => {
-          try {
-            // This would be the actual call in a complete implementation
-            // await updateGlobalMemoryFromVideoSession({
-            //   userId: user._id,
-            //   sessionId: state.sessionId,
-            // });
-          } catch (error) {
-            console.error('Error updating global memory after video session:', error);
-          }
-        }, 120000); // 2 minute delay
-      }
     } catch (error) {
       toast.error('Failed to end session properly.');
     }

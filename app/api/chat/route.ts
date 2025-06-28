@@ -44,26 +44,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (action === "summarize") {
-      // Handle conversation summarization
-      if (!conversationHistory || !Array.isArray(conversationHistory)) {
-        return NextResponse.json(
-          { error: "Conversation history is required for summarization" },
-          { status: 400 }
-        );
-      }
-
-      const summary = await generateConversationSummary(
-        conversationHistory,
-        existingSummary
-      );
-
-      return NextResponse.json({
-        success: true,
-        summary: summary,
-      });
-    }
-
     // Handle regular message
     if (!message || typeof message !== "string") {
       return NextResponse.json(

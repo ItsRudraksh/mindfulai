@@ -3,14 +3,21 @@ import { elevenLabsClient } from "@/lib/elevenlabs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, phoneNumber, firstName, conversationContext, conversationId } = await request.json();
-
-    console.log("ElevenLabs Voice API - Action:", action, "Phone:", phoneNumber, "ConversationId:", conversationId);
+    const {
+      action,
+      phoneNumber,
+      firstName,
+      conversationContext,
+      conversationId,
+    } = await request.json();
 
     if (action === "initiate") {
       if (!phoneNumber || !firstName || !conversationContext) {
         return NextResponse.json(
-          { error: "Missing required fields: phoneNumber, firstName, conversationContext" },
+          {
+            error:
+              "Missing required fields: phoneNumber, firstName, conversationContext",
+          },
           { status: 400 }
         );
       }
@@ -36,7 +43,8 @@ export async function POST(request: NextRequest) {
 
     if (action === "status" && conversationId) {
       // Get conversation status
-      const status = await elevenLabsClient.getConversationStatus(conversationId);
+      const status =
+        await elevenLabsClient.getConversationStatus(conversationId);
       return NextResponse.json({
         success: true,
         data: status,
@@ -45,7 +53,8 @@ export async function POST(request: NextRequest) {
 
     if (action === "audio" && conversationId) {
       // Get conversation audio
-      const audioUrl = await elevenLabsClient.getConversationAudio(conversationId);
+      const audioUrl =
+        await elevenLabsClient.getConversationAudio(conversationId);
       return NextResponse.json({
         success: true,
         audioUrl: audioUrl,

@@ -4,6 +4,8 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useGlobalMemory } from './global-memory-context';
+import { useRouter } from 'next/navigation';
 
 interface TavusConversation {
   conversation_id: string;
@@ -99,7 +101,7 @@ function videoSessionReducer(state: VideoSessionState, action: VideoSessionActio
 interface VideoSessionContextType {
   state: VideoSessionState;
   dispatch: React.Dispatch<VideoSessionAction>;
-  createSession: (stateDescription: string, firstName: string) => Promise<void>;
+  createSession: (stateDescription: string, firstName: string, conversationContext: string) => Promise<void>;
   endSession: () => Promise<void>;
   restoreSession: () => Promise<void>;
 }
@@ -110,7 +112,8 @@ const STORAGE_KEY = 'mindfulai_video_session';
 
 export function VideoSessionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(videoSessionReducer, initialState);
-  
+  const { setMemoryUpdateTrigger } = useGlobalMemory();
+  const router = useRouter();
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "video" });
   const createSessionMutation = useMutation(api.sessions.createSession);
   const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
@@ -129,7 +132,7 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
       stateDescription: state.stateDescription,
       showEmbeddedVideo: state.showEmbeddedVideo,
     };
-    
+
     if (state.sessionId || state.conversationId) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } else {
@@ -154,13 +157,13 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
   // Duration timer
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    
+
     if (state.isConnected) {
       interval = setInterval(() => {
         dispatch({ type: 'INCREMENT_DURATION' });
       }, 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -171,32 +174,32 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
     if (!activeSession) return;
 
     dispatch({ type: 'SET_LOADING', payload: true });
-    
+
     try {
       if (activeSession.metadata?.tavusSessionId) {
         // Check Tavus conversation status
         const response = await fetch('/api/tavus/conversation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            action: 'status', 
-            conversationId: activeSession.metadata.tavusSessionId 
+          body: JSON.stringify({
+            action: 'status',
+            conversationId: activeSession.metadata.tavusSessionId
           }),
         });
-        
+
         const data = await response.json();
-        
+
         if (data.conversation && data.conversation.status === 'active') {
           dispatch({ type: 'SET_SESSION_ID', payload: activeSession._id });
           dispatch({ type: 'SET_TAVUS_CONVERSATION', payload: data.conversation });
           dispatch({ type: 'SET_CONVERSATION_URL', payload: data.conversation.conversation_url });
           dispatch({ type: 'SET_CONVERSATION_ID', payload: data.conversation.conversation_id });
           dispatch({ type: 'SET_CONNECTED', payload: true });
-          
+
           // Calculate duration from start time
           const duration = Math.floor((Date.now() - activeSession.startTime) / 1000);
           dispatch({ type: 'SET_SESSION_DURATION', payload: duration });
-          
+
           // Restore state description from mood if available
           if (activeSession.mood) {
             dispatch({ type: 'SET_STATE_DESCRIPTION', payload: activeSession.mood });
@@ -225,13 +228,16 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
     }
   }, [activeSession, state.sessionId]);
 
-  const createSession = async (stateDescription: string, firstName: string) => {
+  const createSession = async (stateDescription: string, firstName: string, conversationContext: string) => {
     dispatch({ type: 'SET_GENERATING_LINK', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
-    
+
     try {
       // Create conversational context
-      const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
+      let enhancedContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
+      if (conversationContext) {
+        enhancedContext = `${enhancedContext}\n\nHere is some additional context about the user and their past conversations, please use this to have a better and more informed conversation:\n${conversationContext}`;
+      }
 
       // Create Tavus conversation
       const response = await fetch('/api/tavus/conversation', {
@@ -239,7 +245,7 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'create',
-          conversational_context: conversationalContext,
+          conversational_context: enhancedContext,
           firstName: firstName
         }),
       });
@@ -338,11 +344,14 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
     } finally {
       dispatch({ type: 'RESET_SESSION' });
       localStorage.removeItem(STORAGE_KEY);
-      
+
       // Exit fullscreen if active
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
+
+      setMemoryUpdateTrigger('VIDEO_SESSION_ENDED', state.sessionId);
+      router.push(`/sessions/${state.sessionId}`);
     }
   };
 

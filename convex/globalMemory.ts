@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { updateGlobalMemory } from "./users";
 import {
   generateInitialGlobalMemory,
   updateGlobalMemoryWithContext,
@@ -18,7 +19,9 @@ export const createInitialGlobalMemory = action({
   handler: async (ctx, args) => {
     try {
       // Get user data
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user) {
         throw new Error("User not found");
       }
@@ -32,7 +35,8 @@ export const createInitialGlobalMemory = action({
       });
 
       // Save to database
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory,
       });
 
@@ -52,15 +56,17 @@ export const updateGlobalMemoryFromMood = internalAction({
   handler: async (ctx, args) => {
     try {
       // Get user's global memory
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user || !user.globalMemory) {
         return { success: false, error: "Global memory not found" };
       }
 
       // Get recent mood entries
       const moodEntries = await ctx.runQuery(
-        internal.moodEntries.getMoodEntriesForToday,
-        {}
+        internal.moodEntries.internalGetMoodEntriesForToday,
+        { userId: args.userId }
       );
 
       if (!moodEntries || moodEntries.length === 0) {
@@ -68,7 +74,7 @@ export const updateGlobalMemoryFromMood = internalAction({
       }
 
       // Format mood entries for AI
-      const formattedEntries = moodEntries.map((entry) => ({
+      const formattedEntries = moodEntries.map((entry: any) => ({
         mood: entry.mood,
         intensity: entry.intensity,
         timestamp: entry.timestamp,
@@ -86,7 +92,8 @@ export const updateGlobalMemoryFromMood = internalAction({
       );
 
       // Save updated memory
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory: updatedMemory,
       });
 
@@ -107,15 +114,20 @@ export const updateGlobalMemoryFromVideoSession = internalAction({
   handler: async (ctx, args) => {
     try {
       // Get user's global memory
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user || !user.globalMemory) {
         return { success: false, error: "Global memory not found" };
       }
 
       // Get session data
-      const session = await ctx.runQuery(internal.sessions.getSessionById, {
-        sessionId: args.sessionId,
-      });
+      const session = await ctx.runQuery(
+        internal.sessions.internalGetSessionById,
+        {
+          sessionId: args.sessionId,
+        }
+      );
 
       if (!session) {
         return { success: false, error: "Session not found" };
@@ -151,7 +163,8 @@ export const updateGlobalMemoryFromVideoSession = internalAction({
       );
 
       // Save updated memory
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory: updatedMemory,
       });
 
@@ -175,22 +188,27 @@ export const updateGlobalMemoryFromVoiceSession = internalAction({
   handler: async (ctx, args) => {
     try {
       // Get user's global memory
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user || !user.globalMemory) {
         return { success: false, error: "Global memory not found" };
       }
 
       // Get session data
-      const session = await ctx.runQuery(internal.sessions.getSessionById, {
-        sessionId: args.sessionId,
-      });
+      const session = await ctx.runQuery(
+        internal.sessions.internalGetSessionById,
+        {
+          sessionId: args.sessionId,
+        }
+      );
 
       if (!session) {
         return { success: false, error: "Session not found" };
       }
 
       // For voice sessions, we use the notes field which contains the transcript summary
-      if (!session.notes) {
+      if (!session.voiceSessionSummary) {
         return { success: false, error: "No transcript summary available" };
       }
 
@@ -200,7 +218,7 @@ export const updateGlobalMemoryFromVoiceSession = internalAction({
         {
           type: "voice_session",
           data: {
-            transcriptSummary: session.notes,
+            transcriptSummary: session.voiceSessionSummary,
             sessionId: session._id,
             startTime: session.startTime,
             duration: session.duration,
@@ -210,7 +228,8 @@ export const updateGlobalMemoryFromVoiceSession = internalAction({
       );
 
       // Save updated memory
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory: updatedMemory,
       });
 
@@ -233,15 +252,19 @@ export const updateGlobalMemoryFromJournal = internalAction({
   handler: async (ctx, args) => {
     try {
       // Get user's global memory
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user || !user.globalMemory) {
         return { success: false, error: "Global memory not found" };
       }
 
       // Get recent journal entries (last 3)
       const journalEntries = await ctx.runQuery(
-        internal.journalEntries.getUserJournalEntries,
+        internal.journalEntries.internalGetUserJournalEntries,
         {
+          // Assuming getUserJournalEntries is scoped to the user, no need for userId
+          userId: args.userId,
           limit: 3,
         }
       );
@@ -251,7 +274,7 @@ export const updateGlobalMemoryFromJournal = internalAction({
       }
 
       // Format journal entries for AI
-      const formattedEntries = journalEntries.map((entry) => ({
+      const formattedEntries = journalEntries.map((entry: any) => ({
         title: entry.title,
         content: JSON.stringify(entry.content),
         createdAt: entry.createdAt,
@@ -269,7 +292,8 @@ export const updateGlobalMemoryFromJournal = internalAction({
       );
 
       // Save updated memory
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory: updatedMemory,
       });
 
@@ -293,14 +317,16 @@ export const updateGlobalMemoryFromChat = internalAction({
   handler: async (ctx, args) => {
     try {
       // Get user's global memory
-      const user = await ctx.runQuery(internal.users.current, {});
+      const user = await ctx.runQuery(internal.users.getUserById, {
+        userId: args.userId,
+      });
       if (!user || !user.globalMemory) {
         return { success: false, error: "Global memory not found" };
       }
 
       // Get conversation data
       const conversation = await ctx.runQuery(
-        internal.chatConversations.getConversationById,
+        internal.chatConversations.internalGetConversationById,
         {
           conversationId: args.conversationId,
         }
@@ -327,7 +353,8 @@ export const updateGlobalMemoryFromChat = internalAction({
       );
 
       // Save updated memory
-      await ctx.runMutation(internal.users.updateGlobalMemory, {
+      await ctx.runMutation(internal.users.internalUpdateGlobalMemory, {
+        userId: args.userId,
         globalMemory: updatedMemory,
       });
 
@@ -384,6 +411,41 @@ export const triggerUpdateGlobalMemoryFromVoiceSession = action({
     return {
       success: true,
       message: "Voice session global memory update triggered",
+    };
+  },
+});
+
+export const triggerUpdateGlobalMemoryFromVideoSession = action({
+  args: {
+    userId: v.id("users"),
+    sessionId: v.id("sessions"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runAction(
+      internal.globalMemory.updateGlobalMemoryFromVideoSession,
+      {
+        userId: args.userId,
+        sessionId: args.sessionId,
+      }
+    );
+    return {
+      success: true,
+      message: "Video session global memory update triggered",
+    };
+  },
+});
+
+export const triggerUpdateGlobalMemoryFromJournal = action({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runAction(internal.globalMemory.updateGlobalMemoryFromJournal, {
+      userId: args.userId,
+    });
+    return {
+      success: true,
+      message: "Journal global memory update triggered",
     };
   },
 });

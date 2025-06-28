@@ -34,9 +34,9 @@ export default function ProgressOverview({ weeklyProgress }: ProgressOverviewPro
             </div>
             <Progress value={weeklyProgress} className="h-2" />
           </div>
-          
+
           <div className="space-y-3">
-            <motion.div 
+            <motion.div
               className="flex items-center justify-between therapeutic-hover p-2 rounded-lg"
               whileHover={{ scale: 1.02 }}
             >
@@ -46,8 +46,8 @@ export default function ProgressOverview({ weeklyProgress }: ProgressOverviewPro
               </div>
               <span className="text-sm font-medium">3/4</span>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               className="flex items-center justify-between therapeutic-hover p-2 rounded-lg"
               whileHover={{ scale: 1.02 }}
             >
@@ -59,7 +59,7 @@ export default function ProgressOverview({ weeklyProgress }: ProgressOverviewPro
             </motion.div>
           </div>
 
-          <motion.div 
+          <motion.div
             className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 p-4 rounded-lg backdrop-blur-subtle"
             whileHover={{ scale: 1.02 }}
           >

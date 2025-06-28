@@ -23,6 +23,7 @@
 MindfulAI represents the next generation of digital mental health support, seamlessly integrating multiple AI-powered therapeutic modalities with sophisticated context management and personalized insights. Our platform provides 24/7 mental health support through various channels while maintaining therapeutic continuity and user privacy.
 
 ### 🎯 Core Mission
+
 Democratize access to quality mental health support through cutting-edge AI technology, making therapeutic assistance available anytime, anywhere, while maintaining the highest standards of privacy and clinical effectiveness.
 
 ---
@@ -37,32 +38,32 @@ graph TB
         C[Tailwind CSS + Framer Motion]
         D[TypeScript]
     end
-    
+
     subgraph "Authentication & State"
         E[Convex Auth]
         F[Context Providers]
         G[Real-time Subscriptions]
     end
-    
+
     subgraph "AI Services Layer"
         H[Claude 3.5 Sonnet]
         I[OpenRouter API]
         J[Content Guardrails]
         K[Context Management]
     end
-    
+
     subgraph "External AI Platforms"
         L[Tavus - Video AI]
         M[ElevenLabs - Voice AI]
         N[Anthropic Claude]
     end
-    
+
     subgraph "Database Layer"
         O[Convex Database]
         P[Real-time Sync]
         Q[ACID Transactions]
     end
-    
+
     subgraph "Core Features"
         R[Video Therapy]
         S[Voice Sessions]
@@ -70,7 +71,7 @@ graph TB
         U[Mood Tracking]
         V[Smart Recommendations]
     end
-    
+
     A --> E
     B --> F
     C --> D
@@ -79,21 +80,21 @@ graph TB
     H --> I
     I --> J
     J --> K
-    
+
     H --> L
     H --> M
     H --> N
-    
+
     G --> O
     O --> P
     P --> Q
-    
+
     K --> R
     K --> S
     K --> T
     K --> U
     K --> V
-    
+
     style A fill:#3b82f6,stroke:#1e40af,color:#fff
     style H fill:#10b981,stroke:#059669,color:#fff
     style O fill:#8b5cf6,stroke:#7c3aed,color:#fff
@@ -105,24 +106,28 @@ graph TB
 ## 🚀 Key Features
 
 ### 🎥 **Multi-Modal AI Therapy**
+
 - **Video Therapy**: Real-time AI avatar sessions using Tavus technology
 - **Voice Conversations**: Natural phone-based therapy via ElevenLabs
 - **Text Chat**: Intelligent messaging with context-aware responses
 - **Seamless Switching**: Move between modalities while maintaining context
 
 ### 🧠 **Advanced Context Management**
+
 - **Rolling Summaries**: Intelligent conversation summarization
 - **Context Preservation**: Maintains therapeutic relationship across sessions
 - **Smart Token Management**: Efficient context handling for optimal AI performance
 - **Conversation Continuity**: Never lose therapeutic progress
 
 ### 📊 **Intelligent Mood Tracking**
+
 - **Daily Check-ins**: Simple mood selection with intensity tracking
 - **AI-Powered Insights**: Personalized reflections based on mood patterns
 - **Smart Recommendations**: Activity suggestions tailored to current emotional state
 - **Pattern Recognition**: Identify triggers and emotional trends
 
 ### 🔒 **Enterprise-Grade Security**
+
 - **End-to-End Encryption**: All conversations and data protected
 - **HIPAA Compliance**: Healthcare-grade privacy standards
 - **Content Guardrails**: AI safety measures and topic boundaries
@@ -145,19 +150,19 @@ sequenceDiagram
     F->>API: POST /api/chat
     API->>DB: Fetch conversation history
     API->>CTX: Check context size
-    
+
     alt Context too large
         CTX->>AI: Summarize older messages
         AI-->>CTX: Return summary
         CTX->>DB: Update rolling summary
     end
-    
+
     API->>AI: Generate response with context
     AI-->>API: Return therapeutic response
     API->>DB: Save message & update summary
     API-->>F: Return response + metadata
     F-->>U: Display AI response
-    
+
     Note over CTX: Smart context management ensures<br/>optimal AI performance
 ```
 
@@ -169,25 +174,25 @@ sequenceDiagram
 flowchart TD
     A[User Selects Mood] --> B[Create Mood Entry]
     B --> C{User Choice}
-    
+
     C -->|Get Recommendations| D[Fetch Today's Mood History]
     C -->|Reflect on Mood| E[Fetch Today's Mood History]
-    
+
     D --> F[AI Analyzes Patterns]
     E --> G[AI Generates Insight]
-    
+
     F --> H[Return Top 2 Activities]
     G --> I[Return Personalized Reflection]
-    
+
     H --> J[Update Entry with Recommendations]
     I --> K[Update Entry with Insight]
-    
+
     J --> L[User Selects Activity]
     K --> M[User Reflects]
-    
+
     L --> N[Track Recommendation Usage]
     M --> O[Store Insight for Future Context]
-    
+
     subgraph "Available Activities"
         P[Video Therapy]
         Q[Voice Call]
@@ -196,14 +201,14 @@ flowchart TD
         T[Meditation]
         U[Breathing Exercises]
     end
-    
+
     H --> P
     H --> Q
     H --> R
     H --> S
     H --> T
     H --> U
-    
+
     style A fill:#3b82f6,stroke:#1e40af,color:#fff
     style F fill:#10b981,stroke:#059669,color:#fff
     style G fill:#f59e0b,stroke:#d97706,color:#fff
@@ -224,7 +229,7 @@ erDiagram
         object subscription
         object preferences
     }
-    
+
     sessions {
         string _id PK
         string userId FK
@@ -237,7 +242,7 @@ erDiagram
         string elevenlabsConversationId
         object metadata
     }
-    
+
     chatConversations {
         string _id PK
         string userId FK
@@ -248,7 +253,7 @@ erDiagram
         string rollingSummary
         array tags
     }
-    
+
     messages {
         string _id PK
         string userId FK
@@ -259,7 +264,7 @@ erDiagram
         boolean isEdited
         object metadata
     }
-    
+
     moodEntries {
         string _id PK
         string userId FK
@@ -271,7 +276,7 @@ erDiagram
         string aiInsight
         array recommendationsUsed
     }
-    
+
     users ||--o{ sessions : "has many"
     users ||--o{ chatConversations : "has many"
     users ||--o{ messages : "has many"
@@ -285,6 +290,7 @@ erDiagram
 ## 🛠️ Technology Stack
 
 ### **Frontend**
+
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript 5.8.3
 - **Styling**: Tailwind CSS with custom therapeutic design system
@@ -293,18 +299,21 @@ erDiagram
 - **Icons**: Lucide React
 
 ### **Backend & Database**
+
 - **Database**: Convex (Real-time, serverless)
 - **Authentication**: Convex Auth with multi-provider support
 - **Real-time**: Built-in subscriptions and live queries
 - **Type Safety**: End-to-end TypeScript
 
 ### **AI & External Services**
-- **Primary AI**: Claude 3.5 Sonnet via OpenRouter
+
+- **Primary AI**: Claude 3.7 Sonnet via OpenRouter & Gemini 2.5 Flash via Gemini API
 - **Video AI**: Tavus for realistic avatar conversations
 - **Voice AI**: ElevenLabs for natural phone conversations
 - **Content Safety**: Custom guardrails and topic boundaries
 
 ### **Development & Deployment**
+
 - **Package Manager**: npm
 - **Linting**: ESLint with Next.js config
 - **Styling**: PostCSS with Tailwind
@@ -315,6 +324,7 @@ erDiagram
 ## 📦 Installation
 
 ### Prerequisites
+
 - Node.js 18.17.0 or higher
 - npm or yarn package manager
 - Convex account
@@ -374,6 +384,7 @@ SITE_URL=http://localhost:3000
 ## 🎨 Design System
 
 ### **Therapeutic Design Principles**
+
 - **Calming Colors**: Soft blues, greens, and warm neutrals
 - **Glassmorphism**: Subtle transparency and blur effects
 - **Micro-interactions**: Gentle animations that provide feedback
@@ -381,6 +392,7 @@ SITE_URL=http://localhost:3000
 - **Responsive**: Mobile-first approach with fluid layouts
 
 ### **Custom CSS Classes**
+
 ```css
 .glass-card          /* Glassmorphism card effect */
 .therapeutic-hover   /* Gentle hover animations */
@@ -394,18 +406,21 @@ SITE_URL=http://localhost:3000
 ## 🔐 Security & Privacy
 
 ### **Data Protection**
+
 - All user data encrypted at rest and in transit
 - HIPAA-compliant data handling procedures
 - Regular security audits and penetration testing
 - Minimal data collection principle
 
 ### **AI Safety**
+
 - Content guardrails prevent off-topic discussions
 - Therapeutic focus maintained through system prompts
 - Crisis detection and emergency resource routing
 - Regular model safety evaluations
 
 ### **Privacy Features**
+
 - Anonymous usage options
 - Data export and deletion rights
 - Transparent privacy policy
@@ -416,12 +431,14 @@ SITE_URL=http://localhost:3000
 ## 📊 Performance Metrics
 
 ### **Technical Performance**
+
 - **Page Load Time**: < 2 seconds
 - **First Contentful Paint**: < 1.5 seconds
 - **Cumulative Layout Shift**: < 0.1
 - **Time to Interactive**: < 3 seconds
 
 ### **AI Response Times**
+
 - **Chat Messages**: < 3 seconds average
 - **Mood Recommendations**: < 5 seconds
 - **Context Summarization**: < 2 seconds
@@ -463,6 +480,7 @@ CMD ["npm", "start"]
 ## 🧪 Testing
 
 ### **Test Coverage**
+
 - Unit tests for AI functions
 - Integration tests for API routes
 - E2E tests for critical user flows
@@ -486,6 +504,7 @@ npm run test:coverage
 We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
 
 ### **Development Workflow**
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
@@ -493,6 +512,7 @@ We welcome contributions from the community! Please read our [Contributing Guide
 5. Submit a pull request
 
 ### **Code Standards**
+
 - TypeScript strict mode
 - ESLint configuration compliance
 - Prettier code formatting
@@ -503,18 +523,21 @@ We welcome contributions from the community! Please read our [Contributing Guide
 ## 📈 Roadmap
 
 ### **Q1 2024**
+
 - [ ] Group therapy sessions
 - [ ] Advanced analytics dashboard
 - [ ] Mobile app development
 - [ ] Integration with wearable devices
 
 ### **Q2 2024**
+
 - [ ] Multi-language support
 - [ ] Therapist collaboration tools
 - [ ] Advanced crisis intervention
 - [ ] API for third-party integrations
 
 ### **Q3 2024**
+
 - [ ] VR therapy sessions
 - [ ] AI-powered therapy plans
 - [ ] Insurance integration

@@ -1,6 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { generateConversationSummary, ChatMessage } from "../lib/ai";
+import { api } from "./_generated/api";
 
 export const createConversation = mutation({
   args: {
@@ -14,7 +16,8 @@ export const createConversation = mutation({
     }
 
     const now = Date.now();
-    const title = args.title || `Chat Session - ${new Date(now).toLocaleDateString()}`;
+    const title =
+      args.title || `Chat Session - ${new Date(now).toLocaleDateString()}`;
 
     return await ctx.db.insert("chatConversations", {
       userId,
@@ -66,11 +69,13 @@ export const updateConversation = mutation({
   args: {
     conversationId: v.id("chatConversations"),
     title: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("active"),
-      v.literal("completed"),
-      v.literal("archived")
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("completed"),
+        v.literal("archived")
+      )
+    ),
     summary: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
   },
@@ -133,7 +138,9 @@ export const deleteConversation = mutation({
     // Delete all messages in this conversation
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .withIndex("by_conversation", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
       .collect();
 
     for (const message of messages) {
@@ -172,5 +179,63 @@ export const updateConversationActivity = mutation({
     }
 
     return await ctx.db.patch(args.conversationId, updates);
+  },
+});
+
+export const internalGetConversationById = internalQuery({
+  args: { conversationId: v.id("chatConversations") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.conversationId);
+  },
+});
+
+export const summarizeConversation = action({
+  args: {
+    conversationId: v.id("chatConversations"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const conversation = await ctx.runQuery(
+      api.chatConversations.getConversationById,
+      {
+        conversationId: args.conversationId,
+      }
+    );
+
+    if (!conversation) {
+      throw new Error("Conversation not found");
+    }
+
+    const messages = await ctx.runQuery(api.messages.getConversationMessages, {
+      conversationId: args.conversationId,
+    });
+
+    if (!messages || messages.length === 0) {
+      console.log(
+        `No messages in conversation ${args.conversationId} to summarize.`
+      );
+      return;
+    }
+
+    const chatMessages: ChatMessage[] = messages.map((msg: any) => ({
+      role: msg.sender === "user" ? "user" : "assistant",
+      content: msg.content,
+    }));
+
+    const summary = await generateConversationSummary(
+      chatMessages,
+      conversation.rollingSummary ?? undefined
+    );
+
+    if (summary && summary !== conversation.rollingSummary) {
+      await ctx.runMutation(api.chatConversations.updateConversationSummary, {
+        conversationId: args.conversationId,
+        rollingSummary: summary,
+      });
+    }
   },
 });

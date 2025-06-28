@@ -1,9 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useGlobalMemory } from './global-memory-context';
 
 interface ChatState {
   conversations: any[];
@@ -38,8 +39,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'ADD_CONVERSATION':
-      return { 
-        ...state, 
+      return {
+        ...state,
         conversations: [action.payload, ...state.conversations],
         currentConversationId: action.payload._id
       };
@@ -63,12 +64,15 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  
+  const { setMemoryUpdateTrigger } = useGlobalMemory();
+
   const user = useQuery(api.users.current);
   const conversations = useQuery(api.chatConversations.getUserConversations);
   const createConversationMutation = useMutation(api.chatConversations.createConversation);
   const createMessageMutation = useMutation(api.messages.createMessage);
-  const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
+  const summarizeConversationAction = useAction(
+    api.chatConversations.summarizeConversation
+  );
 
   // Update conversations when data changes
   useEffect(() => {
@@ -101,14 +105,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const currentConversations = conversations || [];
-      
+
       if (currentConversations.length === 0) {
         // No conversations exist, create the first one
-        console.log('🆕 No conversations found, creating first conversation...');
         await createNewConversation();
       } else {
         // Load the most recent active conversation
-        console.log(`📋 Found ${currentConversations.length} existing conversations, loading most recent...`);
         const activeConversation = currentConversations.find(c => c.status === 'active') || currentConversations[0];
         dispatch({ type: 'SET_CURRENT_CONVERSATION', payload: activeConversation._id });
       }
@@ -127,8 +129,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       const title = `Chat Session - ${new Date(now).toLocaleDateString()}`;
 
-      console.log('🔄 Creating new conversation:', title);
-      
+
       const conversationId = await createConversationMutation({ title });
 
       // Add welcome message
@@ -154,8 +155,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       };
 
       dispatch({ type: 'ADD_CONVERSATION', payload: newConversation });
-      
-      console.log('✅ New conversation created successfully:', conversationId);
+
       return conversationId;
     } catch (error) {
       console.error('❌ Error creating conversation:', error);
@@ -175,31 +175,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!state.currentConversationId) return;
 
     try {
-      // Get recent messages for summarization
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'summarize',
-          conversationId: state.currentConversationId,
-          // You would fetch the actual conversation history here
-          conversationHistory: [], // This should be populated with recent messages
-          existingSummary: "", // This should be the current rolling summary
-        }),
+      await summarizeConversationAction({
+        conversationId: state.currentConversationId,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.summary) {
-          // Update the conversation summary in the database
-          await updateConversationSummaryMutation({
-            conversationId: state.currentConversationId,
-            rollingSummary: data.summary,
-          });
-        }
-      }
+      // Trigger global memory update
+      setMemoryUpdateTrigger("CHAT_SUMMARY_UPDATED", state.currentConversationId);
     } catch (error) {
-      console.error('Error summarizing conversation:', error);
+      console.error("Error summarizing conversation:", error);
     }
   };
 

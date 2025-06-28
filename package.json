@@ -80,7 +80,6 @@
     "@tiptap/react": "^2.22.3",
     "@tiptap/starter-kit": "^2.22.3",
     "@tiptap/suggestion": "^2.22.3",
-    "@types/node": "24.0.3",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
     "class-variance-authority": "^0.7.1",
@@ -120,10 +119,13 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@google/genai": "^1.7.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^24.0.7",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
+    "mime": "^4.0.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17"
   }

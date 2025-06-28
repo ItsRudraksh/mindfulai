@@ -25,7 +25,7 @@ export default function SessionsPage() {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 24) {
       return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffInHours < 48) {
@@ -53,7 +53,7 @@ export default function SessionsPage() {
 
   const SessionCard = ({ session, index }: { session: any; index: number }) => {
     const Icon = session.type === 'voice' ? Phone : Video;
-    
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -65,7 +65,7 @@ export default function SessionsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <motion.div 
+                <motion.div
                   className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center"
                   whileHover={{ rotate: 5 }}
                   transition={{ duration: 0.2 }}
@@ -124,14 +124,14 @@ export default function SessionsPage() {
 
   const EmptyState = ({ type }: { type: 'voice' | 'video' }) => {
     const Icon = type === 'voice' ? Phone : Video;
-    
+
     return (
-      <motion.div 
+      <motion.div
         className="text-center py-12"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <motion.div 
+        <motion.div
           className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4"
           whileHover={{ scale: 1.05, rotate: 5 }}
           transition={{ duration: 0.2 }}
@@ -226,7 +226,9 @@ export default function SessionsPage() {
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {voiceSessions.map((session, index) => (
-                      <SessionCard key={session._id} session={session} index={index} />
+                      session.status === 'completed' ? (
+                        <SessionCard key={session._id} session={session} index={index} />
+                      ) : null
                     ))}
                   </div>
                 )}
@@ -253,7 +255,9 @@ export default function SessionsPage() {
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {videoSessions.map((session, index) => (
-                      <SessionCard key={session._id} session={session} index={index} />
+                      session.status === 'completed' ? (
+                        <SessionCard key={session._id} session={session} index={index} />
+                      ) : null
                     ))}
                   </div>
                 )}
@@ -271,7 +275,7 @@ export default function SessionsPage() {
 
 function RedirectToSignIn() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/auth/signin');
   }, [router]);

@@ -1,13 +1,16 @@
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
-  apiKey:
-    process.env.OPENROUTER_API_KEY ||
-    "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",
+  apiKey: `${process.env.OPENROUTER_API_KEY}`,
   dangerouslyAllowBrowser: true,
 });
 
+const googleClient = new GoogleGenAI({
+  apiKey: `${process.env.GEMINI_API_KEY}`,
+});
+const googleModel = "gemini-2.5-flash";
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -157,20 +160,6 @@ const AVAILABLE_ACTIVITIES: ActivityOption[] = [
       "Mental clarity",
     ],
   },
-  {
-    id: "breathing",
-    name: "Breathing Exercises",
-    description: "Structured breathing techniques for immediate calm and focus",
-    route: "/breathing",
-    icon: "Wind",
-    estimatedTime: "3-10 minutes",
-    benefits: [
-      "Immediate relief",
-      "Anxiety reduction",
-      "Physical relaxation",
-      "Quick reset",
-    ],
-  },
 ];
 
 function checkContentGuardrails(message: string): {
@@ -302,24 +291,36 @@ ${moodHistoryContext}
 
 Respond ONLY with valid JSON. Be empathetic and supportive in your reasoning and encouragement.`;
 
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-sonnet-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Current mood: "${mood}"` },
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Current mood: "${mood}"`,
+            },
+          ],
+        },
       ],
-      temperature: 0.6,
-      max_tokens: 800,
+      config: {
+        maxOutputTokens: 3000,
+        temperature: 0.6,
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+      },
     });
 
-    const response = completion.choices[0]?.message?.content;
+    console.log("Gemini API Response:", JSON.stringify(response, null, 2));
 
-    if (!response) {
+    const responseText = response.text;
+
+    if (!responseText) {
       throw new Error("No response from AI");
     }
 
     // Parse JSON response
-    const recommendation: MoodRecommendation = JSON.parse(response);
+    const recommendation: MoodRecommendation = JSON.parse(responseText);
 
     // Validate that we have exactly 2 recommendations
     if (
@@ -387,27 +388,34 @@ ${moodHistory
 Consider this emotional journey when providing your insight.`;
     }
 
-    const prompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ""}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? "Take into account their mood patterns today to provide more personalized reflection." : ""} Respond in the same language and style as the input.`;
+    const systemPrompt =
+      "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing. When mood history is provided, acknowledge patterns and growth.";
 
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-sonnet-4",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a compassionate mental health companion. Provide brief, validating insights that help users feel understood and supported. Match their language and communication style. Focus only on mental health and emotional wellbeing. When mood history is provided, acknowledge patterns and growth.",
-        },
+    const userPrompt = `Based on someone describing their current state as "${mood}"${context ? ` with additional context: "${context}"` : ""}${moodHistoryContext}, provide a brief, supportive insight (2-3 sentences) that validates their feelings and offers a gentle perspective or coping suggestion. ${moodHistory ? "Take into account their mood patterns today to provide more personalized reflection." : ""} Respond in the same language and style as the input.`;
+
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
         {
           role: "user",
-          content: prompt,
+          parts: [
+            {
+              text: userPrompt,
+            },
+          ],
         },
       ],
-      temperature: 0.6,
-      max_tokens: 200,
+      config: {
+        maxOutputTokens: 1000,
+        temperature: 0.6,
+        systemInstruction: systemPrompt,
+      },
     });
 
+    const responseText = response.text;
+
     return (
-      completion.choices[0]?.message?.content ||
+      responseText ||
       "Your feelings are valid and it's okay to experience them. Taking time to acknowledge how you're feeling is an important step in caring for yourself."
     );
   } catch (error) {
@@ -581,25 +589,32 @@ export async function generateConversationSummary(
       summaryPrompt = `Conversation:\n${conversation}\n\nSummarize this therapy conversation in 2-3 sentences, focusing on the main topics discussed, emotional themes, coping strategies, and therapeutic insights. Be professional and respectful.`;
     }
 
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-sonnet-4",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a professional therapy assistant. Create concise, therapeutic summaries that capture emotional themes, progress, and key insights. Use the same language style as the conversation. Focus on continuity of care and therapeutic relationship building.",
-        },
+    const systemPrompt =
+      "You are a professional therapy assistant. Create concise, therapeutic summaries that capture emotional themes, progress, and key insights. Use the same language style as the conversation. Focus on continuity of care and therapeutic relationship building.";
+
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
         {
           role: "user",
-          content: summaryPrompt,
+          parts: [
+            {
+              text: summaryPrompt,
+            },
+          ],
         },
       ],
-      temperature: 0.3,
-      max_tokens: 250,
+      config: {
+        maxOutputTokens: 1000,
+        temperature: 0.3,
+        systemInstruction: systemPrompt,
+      },
     });
 
+    const responseText = response.text;
+
     return (
-      completion.choices[0]?.message?.content ||
+      responseText ||
       "Therapy conversation covering emotional wellbeing and support."
     );
   } catch (error) {
@@ -646,6 +661,7 @@ export async function generateInitialGlobalMemory(userProfile: {
     // Calculate age from DOB
     const birthDate = new Date(dob);
     const today = new Date();
+    const time = today.toISOString().split("T")[0];
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (
@@ -681,31 +697,34 @@ REQUIRED SECTIONS:
 
 IMPORTANT: This is an internal therapeutic profile that will never be shown to the user. It should be written in a professional, clinical style for continuity of therapeutic care.`;
 
-    const userPrompt = `User Onboarding Information:
-Name: ${name || "User"}
-Date of Birth: ${dob}
-Age: ${age}
-Profession: ${profession}
-About Me: "${aboutMe}"
+    const userPrompt = `User Onboarding Information:\nName: ${name || "User"}\nDate of Birth: ${dob}\nAge: ${age}\nProfession: ${profession}\nAbout Me: "${aboutMe}"\n\nCurrent Date: ${new Date().toISOString().split("T")[0]}`;
 
-Current Date: ${new Date().toISOString().split("T")[0]}`;
-
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-sonnet-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: userPrompt,
+            },
+          ],
+        },
       ],
-      temperature: 0.3,
+      config: {
+        temperature: 0.3,
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 10000,
+      },
     });
 
-    const response = completion.choices[0]?.message?.content;
+    const responseText = response.text;
 
-    if (!response) {
+    if (!responseText) {
       throw new Error("No response from AI");
     }
 
-    return response;
+    return responseText;
   } catch (error) {
     console.error("Error generating initial global memory:", error);
 
@@ -775,31 +794,34 @@ GUIDELINES:
 
 IMPORTANT: This is an internal therapeutic profile that will never be shown to the user. It should be written in a professional, clinical style for continuity of therapeutic care.`;
 
-    const userPrompt = `Existing Global Memory Profile:
-${existingMemory}
+    const userPrompt = `Existing Global Memory Profile:\n${existingMemory}\n\nNew Information Type: ${newContext.type}\nNew Information:\n${JSON.stringify(newContext.data, null, 2)}\n\nCurrent Date: ${new Date().toISOString().split("T")[0]}`;
 
-New Information Type: ${newContext.type}
-New Information:
-${JSON.stringify(newContext.data, null, 2)}
-
-Current Date: ${new Date().toISOString().split("T")[0]}`;
-
-    const completion = await client.chat.completions.create({
-      model: "anthropic/claude-sonnet-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: userPrompt,
+            },
+          ],
+        },
       ],
-      temperature: 0.3,
+      config: {
+        temperature: 0.3,
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 10000,
+      },
     });
 
-    const response = completion.choices[0]?.message?.content;
+    const responseText = response.text;
 
-    if (!response) {
+    if (!responseText) {
       throw new Error("No response from AI");
     }
 
-    return response;
+    return responseText;
   } catch (error) {
     console.error("Error updating global memory:", error);
 
@@ -825,4 +847,58 @@ export async function generatePersonalizedMeditationPlan(
     description: "A meditation plan tailored to your needs",
     sessions: [],
   };
+}
+
+export async function generateTherapySessionSummary(
+  messages: Array<{ role: string; content: string }>,
+  sessionType: string,
+  userContext?: any
+): Promise<string> {
+  try {
+    const conversation = messages
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
+
+    const summaryPrompt = `As a professional therapy assistant, create a comprehensive summary of this ${sessionType} therapy session. Focus on:
+
+1. **Key Topics Discussed**: Main themes and issues addressed
+2. **Emotional Journey**: User's emotional state and any changes during the session
+3. **Therapeutic Insights**: Important realizations or breakthroughs
+4. **Coping Strategies**: Any techniques or strategies discussed
+5. **Progress Indicators**: Signs of growth or areas for continued focus
+6. **Session Effectiveness**: How well the session addressed the user's needs
+
+Conversation:
+${conversation}
+
+Provide a detailed, professional summary (4-6 paragraphs) that would be valuable for therapeutic continuity and user reflection. Use empathetic, supportive language while maintaining clinical accuracy.`;
+
+    const systemPrompt =
+      "You are a professional therapy assistant specializing in creating comprehensive, empathetic session summaries that support therapeutic continuity and user growth.";
+
+    const response = await googleClient.models.generateContent({
+      model: googleModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: summaryPrompt,
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.3,
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 2000,
+      },
+    });
+
+    const responseText = response.text;
+    return responseText || "Unable to generate summary at this time.";
+  } catch (error) {
+    console.error("AI summary generation error:", error);
+    return "This session covered important therapeutic topics and provided valuable support. A detailed summary could not be generated at this time, but the conversation contributed to your ongoing mental health journey.";
+  }
 }

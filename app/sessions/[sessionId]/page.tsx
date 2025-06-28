@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Download, Calendar, Clock, Phone, Video, MessageCircle, RefreshCw, Eye, FileText, Brain, ExternalLink, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -32,6 +32,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [isGeneratingAISummary, setIsGeneratingAISummary] = useState(false);
   const [currentRating, setCurrentRating] = useState<any>(null);
+  const [done, setDone] = useState(false);
 
   const { sessionId: routeSessionId } = useParams();
   const sessionId = routeSessionId as Id<"sessions">;
@@ -42,6 +43,8 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
   const generateAISummaryMutation = useMutation(api.sessions.generateAISummary);
   const updateAISummaryMutation = useMutation(api.sessions.updateAISummary);
+  const updateVoiceSessionSummaryMutation = useMutation(api.sessions.updateVoiceSessionSummary);
+  const triggerUpdateGlobalMemoryFromVoiceSession = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromVoiceSession);
 
   // Update local rating state when sessionRating changes
   useEffect(() => {
@@ -96,37 +99,57 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   }, [session, canAutoRefresh, isAutoRefreshing, storeTavusConversationDataMutation]);
 
   // Voice session summary loading
-  useEffect(() => {
-    const fetchConversationDetails = async () => {
-      if (session && session.type === 'voice' && session.elevenlabsConversationId && !transcriptSummary) {
-        setIsLoadingSummary(true);
-        try {
-          const response = await fetch('/api/elevenlabs/details', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversationId: session.elevenlabsConversationId,
-            }),
-          });
+  const fetchConversationDetails = async () => {
+    // If we already have a summary from the db, use it.
+    if (session?.voiceSessionSummary) {
+      setTranscriptSummary(session.voiceSessionSummary);
+      return;
+    }
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data.analysis?.transcriptSummary) {
-              setTranscriptSummary(data.data.analysis.transcriptSummary);
-            }
-          } else {
-            throw new Error(`Failed to fetch conversation details: ${response.status}`);
+    // If we are a voice session, have an ID, but no summary yet, fetch it.
+    if (session && session.type === 'voice' && session.elevenlabsConversationId && !session.voiceSessionSummary) {
+      setIsLoadingSummary(true);
+      try {
+        const response = await fetch('/api/elevenlabs/details', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: session.elevenlabsConversationId,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.analysis?.transcriptSummary) {
+            const summary = data.data.analysis.transcriptSummary;
+            setTranscriptSummary(summary);
+            await updateVoiceSessionSummaryMutation({
+              sessionId: session._id,
+              voiceSessionSummary: summary,
+            });
+            setDone(true);
+            toast.success('Voice session summary loaded and saved.');
           }
-        } catch (error) {
-          console.error('Error fetching conversation details:', error);
-          toast.error('Failed to load session summary.');
-        } finally {
-          setIsLoadingSummary(false);
+        } else {
+          throw new Error(`Failed to fetch conversation details: ${response.status}`);
         }
+      } catch (error) {
+        console.error('Error fetching conversation details:', error);
+        toast.error('Failed to load session summary.');
+      } finally {
+        setIsLoadingSummary(false);
       }
-    };
+    }
+  };
+  useEffect(() => {
     fetchConversationDetails();
-  }, [session, transcriptSummary]);
+  }, [session, updateVoiceSessionSummaryMutation, triggerUpdateGlobalMemoryFromVoiceSession]);
+
+  useEffect(() => {
+    if (done) {
+      triggerUpdateGlobalMemoryFromVoiceSession({ userId: session?.userId, sessionId: session?._id });
+    }
+  }, [done, session, triggerUpdateGlobalMemoryFromVoiceSession]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -632,9 +655,9 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       <p className="ml-3 text-muted-foreground">Loading summary...</p>
                     </div>
-                  ) : transcriptSummary ? (
+                  ) : transcriptSummary || session?.voiceSessionSummary ? (
                     <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/20 dark:to-green-950/20 p-4 rounded-lg">
-                      <p className="text-sm leading-relaxed">{transcriptSummary}</p>
+                      <p className="text-sm leading-relaxed">{transcriptSummary || session?.voiceSessionSummary}</p>
                     </div>
                   ) : (
                     <div className="text-muted-foreground text-sm">No transcript summary available.</div>
@@ -738,21 +761,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </div>
                   </div>
                 )}
-                {session.elevenlabsConversationId && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Conversation ID</span>
-                    <span className="text-xs font-mono">
-                      {session.elevenlabsConversationId.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-                {tavusData && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Events Captured</span>
-                    <span className="text-sm font-medium">{tavusData.events?.length || 0}</span>
-                  </div>
-                )}
-                {canAutoRefresh && (
+                {canAutoRefresh && session.type === 'video' && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Auto-refresh</span>
                     <span className="text-xs">
@@ -760,7 +769,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </span>
                   </div>
                 )}
-                {canAutoRefresh && canAutoRefresh.missingEvents.length > 0 && (
+                {canAutoRefresh && canAutoRefresh.missingEvents.length > 0 && session.type === 'video' && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Missing Data</span>
                     <span className="text-xs text-orange-600">

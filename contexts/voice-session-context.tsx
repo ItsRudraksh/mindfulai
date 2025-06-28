@@ -4,6 +4,8 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { useGlobalMemory } from './global-memory-context';
+import { useRouter } from 'next/navigation';
 
 interface VoiceSessionState {
   isInitiating: boolean;
@@ -104,7 +106,7 @@ function voiceSessionReducer(state: VoiceSessionState, action: VoiceSessionActio
 interface VoiceSessionContextType {
   state: VoiceSessionState;
   dispatch: React.Dispatch<VoiceSessionAction>;
-  initiateCall: (phoneNumber: string, stateDescription: string, firstName: string) => Promise<void>;
+  initiateCall: (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   checkCallStatus: (initialConversationId?: string) => Promise<void>;
 }
@@ -115,10 +117,11 @@ const STORAGE_KEY = 'mindfulai_voice_session';
 
 export function VoiceSessionProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(voiceSessionReducer, initialState);
+  const { setMemoryUpdateTrigger } = useGlobalMemory();
+  const router = useRouter();
 
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
   const createSessionMutation = useMutation(api.sessions.createSession);
-  const updateSessionMetadata = useMutation(api.sessions.updateSessionMetadata);
   const endSessionMutation = useMutation(api.sessions.endSession);
   const updateElevenLabsSessionIdsMutation = useMutation(api.sessions.updateElevenLabsSessionIds);
 
@@ -223,6 +226,10 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
               endTime: Date.now(),
               notes: notes,
             });
+
+            // Redirect to the session page
+            setMemoryUpdateTrigger('VOICE_SESSION_ENDED', sessionId);
+            router.push(`/sessions/${sessionId}`);
           }
 
           // Stop status checking by letting the useEffect handle it
@@ -248,10 +255,9 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
       }
     } catch (error) {
       console.error('💥 ElevenLabs conversation status error:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to check call status' });
-      // No change to call status here, as the error might be transient
+      // Don't set a generic error here, as it might be a temporary network issue
     }
-  }, [activeSession, state.conversationId, state.sessionId, state.callStatus, endSessionMutation, dispatch]);
+  }, [state.sessionId, activeSession, endSessionMutation]);
 
   // New useEffect for status polling
   useEffect(() => {
@@ -335,36 +341,33 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  const initiateCall = async (phoneNumber: string, stateDescription: string, firstName: string) => {
+  const initiateCall = async (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string) => {
     dispatch({ type: 'SET_INITIATING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // Create conversational context
-      const conversationalContext = `You are about to talk to ${firstName}. ${stateDescription.trim()}`;
-
-      // Create session record in Convex first
-      const newSessionId = await createSessionMutation({
+      // 1. Create a new session in Convex
+      const sessionId = await createSessionMutation({
         type: "voice",
         startTime: Date.now(),
-        mood: stateDescription.trim(),
+        mood: stateDescription,
       });
+      dispatch({ type: 'SET_SESSION_ID', payload: sessionId });
 
-      dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
-
-      // Initiate ElevenLabs call
+      // 2. Initiate the call via our API, which calls ElevenLabs
       const response = await fetch('/api/elevenlabs/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: phoneNumber,
-          firstName: firstName,
-          conversationContext: conversationalContext,
+          phone_number: phoneNumber,
+          task: stateDescription,
+          user_name: firstName,
+          conversation_context: conversationContext,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Call initiation failed: ${response.status}`);
+        throw new Error(`API call failed: ${response.status}`);
       }
 
       const data = await response.json();
@@ -381,7 +384,7 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
 
         // Step 3: Update session metadata with ElevenLabs IDs in Convex
         await updateElevenLabsSessionIdsMutation({
-          sessionId: newSessionId,
+          sessionId: sessionId,
           elevenlabsConversationId: elevenLabsConversationId,
           elevenlabsCallSid: elevenLabsCallSid,
         });

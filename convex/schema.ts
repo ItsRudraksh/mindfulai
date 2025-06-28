@@ -59,6 +59,7 @@ export default defineSchema({
     lastAutoRefresh: v.optional(v.number()),
     // AI-generated summary
     aiSummary: v.optional(v.string()),
+    voiceSessionSummary: v.optional(v.string()),
     metadata: v.optional(
       v.object({
         tavusSessionId: v.optional(v.string()),

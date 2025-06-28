@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalQuery,
+  internalMutation,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const current = query({
@@ -149,5 +154,27 @@ export const hasCompletedOnboarding = query({
 
     const user = await ctx.db.get(userId);
     return !!user?.onboardingComplete;
+  },
+});
+
+// Internal query to get user by ID
+export const getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+// Internal mutation to update global memory
+export const internalUpdateGlobalMemory = internalMutation({
+  args: {
+    userId: v.id("users"),
+    globalMemory: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.userId, {
+      globalMemory: args.globalMemory,
+      updatedAt: Date.now(),
+    });
   },
 });

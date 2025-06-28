@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const createMoodEntry = mutation({
@@ -35,13 +35,17 @@ export const getMoodEntriesForToday = query({
 
     // Get start and end of today in UTC
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).getTime();
     const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
 
     return await ctx.db
       .query("moodEntries")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.gte(q.field("timestamp"), startOfDay),
           q.lte(q.field("timestamp"), endOfDay)
@@ -66,7 +70,7 @@ export const getMoodEntriesForDateRange = query({
     return await ctx.db
       .query("moodEntries")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.gte(q.field("timestamp"), args.startDate),
           q.lte(q.field("timestamp"), args.endDate)
@@ -138,5 +142,31 @@ export const getUserMoodEntries = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
+  },
+});
+
+export const internalGetMoodEntriesForToday = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Get start and end of today in UTC
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1;
+
+    return await ctx.db
+      .query("moodEntries")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) =>
+        q.and(
+          q.gte(q.field("timestamp"), startOfDay),
+          q.lte(q.field("timestamp"), endOfDay)
+        )
+      )
+      .order("desc")
+      .collect();
   },
 });

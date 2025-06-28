@@ -38,24 +38,6 @@ export default function VoiceSession() {
     };
   }, [state.isConnected, state.callStatus]);
 
-  // Update global memory when call is completed
-  useEffect(() => {
-    if (state.callStatus === "done" && state.sessionId && user) {
-      // In a real implementation, this would be handled by a background job
-      // with a delay to ensure all data is processed
-      setTimeout(async () => {
-        try {
-          await triggerUpdateGlobalMemoryFromVoiceSession({
-            userId: user._id,
-            sessionId: state.sessionId!,
-          });
-        } catch (error) {
-          console.error('Error updating global memory after voice session:', error);
-        }
-      }, 120000); // 2 minute delay
-    }
-  }, [state.callStatus, state.sessionId, user, triggerUpdateGlobalMemoryFromVoiceSession]);
-
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -104,7 +86,7 @@ export default function VoiceSession() {
 
     try {
       const firstName = user.name?.split(' ')[0] || 'there';
-      await initiateCall(formattedPhone, state.stateDescription, firstName);
+      await initiateCall(formattedPhone, state.stateDescription, firstName, globalMemory || '');
       toast.success('Call initiated successfully! You should receive a call shortly.');
     } catch (error) {
       toast.error('Failed to initiate call. Please try again.');

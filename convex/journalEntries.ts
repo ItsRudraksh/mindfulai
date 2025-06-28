@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const createJournalEntry = mutation({
@@ -144,5 +144,20 @@ export const searchJournalEntries = query({
         return titleMatch || contentMatch;
       })
       .slice(0, limit);
+  },
+});
+
+export const internalGetUserJournalEntries = internalQuery({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 20;
+    return await ctx.db
+      .query("journalEntries")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
   },
 });

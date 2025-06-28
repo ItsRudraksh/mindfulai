@@ -12,7 +12,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation, useAction } from 'convex/react';
+import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -132,7 +132,8 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
   const slashMenuRef = useRef<HTMLDivElement>(null);
 
   const updateJournalEntry = useMutation(api.journalEntries.updateJournalEntry);
-  const triggerUpdateGlobalMemoryFromJournal = useAction(api.globalMemory.updateGlobalMemoryFromJournal);
+  const triggerUpdateGlobalMemoryFromJournalAction = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromJournal);
+  const currentUser = useQuery(api.users.current);
 
   const editor = useEditor({
     extensions: [
@@ -429,16 +430,6 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         const reader = new FileReader();
         reader.onload = (e) => {
           const url = e.target?.result as string;
-          editor?.chain().focus().setImage({ src: url, alt: file.name, title: file.name }).run();
-
-          // Set up a timer to check if the image is still in the editor after 10 seconds
-          // In a real implementation, this would upload to Cloudinary
-          setTimeout(() => {
-            if (editor && editor.isActive('image')) {
-              console.log('Image still in editor after 10 seconds - would upload to Cloudinary');
-              // Here you would upload to Cloudinary and update the src
-            }
-          }, 10000);
         };
         reader.readAsDataURL(file);
       }
@@ -453,15 +444,15 @@ const JournalEditor: React.FC<JournalEditorProps> = ({
         clearTimeout(saveTimeoutRef.current);
         saveContent().then(() => {
           // Update global memory when leaving the journal page
-          if (entryId) {
-            triggerUpdateGlobalMemoryFromJournal({ userId: 'current' }).catch(error => {
+          if (entryId && currentUser) {
+            triggerUpdateGlobalMemoryFromJournalAction({ userId: currentUser._id }).catch(error => {
               console.error('Error updating global memory from journal:', error);
             });
           }
         });
       }
     };
-  }, [entryId, triggerUpdateGlobalMemoryFromJournal]);
+  }, [entryId, triggerUpdateGlobalMemoryFromJournalAction, currentUser]);
 
   if (!editor) {
     return (
