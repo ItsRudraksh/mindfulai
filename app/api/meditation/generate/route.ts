@@ -20,31 +20,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate personalized meditation script
-    const script = await generatePersonalizedMeditation(globalMemory, preferences);
+    const script = await generatePersonalizedMeditation(
+      globalMemory,
+      preferences
+    );
 
     if (!script) {
       throw new Error("Failed to generate meditation script");
     }
 
     // Generate audio using ElevenLabs
-    const audioResponse = await fetch("https://api.elevenlabs.io/v1/text-to-speech/rfkTsdZrVWEVhDycUYn9?output_format=mp3_44100_128", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "xi-api-key": `${process.env.ELEVENLABS_API_KEY}`,
-      },
-      body: JSON.stringify({
-        text: `${script}`,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: {
-          "stability": 50,
-          "use_speaker_boost": true,
-          "similarity_boost": 75,
-          "style": 0,
-          "speed": 0.9
-        }
-      }),
-    });
+    const audioResponse = await fetch(
+      "https://api.elevenlabs.io/v1/text-to-speech/rfkTsdZrVWEVhDycUYn9?output_format=mp3_44100_128",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": `${process.env.ELEVENLABS_API_KEY}`,
+        },
+        body: JSON.stringify({
+          text: `${script}`,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            use_speaker_boost: true,
+            similarity_boost: 0.75,
+            style: 0,
+            speed: 0.9,
+          },
+        }),
+      }
+    );
 
     if (!audioResponse.ok) {
       throw new Error(`ElevenLabs API error: ${audioResponse.status}`);
@@ -52,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Convert audio to base64 for client
     const audioBuffer = await audioResponse.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
     const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
 
     return NextResponse.json({
