@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
 
     // Payment is verified, update user subscription
     const now = Date.now();
-    const oneMonthFromNow = now + (30 * 24 * 60 * 60 * 1000);
+    const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
 
     // Update user subscription to pro using internal mutation
-    await convex.mutation(internal.users.internalUpdateSubscription, {
+    await convex.mutation(api.users.updateSubscription, {
       userId,
       subscription: {
         plan: "pro",
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create payment transaction record using internal mutation
-    await convex.mutation(internal.paymentTransactions.internalCreatePaymentTransaction, {
+    await convex.mutation(api.paymentTransactions.createPaymentTransaction, {
       userId,
       provider: "razorpay",
       transactionId: razorpay_payment_id,

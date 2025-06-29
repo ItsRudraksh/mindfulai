@@ -85,6 +85,7 @@ export const updateProfile = mutation({
 
 export const updateSubscription = mutation({
   args: {
+    userId: v.id("users"),
     subscription: v.object({
       plan: v.string(),
       planName: v.string(),
@@ -92,26 +93,25 @@ export const updateSubscription = mutation({
       currentPeriodEnd: v.number(),
       provider: v.optional(v.string()),
       subscriptionId: v.optional(v.string()),
-      limits: v.optional(v.object({
-        videoSessions: v.number(),
-        voiceCalls: v.number(),
-        chatMessages: v.number(),
-      })),
-      usage: v.optional(v.object({
-        videoSessions: v.number(),
-        voiceCalls: v.number(),
-        chatMessages: v.number(),
-        lastResetDate: v.number(),
-      })),
+      limits: v.optional(
+        v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+        })
+      ),
+      usage: v.optional(
+        v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+          lastResetDate: v.number(),
+        })
+      ),
     }),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw new Error("Not authenticated");
-    }
-
-    return await ctx.db.patch(userId, {
+    return await ctx.db.patch(args.userId, {
       subscription: args.subscription,
       updatedAt: Date.now(),
     });
@@ -129,17 +129,21 @@ export const internalUpdateSubscription = internalMutation({
       currentPeriodEnd: v.number(),
       provider: v.optional(v.string()),
       subscriptionId: v.optional(v.string()),
-      limits: v.optional(v.object({
-        videoSessions: v.number(),
-        voiceCalls: v.number(),
-        chatMessages: v.number(),
-      })),
-      usage: v.optional(v.object({
-        videoSessions: v.number(),
-        voiceCalls: v.number(),
-        chatMessages: v.number(),
-        lastResetDate: v.number(),
-      })),
+      limits: v.optional(
+        v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+        })
+      ),
+      usage: v.optional(
+        v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+          lastResetDate: v.number(),
+        })
+      ),
     }),
   },
   handler: async (ctx, args) => {
@@ -165,7 +169,7 @@ export const updateUserProfileOnboarding = mutation({
 
     // Set up free tier subscription for new users
     const now = Date.now();
-    const oneMonthFromNow = now + (30 * 24 * 60 * 60 * 1000);
+    const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
 
     return await ctx.db.patch(userId, {
       ...args,
@@ -250,7 +254,11 @@ export const internalUpdateGlobalMemory = internalMutation({
 // New mutation to check and increment usage
 export const checkAndIncrementUsage = mutation({
   args: {
-    type: v.union(v.literal("videoSessions"), v.literal("voiceCalls"), v.literal("chatMessages")),
+    type: v.union(
+      v.literal("videoSessions"),
+      v.literal("voiceCalls"),
+      v.literal("chatMessages")
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -273,7 +281,7 @@ export const checkAndIncrementUsage = mutation({
     // Check if usage needs to be reset (monthly reset)
     const now = Date.now();
     const lastReset = subscription.usage?.lastResetDate || 0;
-    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
     let currentUsage = subscription.usage || {
       videoSessions: 0,
@@ -303,11 +311,11 @@ export const checkAndIncrementUsage = mutation({
 
     // Check if user has reached the limit
     if (currentCount >= limit) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         remaining: 0,
         limit: limit,
-        current: currentCount 
+        current: currentCount,
       };
     }
 
@@ -326,11 +334,11 @@ export const checkAndIncrementUsage = mutation({
       updatedAt: now,
     });
 
-    return { 
-      allowed: true, 
+    return {
+      allowed: true,
       remaining: limit - (currentCount + 1),
       limit: limit,
-      current: currentCount + 1
+      current: currentCount + 1,
     };
   },
 });
@@ -350,11 +358,11 @@ export const getUserUsage = query({
     }
 
     const subscription = user.subscription;
-    
+
     // Check if usage needs to be reset
     const now = Date.now();
     const lastReset = subscription.usage?.lastResetDate || 0;
-    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
     let currentUsage = subscription.usage || {
       videoSessions: 0,

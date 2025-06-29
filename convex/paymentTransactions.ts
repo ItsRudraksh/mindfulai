@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const createPaymentTransaction = mutation({
   args: {
+    userId: v.id("users"),
     provider: v.string(),
     transactionId: v.string(),
     orderId: v.optional(v.string()),
@@ -20,15 +21,12 @@ export const createPaymentTransaction = mutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw new Error("Not authenticated");
-    }
-
     const now = Date.now();
+    const { userId, ...transactionData } = args;
+
     return await ctx.db.insert("paymentTransactions", {
       userId,
-      ...args,
+      ...transactionData,
       createdAt: now,
       updatedAt: now,
     });
@@ -57,7 +55,7 @@ export const internalCreatePaymentTransaction = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const { userId, ...transactionData } = args;
-    
+
     return await ctx.db.insert("paymentTransactions", {
       userId,
       ...transactionData,
@@ -80,15 +78,11 @@ export const updatePaymentTransaction = mutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw new Error("Not authenticated");
-    }
-
     const transaction = await ctx.db
       .query("paymentTransactions")
-      .withIndex("by_transaction_id", (q) => q.eq("transactionId", args.transactionId))
-      .filter((q) => q.eq(q.field("userId"), userId))
+      .withIndex("by_transaction_id", (q) =>
+        q.eq("transactionId", args.transactionId)
+      )
       .first();
 
     if (!transaction) {
@@ -130,7 +124,9 @@ export const getTransactionByTransactionId = query({
 
     return await ctx.db
       .query("paymentTransactions")
-      .withIndex("by_transaction_id", (q) => q.eq("transactionId", args.transactionId))
+      .withIndex("by_transaction_id", (q) =>
+        q.eq("transactionId", args.transactionId)
+      )
       .filter((q) => q.eq(q.field("userId"), userId))
       .first();
   },
@@ -152,7 +148,9 @@ export const internalUpdatePaymentTransaction = internalMutation({
   handler: async (ctx, args) => {
     const transaction = await ctx.db
       .query("paymentTransactions")
-      .withIndex("by_transaction_id", (q) => q.eq("transactionId", args.transactionId))
+      .withIndex("by_transaction_id", (q) =>
+        q.eq("transactionId", args.transactionId)
+      )
       .first();
 
     if (!transaction) {
@@ -164,5 +162,23 @@ export const internalUpdatePaymentTransaction = internalMutation({
       metadata: args.metadata,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// Get payment transactions for a user
+export const getPaymentTransactions = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return [];
+    }
+
+    const limit = args.limit || 20;
+    return await ctx.db
+      .query("paymentTransactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(limit);
   },
 });
