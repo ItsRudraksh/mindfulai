@@ -54,7 +54,7 @@ export default function DashboardView() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                Welcome back, {user.name?.split(' ')[0] || 'there'}! 👋
+                Welcome back, <span className='capitalize'>{user.name?.split(' ')[0] || 'there'}</span>! 👋
               </h1>
               <p className="text-muted-foreground text-lg">
                 How are you feeling today? Let's check in on your mental wellness.

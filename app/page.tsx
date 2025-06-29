@@ -33,7 +33,7 @@ function RedirectToDashboardOrOnboarding({ hasCompletedOnboarding }: { hasComple
       // Still loading
       return;
     }
-    
+
     if (hasCompletedOnboarding) {
       router.push('/dashboard');
     } else {

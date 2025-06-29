@@ -84,7 +84,7 @@ export default function LandingPage() {
             className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl border-[0.75px] bg-background/60 backdrop-blur-therapeutic p-6 shadow-glass dark:shadow-glass-dark md:p-6"
           >
             <div className="relative flex flex-1 flex-col justify-between gap-3">
-              <motion.div 
+              <motion.div
                 className="w-fit rounded-lg border-[0.75px] border-border bg-muted/50 p-2"
                 whileHover={{ rotate: 5 }}
                 transition={{ duration: 0.2 }}
@@ -148,7 +148,7 @@ export default function LandingPage() {
             <Badge variant="secondary" className="mb-4 backdrop-blur-subtle">
               AI-Powered Mental Health Support
             </Badge>
-            
+
             {/* Gooey Text Hero Title */}
             <div className="mb-6 h-32 md:h-40 flex items-center justify-center">
               <GooeyText
@@ -159,8 +159,8 @@ export default function LandingPage() {
                 textClassName="text-5xl md:text-7xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent leading-tight"
               />
             </div>
-            
-            <motion.p 
+
+            <motion.p
               className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

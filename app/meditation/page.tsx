@@ -22,7 +22,7 @@ export default function MeditationPage() {
 
 function RedirectToSignIn() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/auth/signin');
   }, [router]);

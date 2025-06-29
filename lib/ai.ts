@@ -888,8 +888,8 @@ ${globalMemory}
 Meditation Preferences:
 - Duration: ${preferences.duration}
 - Focus Area: ${preferences.focus}
-- User Name: ${preferences.userName || 'there'}
-${preferences.customRequest ? `- Special Request: ${preferences.customRequest}` : ''}
+- User Name: ${preferences.userName || "there"}
+${preferences.customRequest ? `- Special Request: ${preferences.customRequest}` : ""}
 
 Create a personalized meditation script that incorporates relevant aspects from their profile while focusing on ${preferences.focus}. Remember to include natural pauses using " [...] " and maintain a soothing, calming tone throughout.`;
 
@@ -923,7 +923,7 @@ Create a personalized meditation script that incorporates relevant aspects from 
     console.error("Error generating personalized meditation:", error);
 
     // Fallback meditation script
-    const userName = preferences.userName || 'there';
+    const userName = preferences.userName || "there";
     return `Welcome ${userName} to this moment of peace and relaxation. [...] 
 
 Find a comfortable position, whether sitting or lying down. [...] Allow your eyes to gently close, or soften your gaze downward. [...]

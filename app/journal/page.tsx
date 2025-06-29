@@ -51,7 +51,7 @@ export default function JournalPage() {
 
 function RedirectToSignIn() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.push('/auth/signin');
   }, [router]);

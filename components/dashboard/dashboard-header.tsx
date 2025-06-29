@@ -66,10 +66,12 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                 <ThemeToggle />
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile Settings</span>
-              </DropdownMenuItem>
+              <Link href="/profile">
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile Settings</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuItem>
                 <Bell className="mr-2 h-4 w-4" />
                 <span>Notifications</span>
@@ -83,7 +85,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user.image || ''} alt={user.name || ''} />
                   <AvatarFallback>
-                    {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Button>

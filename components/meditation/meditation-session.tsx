@@ -301,15 +301,14 @@ export default function MeditationSession() {
                   {/* Meditation Visualization */}
                   <div className="relative">
                     <motion.div
-                      className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${
-                        state.isPlaying
-                          ? 'bg-green-100/80 dark:bg-green-950/40'
-                          : state.sessionCompleted
-                            ? 'bg-blue-100/80 dark:bg-blue-950/40'
-                            : state.audioUrl
-                              ? 'bg-purple-100/80 dark:bg-purple-950/40'
-                              : 'bg-white/20'
-                      }`}
+                      className={`w-32 h-32 rounded-full flex items-center justify-center backdrop-blur-subtle ${state.isPlaying
+                        ? 'bg-green-100/80 dark:bg-green-950/40'
+                        : state.sessionCompleted
+                          ? 'bg-blue-100/80 dark:bg-blue-950/40'
+                          : state.audioUrl
+                            ? 'bg-purple-100/80 dark:bg-purple-950/40'
+                            : 'bg-white/20'
+                        }`}
                       animate={
                         state.isPlaying
                           ? { scale: [1, 1.1, 1] }
@@ -317,15 +316,14 @@ export default function MeditationSession() {
                       }
                       transition={{ duration: 3, repeat: Infinity }}
                     >
-                      <Brain className={`h-16 w-16 ${
-                        state.isPlaying
-                          ? 'text-green-600'
-                          : state.sessionCompleted
-                            ? 'text-blue-600'
-                            : state.audioUrl
-                              ? 'text-purple-600'
-                              : 'text-white'
-                      }`} />
+                      <Brain className={`h-16 w-16 ${state.isPlaying
+                        ? 'text-green-600'
+                        : state.sessionCompleted
+                          ? 'text-blue-600'
+                          : state.audioUrl
+                            ? 'text-purple-600'
+                            : 'text-white'
+                        }`} />
                     </motion.div>
 
                     {state.isPlaying && (

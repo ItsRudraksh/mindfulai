@@ -43,7 +43,7 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 24) {
       return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffInHours < 48) {
@@ -100,7 +100,7 @@ export default function RecentSessions({ sessions }: RecentSessionsProps) {
                     className="flex items-center justify-between p-4 border border-border/30 rounded-lg therapeutic-hover backdrop-blur-subtle bg-card/50"
                   >
                     <div className="flex items-center space-x-4">
-                      <motion.div 
+                      <motion.div
                         className={`w-10 h-10 rounded-lg bg-muted/50 dark:bg-muted/20 flex items-center justify-center`}
                         whileHover={{ rotate: 5 }}
                         transition={{ duration: 0.2 }}

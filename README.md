@@ -222,11 +222,11 @@ flowchart TD
     M --> J
 
     subgraph "Meditation Features"
-        O[Natural Pauses [...]]
-        P[Soothing Voice Settings]
-        Q[Progress Tracking]
-        R[Volume Controls]
-        S[Replay Options]
+        O["Natural Pauses (...)"]
+        P["Soothing Voice Settings"]
+        Q["Progress Tracking"]
+        R["Volume Controls"]
+        S["Replay Options"]
     end
 
     I --> O
@@ -403,7 +403,7 @@ erDiagram
 
 ### **AI & External Services**
 
-- **Primary AI**: Claude 3.5 Sonnet via OpenRouter
+- **Primary AI**: Claude Sonnet 4 via OpenRouter
 - **Secondary AI**: Gemini 2.5 Flash for meditation scripts
 - **Video AI**: Tavus for realistic avatar conversations
 - **Voice AI**: ElevenLabs for natural phone conversations and meditation audio
@@ -431,8 +431,8 @@ erDiagram
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/mindful-ai.git
-cd mindful-ai
+git clone https://github.com/ItsRudraksh/mindfulai.git
+cd mindfulai
 
 # Install dependencies
 npm install
@@ -452,28 +452,35 @@ npm run dev
 Create a `.env.local` file with the following variables:
 
 ```env
-# Convex Database
-CONVEX_DEPLOYMENT=your-convex-deployment-url
-NEXT_PUBLIC_CONVEX_URL=https://your-convex-deployment.convex.cloud
-
-# AI Services
-OPENROUTER_API_KEY=your-openrouter-api-key
-GEMINI_API_KEY=your-gemini-api-key
-
-# Tavus AI (Video Therapy)
-TAVUS_API_KEY=your-tavus-api-key
-TAVUS_REPLICA_ID=your-tavus-replica-id
-TAVUS_PERSONA_ID=your-tavus-persona-id
-
-# ElevenLabs (Voice AI & Meditation)
-ELEVENLABS_API_KEY=your-elevenlabs-api-key
-ELEVENLABS_VOICE_ID=your-elevenlabs-voice-id
-ELEVENLABS_AGENT_ID=your-elevenlabs-agent-id
-ELEVENLABS_AGENT_PHONE_NUMBER_ID=your-elevenlabs-agent-phone-number-id
-
-# Authentication
-AUTH_DOMAIN=localhost:3000
-SITE_URL=http://localhost:3000
+CONVEX_DEPLOYMENT="your-value-here"
+NEXT_PUBLIC_CONVEX_URL="your-value-here"
+TAVUS_API_KEY="your-value-here"
+TAVUS_REPLICA_ID="your-value-here"
+TAVUS_PERSONA_ID="your-value-here"
+ELEVENLABS_API_KEY="your-value-here"
+ELEVENLABS_AGENT_PHONE_NUMBER_ID="your-value-here"
+ELEVENLABS_AGENT_ID="your-value-here"
+REVENUECAT_API_KEY="your-value-here"
+NEXT_PUBLIC_REVENUECAT_PUBLIC_KEY="your-value-here"
+OPENROUTER_API_KEY="your-value-here"
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER="your-value-here"
+SMTP_PASSWORD="your-value-here"
+ENCRYPTION_KEY="your-value-here"
+NODE_ENV=development
+GEMINI_API_KEY="your-value-here"
+TAVUS_AWS_ARN="your-value-here"
+TAVUS_BUCKET_REGION="your-value-here"
+TAVUS_BUCKET_NAME="your-value-here"
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-value-here"
+CLOUDINARY_CLOUD_NAME="your-value-here"
+CLOUDINARY_API_KEY="your-value-here"
+CLOUDINARY_API_SECRET="your-value-here"
+RAZORPAY_KEY="your-value-here"
+RAZORPAY_KEY_SECRET="your-value-here"
+AUTH_GOOGLE_ID="your-value-here"
+AUTH_GOOGLE_SECRET="your-value-here"
 ```
 
 ---
@@ -608,64 +615,6 @@ Global memory enhances:
 
 ---
 
-## 🚀 Deployment
-
-### **Vercel Deployment** (Recommended)
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy to Vercel
-vercel
-
-# Set environment variables in Vercel dashboard
-# Deploy Convex functions
-npx convex deploy
-```
-
-### **Docker Deployment**
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
----
-
-## 🧪 Testing
-
-### **Test Coverage**
-
-- Unit tests for AI functions and global memory
-- Integration tests for API routes
-- E2E tests for critical user flows
-- Performance testing for AI response times
-- Global memory consistency tests
-
-```bash
-# Run tests
-npm test
-
-# Run E2E tests
-npm run test:e2e
-
-# Generate coverage report
-npm run test:coverage
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
-
 ### **Development Workflow**
 
 1. Fork the repository
@@ -696,17 +645,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Tavus** for video AI capabilities
 - **ElevenLabs** for voice AI and meditation audio technology
 - **Convex** for real-time database infrastructure
-- **Vercel** for deployment platform
 - **Open source community** for amazing tools and libraries
 
 ---
 
 ## 📞 Support & Contact
 
-- **Documentation**: [docs.mindfulai.com](#)
-- **Support Email**: support@mindfulai.com
-- **Discord Community**: [Join our Discord](#)
-- **Twitter**: [@MindfulAI](#)
+- **Support Email**: [rudrakshkapoor2004@gmail.com](mailto:rudrakshkapoor2004@gmail.com)
+- **Twitter**: [@rudraksh_kapoor](#https://x.com/rudraksh_kapoor)
+- **LinkedIn**: [Rudraksh Kapoor](#https://www.linkedin.com/in/rudraksh-kapoor)
 
 ---
 
@@ -715,8 +662,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Built with ❤️ for mental health awareness and support**
 
 _Featuring advanced AI personalization through global memory management_
-
-[![GitHub stars](https://img.shields.io/github/stars/your-username/mindful-ai?style=social)](https://github.com/your-username/mindful-ai)
-[![Twitter Follow](https://img.shields.io/twitter/follow/MindfulAI?style=social)](https://twitter.com/MindfulAI)
 
 </div>
