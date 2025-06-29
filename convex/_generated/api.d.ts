@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as journalEntries from "../journalEntries.js";
 import type * as messages from "../messages.js";
 import type * as moodEntries from "../moodEntries.js";
+import type * as paymentTransactions from "../paymentTransactions.js";
 import type * as sessionRatings from "../sessionRatings.js";
 import type * as sessions from "../sessions.js";
 import type * as users from "../users.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   journalEntries: typeof journalEntries;
   messages: typeof messages;
   moodEntries: typeof moodEntries;
+  paymentTransactions: typeof paymentTransactions;
   sessionRatings: typeof sessionRatings;
   sessions: typeof sessions;
   users: typeof users;
