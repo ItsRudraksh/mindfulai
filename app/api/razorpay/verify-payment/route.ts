@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { api, internal } from "@/convex/_generated/api";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -22,6 +22,13 @@ export async function POST(request: NextRequest) {
       userId,
     } = await request.json();
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     // Verify payment signature
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
@@ -40,8 +47,9 @@ export async function POST(request: NextRequest) {
     const now = Date.now();
     const oneMonthFromNow = now + (30 * 24 * 60 * 60 * 1000);
 
-    // Update user subscription to pro
-    await convex.mutation(api.users.updateSubscription, {
+    // Update user subscription to pro using internal mutation
+    await convex.mutation(internal.users.internalUpdateSubscription, {
+      userId,
       subscription: {
         plan: "pro",
         planName: "The depressed one",
@@ -63,8 +71,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create payment transaction record
-    await convex.mutation(api.paymentTransactions.createPaymentTransaction, {
+    // Create payment transaction record using internal mutation
+    await convex.mutation(internal.paymentTransactions.internalCreatePaymentTransaction, {
+      userId,
       provider: "razorpay",
       transactionId: razorpay_payment_id,
       orderId: razorpay_order_id,

@@ -35,6 +35,38 @@ export const createPaymentTransaction = mutation({
   },
 });
 
+// Internal mutation for server-side payment transaction creation
+export const internalCreatePaymentTransaction = internalMutation({
+  args: {
+    userId: v.id("users"),
+    provider: v.string(),
+    transactionId: v.string(),
+    orderId: v.optional(v.string()),
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("created"),
+      v.literal("authorized"),
+      v.literal("captured"),
+      v.literal("refunded"),
+      v.literal("failed")
+    ),
+    planName: v.string(),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const { userId, ...transactionData } = args;
+    
+    return await ctx.db.insert("paymentTransactions", {
+      userId,
+      ...transactionData,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const updatePaymentTransaction = mutation({
   args: {
     transactionId: v.string(),

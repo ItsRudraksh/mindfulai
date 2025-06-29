@@ -118,6 +118,38 @@ export const updateSubscription = mutation({
   },
 });
 
+// Internal mutation for server-side subscription updates
+export const internalUpdateSubscription = internalMutation({
+  args: {
+    userId: v.id("users"),
+    subscription: v.object({
+      plan: v.string(),
+      planName: v.string(),
+      status: v.string(),
+      currentPeriodEnd: v.number(),
+      provider: v.optional(v.string()),
+      subscriptionId: v.optional(v.string()),
+      limits: v.optional(v.object({
+        videoSessions: v.number(),
+        voiceCalls: v.number(),
+        chatMessages: v.number(),
+      })),
+      usage: v.optional(v.object({
+        videoSessions: v.number(),
+        voiceCalls: v.number(),
+        chatMessages: v.number(),
+        lastResetDate: v.number(),
+      })),
+    }),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.userId, {
+      subscription: args.subscription,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 // New mutation for onboarding
 export const updateUserProfileOnboarding = mutation({
   args: {
