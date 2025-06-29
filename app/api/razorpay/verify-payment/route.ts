@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { ConvexHttpClient } from "convex/browser";
-import { api, internal } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
+import { verifyPaymentSignature } from "@/lib/razorpay";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 export async function POST(request: NextRequest) {
   try {
-    if (!RAZORPAY_KEY_SECRET) {
-      return NextResponse.json(
-        { error: "Razorpay configuration missing" },
-        { status: 500 }
-      );
-    }
-
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -30,13 +22,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify payment signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
+    const isSignatureValid = verifyPaymentSignature({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    });
 
-    if (expectedSignature !== razorpay_signature) {
+    if (!isSignatureValid) {
       return NextResponse.json(
         { error: "Invalid payment signature" },
         { status: 400 }
@@ -52,11 +44,11 @@ export async function POST(request: NextRequest) {
       userId,
       subscription: {
         plan: "pro",
-        planName: "The depressed one",
+        planName: "The depressed one (One-Time)",
         status: "active",
         currentPeriodEnd: oneMonthFromNow,
         provider: "razorpay",
-        subscriptionId: razorpay_payment_id,
+        subscriptionId: razorpay_order_id,
         limits: {
           videoSessions: -1, // Unlimited
           voiceCalls: -1, // Unlimited
@@ -77,10 +69,10 @@ export async function POST(request: NextRequest) {
       provider: "razorpay",
       transactionId: razorpay_payment_id,
       orderId: razorpay_order_id,
-      amount: 1200, // $12 in cents
-      currency: "USD",
+      amount: 35000, // ₹350 in paise
+      currency: "INR",
       status: "captured",
-      planName: "The depressed one",
+      planName: "The depressed one (One-Time)",
       metadata: {
         razorpay_signature,
         verifiedAt: now,

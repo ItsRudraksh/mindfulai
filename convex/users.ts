@@ -394,3 +394,39 @@ export const getUserUsage = query({
     };
   },
 });
+
+export const updateSubscriptionStatus = mutation({
+  args: {
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.subscription) {
+      throw new Error("User or subscription not found");
+    }
+
+    await ctx.db.patch(userId, {
+      subscription: {
+        ...user.subscription,
+        status: args.status as any,
+      },
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const updateName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+    await ctx.db.patch(userId, { name: args.name, updatedAt: Date.now() });
+  },
+});

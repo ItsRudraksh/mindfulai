@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Video, Phone, MessageCircle, Calendar, Brain, Heart, BookOpen } from 'lucide-react';
+import { Video, Phone, MessageCircle, Calendar, Brain, Heart, BookOpen, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function QuickActions() {
@@ -41,10 +41,10 @@ export default function QuickActions() {
       bg: 'bg-amber-50 dark:bg-amber-950/20'
     },
     {
-      icon: Calendar,
-      title: 'Schedule Session',
-      description: 'Book your next appointment',
-      href: '/schedule',
+      icon: AlertTriangle,
+      title: 'Emergency',
+      description: 'Seek help immediately',
+      href: '/emergency',
       color: 'text-orange-500',
       bg: 'bg-orange-50 dark:bg-orange-950/20'
     },
@@ -87,7 +87,7 @@ export default function QuickActions() {
                   className="h-auto p-4 flex flex-col items-start text-left w-full therapeutic-hover ripple-effect"
                 >
                   <Link href={action.href}>
-                    <motion.div 
+                    <motion.div
                       className={`w-10 h-10 rounded-lg ${action.bg} flex items-center justify-center mb-3`}
                       whileHover={{ rotate: 5 }}
                       transition={{ duration: 0.2 }}

@@ -22,6 +22,8 @@ interface TavusConversationRequest {
     recording_s3_bucket_name?: string;
     recording_s3_bucket_region?: string;
     aws_assume_role_arn?: string;
+    max_call_duration?: number;
+    language: "multilingual";
   };
 }
 

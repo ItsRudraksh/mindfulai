@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,14 @@ import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { Authenticated, Unauthenticated } from "convex/react";
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 declare global {
   interface Window {
@@ -22,6 +29,7 @@ declare global {
 
 export default function PricingPage() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentType, setPaymentType] = useState<'subscription' | 'onetime'>('subscription');
   const user = useQuery(api.users.current);
   const userUsage = useQuery(api.users.getUserUsage);
   const router = useRouter();
@@ -64,11 +72,11 @@ export default function PricingPage() {
     {
       id: 'pro',
       name: 'The depressed one',
-      price: 12,
-      period: 'per month',
+      price: 350,
+      period: '', // This will be dynamic based on the toggle
       description: 'Complete mental health support with unlimited access',
       features: [
-        { name: 'Unlimited Video Sessions', limit: '', included: true },
+        { name: 'Unlimited Video Sessions', limit: '1 hour each', included: true },
         { name: 'Unlimited Voice Calls', limit: '', included: true },
         { name: 'Unlimited Chat Messages', limit: '', included: true },
         { name: 'Unlimited Meditation', limit: '', included: true },
@@ -99,77 +107,185 @@ export default function PricingPage() {
     setIsProcessing(true);
 
     try {
-      // Create Razorpay order
-      const orderResponse = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planName: 'The depressed one',
-        }),
-      });
+      if (paymentType === 'subscription') {
+        // Create Razorpay subscription
+        const subResponse = await fetch('/api/razorpay/create-subscription', {
+          method: 'POST',
+        });
 
-      if (!orderResponse.ok) {
-        throw new Error('Failed to create payment order');
-      }
-
-      const orderData = await orderResponse.json();
-
-      if (!orderData.success) {
-        throw new Error(orderData.error || 'Failed to create order');
-      }
-
-      // Initialize Razorpay checkout
-      const options = {
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'MindfulAI',
-        description: 'Pro Subscription - The depressed one',
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          try {
-            // Verify payment
-            const verifyResponse = await fetch('/api/razorpay/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                userId: user._id,
-              }),
-            });
-
-            if (verifyResponse.ok) {
-              toast.success('Payment successful! Welcome to Pro!');
-              router.push('/dashboard');
-            } else {
-              throw new Error('Payment verification failed');
-            }
-          } catch (error) {
-            console.error('Payment verification error:', error);
-            toast.error('Payment verification failed. Please contact support.');
-          }
-        },
-        prefill: {
-          name: user.name || '',
-          email: user.email || '',
-        },
-        theme: {
-          color: '#3b82f6',
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-          }
+        if (!subResponse.ok) {
+          throw new Error('Failed to create subscription');
         }
-      };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+        const subData = await subResponse.json();
+
+        if (!subData.success) {
+          throw new Error(subData.error || 'Failed to create subscription');
+        }
+
+        // Initialize Razorpay checkout for subscription
+        const options = {
+          key: subData.keyId,
+          subscription_id: subData.subscriptionId,
+          name: 'MindfulAI',
+          description: 'Pro Subscription - The depressed one',
+          handler: async function (response: any) {
+            try {
+              // Verify payment
+              const verifyResponse = await fetch('/api/razorpay/verify-subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_subscription_id: response.razorpay_subscription_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  userId: user._id,
+                }),
+              });
+
+              if (verifyResponse.ok) {
+                toast.success('Subscription successful! Welcome to Pro!');
+                router.push('/dashboard');
+              } else {
+                throw new Error('Subscription verification failed');
+              }
+            } catch (error) {
+              console.error('Subscription verification error:', error);
+              toast.error('Subscription verification failed. Please contact support.');
+            }
+          },
+          prefill: {
+            name: user.name || '',
+            email: user.email || '',
+          },
+          theme: {
+            color: '#3b82f6',
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessing(false);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } else { // 'onetime'
+        // Create Razorpay order
+        const orderResponse = await fetch('/api/razorpay/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planName: 'The depressed one',
+          }),
+        });
+
+        if (!orderResponse.ok) {
+          throw new Error('Failed to create payment order');
+        }
+
+        const orderData = await orderResponse.json();
+
+        if (!orderData.success) {
+          throw new Error(orderData.error || 'Failed to create order');
+        }
+
+        // Initialize Razorpay checkout for one-time payment
+        const options = {
+          key: orderData.keyId,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: 'MindfulAI',
+          description: 'Pro Access - One Month',
+          order_id: orderData.orderId,
+          handler: async function (response: any) {
+            try {
+              // Verify payment
+              const verifyResponse = await fetch('/api/razorpay/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  userId: user._id,
+                }),
+              });
+
+              if (verifyResponse.ok) {
+                toast.success('Payment successful! Welcome to Pro!');
+                router.push('/dashboard');
+              } else {
+                throw new Error('Payment verification failed');
+              }
+            } catch (error) {
+              console.error('Payment verification error:', error);
+              toast.error('Payment verification failed. Please contact support.');
+            }
+          },
+          prefill: {
+            name: user.name || '',
+            email: user.email || '',
+          },
+          theme: {
+            color: '#3b82f6',
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessing(false);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (error) {
       console.error('Payment initiation error:', error);
       toast.error('Failed to initiate payment. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManageSubscription = async (action: 'portal' | 'cancel' | 'pause' | 'resume') => {
+    if (!user || user.subscription?.plan !== 'pro' || !user.subscription.subscriptionId) {
+      toast.error('No active subscription found to manage.');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/razorpay/manage-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription_id: user.subscription.subscriptionId,
+          action: action,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} subscription`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (action === 'portal' && data.portal_url) {
+          window.location.href = data.portal_url;
+        } else {
+          toast.success(`Subscription ${action}d successfully!`);
+          // You might want to update the user's subscription status in Convex here
+          // This would typically be done via a webhook from Razorpay for reliability
+        }
+      } else {
+        throw new Error(data.error || `Could not ${action} subscription`);
+      }
+    } catch (error) {
+      console.error(`Subscription management error (${action}):`, error);
+      toast.error(`Failed to ${action} subscription. Please try again.`);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -278,10 +394,9 @@ export default function PricingPage() {
                       </Badge>
                     </div>
                   )}
-                  
-                  <Card className={`h-full glass-card floating-card ${
-                    plan.popular ? 'ring-2 ring-purple-500/20 bg-gradient-to-br from-purple-50/30 to-blue-50/30 dark:from-purple-950/20 dark:to-blue-950/20' : ''
-                  }`}>
+
+                  <Card className={`h-full glass-card floating-card ${plan.popular ? 'ring-2 ring-purple-500/20 bg-gradient-to-br from-purple-50/30 to-blue-50/30 dark:from-purple-950/20 dark:to-blue-950/20' : ''
+                    }`}>
                     <CardHeader className="text-center pb-8">
                       <div className="flex items-center justify-center mb-4">
                         {plan.id === 'free' ? (
@@ -292,13 +407,39 @@ export default function PricingPage() {
                       </div>
                       <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                       <div className="mt-4">
-                        <span className="text-4xl font-bold">${plan.price}</span>
-                        <span className="text-muted-foreground ml-2">{plan.period}</span>
+                        <span className="text-4xl font-bold">
+                          {plan.price > 0 ? `₹${plan.price}` : 'Free'}
+                        </span>
+                        <span className="text-muted-foreground ml-2">
+                          {plan.id === 'pro'
+                            ? (paymentType === 'subscription' ? 'per month' : 'for one month')
+                            : plan.period
+                          }
+                        </span>
                       </div>
                       <p className="text-muted-foreground mt-2">{plan.description}</p>
                     </CardHeader>
 
                     <CardContent className="space-y-6">
+                      {plan.id === 'pro' && (
+                        <div className="flex justify-center">
+                          <ToggleGroup
+                            type="single"
+                            value={paymentType}
+                            onValueChange={(value) => {
+                              if (value) setPaymentType(value as 'subscription' | 'onetime');
+                            }}
+                            className="mb-6"
+                          >
+                            <ToggleGroupItem value="subscription" aria-label="Toggle subscription">
+                              Subscription
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="onetime" aria-label="Toggle one-time payment">
+                              One-Time
+                            </ToggleGroupItem>
+                          </ToggleGroup>
+                        </div>
+                      )}
                       <div className="space-y-3">
                         {plan.features.map((feature, featureIndex) => (
                           <div key={featureIndex} className="flex items-start space-x-3">
@@ -322,74 +463,59 @@ export default function PricingPage() {
                       </div>
 
                       <div className="pt-6">
-                        <Button
-                          className={`w-full therapeutic-hover ripple-effect ${
-                            plan.popular ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700' : ''
-                          }`}
-                          variant={currentPlan === plan.id ? 'outline' : plan.buttonVariant}
-                          size="lg"
-                          onClick={plan.id === 'pro' ? handleUpgrade : undefined}
-                          disabled={currentPlan === plan.id || isProcessing}
-                        >
-                          {plan.popular && <Sparkles className="h-4 w-4 mr-2" />}
-                          {currentPlan === plan.id ? 'Current Plan' : 
-                           isProcessing && plan.id === 'pro' ? 'Processing...' : 
-                           plan.buttonText}
-                        </Button>
+                        {currentPlan === 'pro' && userUsage?.status ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button className="w-full therapeutic-hover" disabled={isProcessing}>
+                                {isProcessing ? 'Loading...' : 'Manage Subscription'}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => handleManageSubscription('portal')}>
+                                View Invoices & Details
+                              </DropdownMenuItem>
+
+                              {userUsage.status === 'active' && (
+                                <DropdownMenuItem onSelect={() => handleManageSubscription('pause')}>
+                                  Pause Subscription
+                                </DropdownMenuItem>
+                              )}
+
+                              {userUsage.status === 'paused' && (
+                                <DropdownMenuItem onSelect={() => handleManageSubscription('resume')}>
+                                  Resume Subscription
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuSeparator />
+                              {userUsage.status !== 'cancelled' && (
+                                <DropdownMenuItem
+                                  onSelect={() => handleManageSubscription('cancel')}
+                                  className="text-destructive"
+                                >
+                                  Cancel Subscription
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <Button
+                            className={`w-full therapeutic-hover ${plan.buttonVariant}`}
+                            onClick={handleUpgrade}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? 'Loading...' : plan.buttonText}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </motion.div>
               ))}
             </div>
-
-            {/* FAQ Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-20"
-            >
-              <Card className="glass-card floating-card">
-                <CardHeader>
-                  <CardTitle className="text-center text-2xl">Frequently Asked Questions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h4 className="font-semibold mb-2">Can I cancel my subscription anytime?</h4>
-                    <p className="text-muted-foreground">Yes, you can cancel your subscription at any time. You'll continue to have access to pro features until the end of your billing period.</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">What happens to my data if I downgrade?</h4>
-                    <p className="text-muted-foreground">All your data remains safe and accessible. You'll just be limited to the free tier usage limits going forward.</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Is my payment information secure?</h4>
-                    <p className="text-muted-foreground">Yes, we use Razorpay's secure payment processing. We never store your payment information on our servers.</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Do you offer refunds?</h4>
-                    <p className="text-muted-foreground">We offer a 7-day money-back guarantee if you're not satisfied with our pro features.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
         </div>
       </Authenticated>
-      <Unauthenticated>
-        <RedirectToSignIn />
-      </Unauthenticated>
     </>
   );
-}
-
-function RedirectToSignIn() {
-  const router = useRouter();
-  
-  useEffect(() => {
-    router.push('/auth/signin');
-  }, [router]);
-
-  return null;
 }

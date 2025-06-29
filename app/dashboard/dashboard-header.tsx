@@ -52,12 +52,12 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
             MindfulAI
           </span>
         </Link>
-        
+
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="icon" className="therapeutic-hover">
             <Bell className="h-5 w-5" />
           </Button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="therapeutic-hover">
@@ -70,9 +70,11 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                 <ThemeToggle />
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="therapeutic-hover">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile Settings</span>
+              <DropdownMenuItem asChild className="therapeutic-hover">
+                <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile Settings</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="therapeutic-hover">
                 <Bell className="mr-2 h-4 w-4" />
@@ -80,7 +82,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full therapeutic-hover">

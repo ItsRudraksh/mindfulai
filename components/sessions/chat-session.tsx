@@ -73,6 +73,7 @@ export default function ChatSession() {
   const deleteMessagesAfterMutation = useMutation(api.messages.deleteMessagesAfter);
   const updateConversationSummaryMutation = useMutation(api.chatConversations.updateConversationSummary);
   const triggerUpdateGlobalMemoryFromChat = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromChat);
+  const userUsage = useQuery(api.users.getUserUsage);
 
   // Queries
   const conversationMessages = useQuery(
@@ -134,6 +135,13 @@ export default function ChatSession() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatState.currentConversationId) return;
 
+    // Check usage before sending message
+    if (userUsage?.plan !== 'pro') {
+      if (userUsage.usage.chatMessages >= userUsage.limits.chatMessages) {
+        toast.error('You have reached your monthly chat message limit. Upgrade to Pro for unlimited messages.');
+        return;
+      }
+    }
     try {
       // Create user message
       await createMessageMutation({

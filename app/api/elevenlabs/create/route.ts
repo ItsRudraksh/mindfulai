@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { phone_number, task, user_name, conversation_context } = body;
+    const { phone_number, task, user_name, conversation_context, plan } = body;
     if (!phone_number || !task || !user_name) {
       return NextResponse.json(
         {
@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let agentId = process.env.ELEVENLABS_AGENT_ID;
+    if (plan === "free") {
+      agentId = process.env.ELEVENLABS_AGENT_ID_FREE!;
+    }
+
     // Enhance conversation context with global memory if available
     let enhancedContext = task;
     if (conversation_context) {
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Initiate voice call with timeout
     const callPromise = elevenLabsClient.initiateCall({
-      agentId: process.env.ELEVENLABS_AGENT_ID!,
+      agentId: agentId,
       agentPhoneNumberId: process.env.ELEVENLABS_AGENT_PHONE_NUMBER_ID!,
       toNumber: phone_number,
       conversationInitiationClientData: {

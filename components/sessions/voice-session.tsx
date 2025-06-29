@@ -22,6 +22,7 @@ export default function VoiceSession() {
   const globalMemory = user?.globalMemory;
   const activeSession = useQuery(api.sessions.getActiveSession, { type: "voice" });
   const triggerUpdateGlobalMemoryFromVoiceSession = useAction(api.globalMemory.triggerUpdateGlobalMemoryFromVoiceSession);
+  const userUsage = useQuery(api.users.getUserUsage);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -84,9 +85,16 @@ export default function VoiceSession() {
       return;
     }
 
+    // Check usage before initiating call
+    if (userUsage?.plan !== 'pro') {
+      if (userUsage.usage.voiceCalls >= userUsage.limits.voiceCalls) {
+        toast.error('You have reached your monthly voice call limit. Upgrade to Pro for unlimited sessions.');
+        return;
+      }
+    }
     try {
       const firstName = user.name?.split(' ')[0] || 'there';
-      await initiateCall(formattedPhone, state.stateDescription, firstName, globalMemory || '');
+      await initiateCall(formattedPhone, state.stateDescription, firstName, globalMemory || '', userUsage?.plan || 'free');
       toast.success('Call initiated successfully! You should receive a call shortly.');
     } catch (error) {
       toast.error('Failed to initiate call. Please try again.');
@@ -435,22 +443,6 @@ export default function VoiceSession() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Phone Number</span>
                     <span className="text-sm font-mono">{state.phoneNumber}</span>
-                  </div>
-                )}
-                {(state.conversationId || activeSession?.elevenlabsConversationId) && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Conversation ID</span>
-                    <span className="text-xs font-mono">
-                      {(activeSession?.elevenlabsConversationId || state.conversationId)?.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-                {state.callSid && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Call SID</span>
-                    <span className="text-xs font-mono">
-                      {state.callSid.slice(0, 8)}...
-                    </span>
                   </div>
                 )}
                 {state.lastStatusCheck > 0 && (

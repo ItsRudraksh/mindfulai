@@ -11,6 +11,7 @@ import ProgressOverview from './progress-overview';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function DashboardView() {
   const [currentMood, setCurrentMood] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function DashboardView() {
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader user={user} />
-      
+
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Welcome Section */}
         <motion.div
@@ -59,9 +60,25 @@ export default function DashboardView() {
                 How are you feeling today? Let's check in on your mental wellness.
               </p>
             </div>
-            <Badge variant="secondary" className="mt-4 md:mt-0">
-              Premium Member
-            </Badge>
+            {/* Subscription Badge */}
+            {user.subscription?.plan === 'pro' ? (
+              <Link href="/pricing" tabIndex={0} aria-label="Go to pricing page">
+                <Badge variant="secondary" className="mt-4 md:mt-0 cursor-pointer hover:underline">
+                  {user.subscription.planName}
+                  {user.subscription.planName?.includes('One-Time') && user.subscription.currentPeriodEnd && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      (Expires on {new Date(user.subscription.currentPeriodEnd).toLocaleDateString()})
+                    </span>
+                  )}
+                </Badge>
+              </Link>
+            ) : (
+              <Link href="/pricing" tabIndex={0} aria-label="Go to pricing page">
+                <Badge variant="secondary" className="mt-4 md:mt-0 cursor-pointer hover:underline">
+                  Free Member
+                </Badge>
+              </Link>
+            )}
           </div>
         </motion.div>
 
@@ -76,7 +93,7 @@ export default function DashboardView() {
           {/* Right Column */}
           <div className="space-y-8">
             <ProgressOverview weeklyProgress={weeklyProgress} />
-            
+
             {/* Upcoming Sessions */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}

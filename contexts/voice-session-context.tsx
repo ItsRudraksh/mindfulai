@@ -106,7 +106,7 @@ function voiceSessionReducer(state: VoiceSessionState, action: VoiceSessionActio
 interface VoiceSessionContextType {
   state: VoiceSessionState;
   dispatch: React.Dispatch<VoiceSessionAction>;
-  initiateCall: (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string) => Promise<void>;
+  initiateCall: (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string, plan: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   checkCallStatus: (initialConversationId?: string) => Promise<void>;
 }
@@ -341,7 +341,7 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  const initiateCall = async (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string) => {
+  const initiateCall = async (phoneNumber: string, stateDescription: string, firstName: string, conversationContext: string, plan: string) => {
     dispatch({ type: 'SET_INITIATING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
@@ -363,6 +363,7 @@ export function VoiceSessionProvider({ children }: { children: React.ReactNode }
           task: stateDescription,
           user_name: firstName,
           conversation_context: conversationContext,
+          plan: plan,
         }),
       });
 

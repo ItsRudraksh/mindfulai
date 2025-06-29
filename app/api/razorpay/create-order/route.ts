@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import crypto from "crypto";
+import { createOrder } from "@/lib/razorpay";
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 export async function POST(request: NextRequest) {
   try {
-    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    if (!RAZORPAY_KEY_ID) {
       return NextResponse.json(
         { error: "Razorpay configuration missing" },
         { status: 500 }
@@ -25,8 +23,8 @@ export async function POST(request: NextRequest) {
 
     // Create Razorpay order
     const orderData = {
-      amount: 1200, // $12 in cents (12 * 100)
-      currency: "USD",
+      amount: 35000, // ₹350 in paise (350 * 100)
+      currency: "INR",
       receipt: `receipt_${Date.now()}`,
       notes: {
         planName: planName,
@@ -34,24 +32,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
-
-    const response = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(orderData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error("Razorpay API error:", errorData);
-      throw new Error(`Razorpay API error: ${response.status}`);
-    }
-
-    const order = await response.json();
+    const order = await createOrder(orderData);
 
     return NextResponse.json({
       success: true,

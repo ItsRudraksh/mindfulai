@@ -26,6 +26,7 @@ export default function VideoSession() {
   const user = useQuery(api.users.current);
   const globalMemory = user?.globalMemory;
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const userUsage = useQuery(api.users.getUserUsage);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -68,6 +69,13 @@ export default function VideoSession() {
       return;
     }
 
+    // Check usage before creating session
+    if (userUsage?.plan !== 'pro') {
+      if (userUsage.usage.videoSessions >= userUsage.limits.videoSessions) {
+        toast.error('You have reached your monthly video session limit. Upgrade to Pro for unlimited sessions.');
+        return;
+      }
+    }
     try {
       const firstName = user.name?.split(' ')[0] || 'there';
       await createSession(state.stateDescription, firstName, globalMemory || '');

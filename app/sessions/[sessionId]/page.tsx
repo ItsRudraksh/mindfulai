@@ -769,14 +769,6 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
                     </span>
                   </div>
                 )}
-                {canAutoRefresh && canAutoRefresh.missingEvents.length > 0 && session.type === 'video' && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Missing Data</span>
-                    <span className="text-xs text-orange-600">
-                      {canAutoRefresh.missingEvents.join(', ')}
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
