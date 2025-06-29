@@ -52,10 +52,11 @@ graph TB
         K[Global Memory System]
     end
 
-    subgraph "External AI Platforms"
+    subgraph "External AI & Payment Platforms"
         L[Tavus - Video AI]
         M[ElevenLabs - Voice AI]
         N[OpenRouter API]
+        RZ[Razorpay - Payments]
     end
 
     subgraph "Database Layer"
@@ -73,6 +74,7 @@ graph TB
         W[Smart Recommendations]
         X[Personalized Meditation]
         Y[Journal System]
+        Z[Subscription Management]
     end
 
     A --> E
@@ -87,6 +89,7 @@ graph TB
     H --> L
     H --> M
     H --> N
+    Z --> RZ
 
     G --> O
     O --> P
@@ -106,6 +109,7 @@ graph TB
     style O fill:#8b5cf6,stroke:#7c3aed,color:#fff
     style K fill:#f59e0b,stroke:#d97706,color:#fff
     style X fill:#ec4899,stroke:#db2777,color:#fff
+    style RZ fill:#2563eb,stroke:#1d4ed8,color:#fff
 ```
 
 ---
@@ -150,6 +154,20 @@ graph TB
 - **Search & Organization**: Full-text search and tagging system
 - **Privacy Controls**: Secure, encrypted journal entries
 - **Memory Integration**: Journal insights automatically update global memory
+
+### 🌟 **Subscription & Usage Management**
+
+- **Flexible Plans**: Free tier with usage limits and a Pro tier with unlimited access.
+- **Secure Payments**: Powered by Razorpay for both recurring subscriptions and one-time purchases.
+- **User Dashboard**: Manage subscription status (pause, resume, cancel), view invoices, and track usage.
+- **Automated Billing**: Seamless handling of subscription cycles and payments.
+
+### 💌 **Personalized Email Notifications**
+
+- **Daily Check-ins**: Warm, AI-generated emails for Pro users based on their global memory.
+- **Weekly Reflections**: In-depth summary of the week's activity and insights.
+- **Onboarding & Milestones**: Welcome emails and notifications for subscription events.
+- **Deeply Personalized**: All email content is crafted using the user's unique global memory for a truly personal touch.
 
 ### 🔒 **Enterprise-Grade Security**
 
@@ -381,6 +399,85 @@ erDiagram
 
 ---
 
+## 💳 Subscription & Payment System
+
+```mermaid
+flowchart TD
+    subgraph "User Flow"
+        A[User visits Pricing Page] --> B{Chooses Plan};
+        B -->|Free| C[Continues with free tier limits];
+        B -->|Pro| D{Selects Payment Type};
+        D -->|Subscription| E[Initiate Razorpay Subscription];
+        D -->|One-Time| F[Initiate Razorpay Order];
+    end
+
+    subgraph "Backend: Razorpay Integration"
+        E --> G[Create Subscription via API];
+        F --> H[Create Order via API];
+        G --> I{Razorpay Checkout};
+        H --> I;
+    end
+
+    subgraph "Payment & Verification"
+        I --> J[User Completes Payment];
+        J --> K[Webhook/Callback to Server];
+        K --> L[Verify Payment Signature];
+    end
+
+    subgraph "System Update"
+        L -->|Success| M[Update User Subscription in Convex DB];
+        M --> N[Trigger 'Welcome to Pro' Email];
+        L -->|Failure| O[Log Error & Notify User];
+    end
+
+    subgraph "User Profile Management"
+        P[User visits Profile Page] --> Q[View Subscription Status];
+        Q --> R{Manage Subscription};
+        R -->|Cancel/Pause/Resume| S[Call Razorpay API];
+        S --> T[Update Status in Convex DB];
+        T --> U[Trigger Cancellation Email];
+        R -->|View Invoices| V[Fetch Invoices from Razorpay];
+    end
+
+    style M fill:#10b981,stroke:#059669,color:#fff
+    style S fill:#3b82f6,stroke:#1e40af,color:#fff
+    style O fill:#ef4444,stroke:#b91c1c,color:#fff
+```
+
+---
+
+## 💌 Automated Email System
+
+```mermaid
+sequenceDiagram
+    participant C as Cron Job
+    participant DB as Convex Database
+    participant AI as Gemini AI
+    participant E as Email Service
+    participant U as User
+
+    C->>DB: Trigger daily/weekly job
+    DB->>AI: Fetch Pro User's Global Memory
+    AI->>AI: Generate Personalized Email Content
+    AI->>E: Send Email (Daily/Weekly)
+    E->>U: Receives personalized reflection
+
+    participant S as System
+    S->>DB: User completes onboarding
+    DB->>E: Trigger Welcome Email
+    E->>U: Receives welcome message
+
+    S->>DB: User upgrades to Pro
+    DB->>E: Trigger Pro Welcome Email
+    E->>U: Receives Pro confirmation
+
+    S->>DB: User cancels subscription
+    DB->>E: Trigger Cancellation Email
+    E->>U: Receives cancellation confirmation
+```
+
+---
+
 ## 🛠️ Technology Stack
 
 ### **Frontend**
@@ -407,6 +504,7 @@ erDiagram
 - **Secondary AI**: Gemini 2.5 Flash for meditation scripts
 - **Video AI**: Tavus for realistic avatar conversations
 - **Voice AI**: ElevenLabs for natural phone conversations and meditation audio
+- **Payment Processing**: Razorpay for secure subscriptions and payments
 - **Content Safety**: Custom guardrails and topic boundaries
 
 ### **Development & Deployment**
