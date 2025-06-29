@@ -15,16 +15,9 @@ import { AudioPlayer } from '@/components/ui/audio-player';
 import { CustomVideoPlayer } from '@/components/ui/custom-video-player';
 import { SessionRating } from '@/components/ui/session-rating';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 
-interface SessionDetailsPageProps {
-  params: {
-    sessionId: string;
-  };
-}
-
-export default function SessionDetailsPage({ params }: SessionDetailsPageProps) {
+export default function SessionDetailsPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcriptSummary, setTranscriptSummary] = useState<string | null>(null);
@@ -33,12 +26,18 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
   const [isGeneratingAISummary, setIsGeneratingAISummary] = useState(false);
   const [currentRating, setCurrentRating] = useState<any>(null);
   const [done, setDone] = useState(false);
+  const [sessionId, setSessionId] = useState<Id<"sessions"> | null>(null);
 
-  const { sessionId: routeSessionId } = useParams();
-  const sessionId = routeSessionId as Id<"sessions">;
-  const session = useQuery(api.sessions.getSessionById, { sessionId });
-  const sessionRating = useQuery(api.sessionRatings.getSessionRating, { sessionId });
-  const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, { sessionId });
+  // Resolve params Promise
+  useEffect(() => {
+    params.then(({ sessionId: id }) => {
+      setSessionId(id as Id<"sessions">);
+    });
+  }, [params]);
+
+  const session = useQuery(api.sessions.getSessionById, sessionId ? { sessionId } : "skip");
+  const sessionRating = useQuery(api.sessionRatings.getSessionRating, sessionId ? { sessionId } : "skip");
+  const canAutoRefresh = useQuery(api.sessions.canAutoRefreshSession, sessionId ? { sessionId } : "skip");
 
   const storeTavusConversationDataMutation = useMutation(api.sessions.storeTavusConversationData);
   const generateAISummaryMutation = useMutation(api.sessions.generateAISummary);
@@ -354,7 +353,7 @@ export default function SessionDetailsPage({ params }: SessionDetailsPageProps) 
     event.event_type === "application.perception_analysis"
   );
 
-  if (!session) {
+  if (!sessionId || !session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
