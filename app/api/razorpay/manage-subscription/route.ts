@@ -4,6 +4,7 @@ import razorpay, {
   pauseSubscription,
   resumeSubscription,
   updateSubscription,
+  fetchSubscriptionInvoices,
 } from "@/lib/razorpay";
 
 export async function POST(request: NextRequest) {
@@ -38,6 +39,11 @@ export async function POST(request: NextRequest) {
         new_plan_id
       );
       return NextResponse.json({ success: true, data: updatedSubscription });
+    }
+
+    if (action === "invoices") {
+      const invoices = await fetchSubscriptionInvoices(subscription_id);
+      return NextResponse.json({ success: true, data: invoices });
     }
 
     if (action === "portal") {

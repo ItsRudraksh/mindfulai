@@ -13,13 +13,6 @@ import { toast } from 'sonner';
 import { Authenticated, Unauthenticated } from "convex/react";
 import { useRouter } from 'next/navigation';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 declare global {
   interface Window {
@@ -247,49 +240,6 @@ export default function PricingPage() {
     }
   };
 
-  const handleManageSubscription = async (action: 'portal' | 'cancel' | 'pause' | 'resume') => {
-    if (!user || user.subscription?.plan !== 'pro' || !user.subscription.subscriptionId) {
-      toast.error('No active subscription found to manage.');
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const response = await fetch('/api/razorpay/manage-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription_id: user.subscription.subscriptionId,
-          action: action,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} subscription`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (action === 'portal' && data.portal_url) {
-          window.location.href = data.portal_url;
-        } else {
-          toast.success(`Subscription ${action}d successfully!`);
-          // You might want to update the user's subscription status in Convex here
-          // This would typically be done via a webhook from Razorpay for reliability
-        }
-      } else {
-        throw new Error(data.error || `Could not ${action} subscription`);
-      }
-    } catch (error) {
-      console.error(`Subscription management error (${action}):`, error);
-      toast.error(`Failed to ${action} subscription. Please try again.`);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const currentPlan = userUsage?.plan || 'free';
 
   return (
@@ -463,48 +413,21 @@ export default function PricingPage() {
                       </div>
 
                       <div className="pt-6">
-                        {currentPlan === 'pro' && userUsage?.status ? (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button className="w-full therapeutic-hover" disabled={isProcessing}>
-                                {isProcessing ? 'Loading...' : 'Manage Subscription'}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onSelect={() => handleManageSubscription('portal')}>
-                                View Invoices & Details
-                              </DropdownMenuItem>
-
-                              {userUsage.status === 'active' && (
-                                <DropdownMenuItem onSelect={() => handleManageSubscription('pause')}>
-                                  Pause Subscription
-                                </DropdownMenuItem>
-                              )}
-
-                              {userUsage.status === 'paused' && (
-                                <DropdownMenuItem onSelect={() => handleManageSubscription('resume')}>
-                                  Resume Subscription
-                                </DropdownMenuItem>
-                              )}
-
-                              <DropdownMenuSeparator />
-                              {userUsage.status !== 'cancelled' && (
-                                <DropdownMenuItem
-                                  onSelect={() => handleManageSubscription('cancel')}
-                                  className="text-destructive"
-                                >
-                                  Cancel Subscription
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        {currentPlan === plan.id ? (
+                          <Button 
+                            className="w-full therapeutic-hover" 
+                            variant={plan.buttonVariant}
+                            disabled
+                          >
+                            {plan.buttonText}
+                          </Button>
                         ) : (
                           <Button
                             className={`w-full therapeutic-hover ${plan.buttonVariant}`}
                             onClick={handleUpgrade}
                             disabled={isProcessing}
                           >
-                            {isProcessing ? 'Loading...' : plan.buttonText}
+                            {isProcessing ? 'Processing...' : plan.buttonText}
                           </Button>
                         )}
                       </div>

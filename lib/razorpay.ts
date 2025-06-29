@@ -156,4 +156,16 @@ export const updateSubscription = async (
   }
 };
 
+export const fetchSubscriptionInvoices = async (subscriptionId: string) => {
+  try {
+    const invoices = await razorpay.invoices.all({
+      subscription_id: subscriptionId,
+    });
+    return invoices;
+  } catch (error) {
+    console.error("Error fetching Razorpay subscription invoices:", error);
+    throw new Error("Failed to fetch subscription invoices");
+  }
+};
+
 export default razorpay;
