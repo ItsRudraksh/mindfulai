@@ -17,6 +17,7 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
     // New fields for onboarding and global memory
     dob: v.optional(v.string()),
+    gender: v.optional(v.string()),
     profession: v.optional(v.string()),
     aboutMe: v.optional(v.string()),
     onboardingComplete: v.optional(v.boolean()),

@@ -13,6 +13,7 @@ export const createInitialGlobalMemory = action({
   args: {
     userId: v.id("users"),
     dob: v.string(),
+    gender: v.string(),
     profession: v.string(),
     aboutMe: v.string(),
   },
@@ -30,6 +31,7 @@ export const createInitialGlobalMemory = action({
       const globalMemory = await generateInitialGlobalMemory({
         name: user.name || "User",
         dob: args.dob,
+        gender: args.gender,
         profession: args.profession,
         aboutMe: args.aboutMe,
       });
@@ -516,10 +518,13 @@ export const triggerUpdateGlobalMemoryFromMeditation = action({
     }),
   },
   handler: async (ctx, args) => {
-    await ctx.runAction(internal.globalMemory.updateGlobalMemoryFromMeditation, {
-      userId: args.userId,
-      meditationData: args.meditationData,
-    });
+    await ctx.runAction(
+      internal.globalMemory.updateGlobalMemoryFromMeditation,
+      {
+        userId: args.userId,
+        meditationData: args.meditationData,
+      }
+    );
     return {
       success: true,
       message: "Meditation global memory update triggered",

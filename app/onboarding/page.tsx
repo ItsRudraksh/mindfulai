@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, ArrowRight, Calendar, Briefcase, User, Loader2, Target } from 'lucide-react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -27,6 +28,7 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     dob: '',
+    gender: '',
     profession: '',
     aboutMe: '',
     sessionGoal: '4',
@@ -44,9 +46,17 @@ export default function OnboardingPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleNext = () => {
     if (step === 1 && !formData.dob) {
       toast.error('Please enter your date of birth');
+      return;
+    }
+    if (step === 1 && !formData.gender) {
+      toast.error('Please select your gender');
       return;
     }
     if (step === 2 && !formData.profession) {
@@ -72,6 +82,7 @@ export default function OnboardingPage() {
       // Update user profile with onboarding data
       await updateUserProfileOnboarding({
         dob: formData.dob,
+        gender: formData.gender,
         profession: formData.profession,
         aboutMe: formData.aboutMe,
       });
@@ -81,6 +92,7 @@ export default function OnboardingPage() {
         await createInitialGlobalMemory({
           userId: user._id,
           dob: formData.dob,
+          gender: formData.gender,
           profession: formData.profession,
           aboutMe: formData.aboutMe,
         });
@@ -113,6 +125,7 @@ export default function OnboardingPage() {
       // Update user profile with onboarding data
       await updateUserProfileOnboarding({
         dob: formData.dob,
+        gender: formData.gender,
         profession: formData.profession,
         aboutMe: formData.aboutMe,
       });
@@ -122,6 +135,7 @@ export default function OnboardingPage() {
         await createInitialGlobalMemory({
           userId: user._id,
           dob: formData.dob,
+          gender: formData.gender,
           profession: formData.profession,
           aboutMe: formData.aboutMe,
         });
@@ -208,6 +222,22 @@ export default function OnboardingPage() {
                           required
                         />
                         <p className="text-xs text-muted-foreground">Your date of birth is used to provide age-appropriate mental health support.</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select name="gender" onValueChange={(value) => handleSelectChange('gender', value)} value={formData.gender}>
+                          <SelectTrigger className="w-full glass-input">
+                            <SelectValue placeholder="Select your gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="non-binary">Non-binary</SelectItem>
+                            <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">This helps us tailor our support to your identity.</p>
                       </div>
                     </motion.div>
                   )}

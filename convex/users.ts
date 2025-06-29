@@ -253,6 +253,7 @@ export const internalUpdateSubscription = internalMutation({
 export const updateUserProfileOnboarding = mutation({
   args: {
     dob: v.string(),
+    gender: v.string(),
     profession: v.string(),
     aboutMe: v.string(),
   },
