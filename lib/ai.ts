@@ -652,11 +652,12 @@ export function shouldSummarizeContext(
 export async function generateInitialGlobalMemory(userProfile: {
   name?: string;
   dob: string;
+  gender: string;
   profession: string;
   aboutMe: string;
 }): Promise<string> {
   try {
-    const { name, dob, profession, aboutMe } = userProfile;
+    const { name, dob, gender, profession, aboutMe } = userProfile;
 
     // Calculate age from DOB
     const birthDate = new Date(dob);
@@ -697,7 +698,7 @@ REQUIRED SECTIONS:
 
 IMPORTANT: This is an internal therapeutic profile that will never be shown to the user. It should be written in a professional, clinical style for continuity of therapeutic care.`;
 
-    const userPrompt = `User Onboarding Information:\nName: ${name || "User"}\nDate of Birth: ${dob}\nAge: ${age}\nProfession: ${profession}\nAbout Me: "${aboutMe}"\n\nCurrent Date: ${new Date().toISOString().split("T")[0]}`;
+    const userPrompt = `User Onboarding Information:\nName: ${name || "User"}\nDate of Birth: ${dob}\nAge: ${age}\nGender: ${gender}\nProfession: ${profession}\nAbout Me: "${aboutMe}"\n\nCurrent Date: ${new Date().toISOString().split("T")[0]}`;
 
     const response = await googleClient.models.generateContent({
       model: googleModel,
@@ -729,7 +730,7 @@ IMPORTANT: This is an internal therapeutic profile that will never be shown to t
     console.error("Error generating initial global memory:", error);
 
     // Create a basic fallback profile if AI generation fails
-    const { name, dob, profession, aboutMe } = userProfile;
+    const { name, dob, gender, profession, aboutMe } = userProfile;
     const today = new Date().toISOString().split("T")[0];
 
     return `# User Profile
@@ -738,6 +739,7 @@ Last Updated: ${today}
 ## Basic Information
 Name: ${name || "User"}
 Date of Birth: ${dob}
+Gender: ${gender}
 Profession: ${profession}
 
 ## Self-Description

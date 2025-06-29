@@ -15,7 +15,6 @@ import Link from 'next/link';
 
 export default function DashboardView() {
   const [currentMood, setCurrentMood] = useState<string | null>(null);
-  const [weeklyProgress, setWeeklyProgress] = useState(65);
   const user = useQuery(api.users.current);
   const hasCompletedOnboarding = useQuery(api.users.hasCompletedOnboarding);
   const recentSessions = useQuery(api.sessions.getUserSessions) || [];
@@ -92,7 +91,7 @@ export default function DashboardView() {
 
           {/* Right Column */}
           <div className="space-y-8">
-            <ProgressOverview weeklyProgress={weeklyProgress} />
+            <ProgressOverview />
 
             {/* Upcoming Sessions */}
             <motion.div
