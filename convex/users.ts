@@ -87,8 +87,22 @@ export const updateSubscription = mutation({
   args: {
     subscription: v.object({
       plan: v.string(),
+      planName: v.string(),
       status: v.string(),
       currentPeriodEnd: v.number(),
+      provider: v.optional(v.string()),
+      subscriptionId: v.optional(v.string()),
+      limits: v.optional(v.object({
+        videoSessions: v.number(),
+        voiceCalls: v.number(),
+        chatMessages: v.number(),
+      })),
+      usage: v.optional(v.object({
+        videoSessions: v.number(),
+        voiceCalls: v.number(),
+        chatMessages: v.number(),
+        lastResetDate: v.number(),
+      })),
     }),
   },
   handler: async (ctx, args) => {
@@ -117,10 +131,32 @@ export const updateUserProfileOnboarding = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Set up free tier subscription for new users
+    const now = Date.now();
+    const oneMonthFromNow = now + (30 * 24 * 60 * 60 * 1000);
+
     return await ctx.db.patch(userId, {
       ...args,
       onboardingComplete: true,
-      updatedAt: Date.now(),
+      subscription: {
+        plan: "free",
+        planName: "The sad one",
+        status: "active",
+        currentPeriodEnd: oneMonthFromNow,
+        provider: "system",
+        limits: {
+          videoSessions: 2,
+          voiceCalls: 3,
+          chatMessages: 50,
+        },
+        usage: {
+          videoSessions: 0,
+          voiceCalls: 0,
+          chatMessages: 0,
+          lastResetDate: now,
+        },
+      },
+      updatedAt: now,
     });
   },
 });
@@ -176,5 +212,145 @@ export const internalUpdateGlobalMemory = internalMutation({
       globalMemory: args.globalMemory,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// New mutation to check and increment usage
+export const checkAndIncrementUsage = mutation({
+  args: {
+    type: v.union(v.literal("videoSessions"), v.literal("voiceCalls"), v.literal("chatMessages")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.subscription) {
+      throw new Error("User subscription not found");
+    }
+
+    const subscription = user.subscription;
+
+    // If user is on pro plan, allow unlimited usage
+    if (subscription.plan === "pro") {
+      return { allowed: true, remaining: -1 }; // -1 indicates unlimited
+    }
+
+    // Check if usage needs to be reset (monthly reset)
+    const now = Date.now();
+    const lastReset = subscription.usage?.lastResetDate || 0;
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    let currentUsage = subscription.usage || {
+      videoSessions: 0,
+      voiceCalls: 0,
+      chatMessages: 0,
+      lastResetDate: now,
+    };
+
+    // Reset usage if it's been more than a month
+    if (lastReset < oneMonthAgo) {
+      currentUsage = {
+        videoSessions: 0,
+        voiceCalls: 0,
+        chatMessages: 0,
+        lastResetDate: now,
+      };
+    }
+
+    const limits = subscription.limits || {
+      videoSessions: 2,
+      voiceCalls: 3,
+      chatMessages: 50,
+    };
+
+    const currentCount = currentUsage[args.type];
+    const limit = limits[args.type];
+
+    // Check if user has reached the limit
+    if (currentCount >= limit) {
+      return { 
+        allowed: false, 
+        remaining: 0,
+        limit: limit,
+        current: currentCount 
+      };
+    }
+
+    // Increment usage
+    const newUsage = {
+      ...currentUsage,
+      [args.type]: currentCount + 1,
+    };
+
+    // Update user subscription
+    await ctx.db.patch(userId, {
+      subscription: {
+        ...subscription,
+        usage: newUsage,
+      },
+      updatedAt: now,
+    });
+
+    return { 
+      allowed: true, 
+      remaining: limit - (currentCount + 1),
+      limit: limit,
+      current: currentCount + 1
+    };
+  },
+});
+
+// Query to get user's current usage
+export const getUserUsage = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return null;
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.subscription) {
+      return null;
+    }
+
+    const subscription = user.subscription;
+    
+    // Check if usage needs to be reset
+    const now = Date.now();
+    const lastReset = subscription.usage?.lastResetDate || 0;
+    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+    let currentUsage = subscription.usage || {
+      videoSessions: 0,
+      voiceCalls: 0,
+      chatMessages: 0,
+      lastResetDate: now,
+    };
+
+    // Reset usage if it's been more than a month
+    if (lastReset < oneMonthAgo) {
+      currentUsage = {
+        videoSessions: 0,
+        voiceCalls: 0,
+        chatMessages: 0,
+        lastResetDate: now,
+      };
+    }
+
+    return {
+      plan: subscription.plan,
+      planName: subscription.planName,
+      status: subscription.status,
+      limits: subscription.limits || {
+        videoSessions: 2,
+        voiceCalls: 3,
+        chatMessages: 50,
+      },
+      usage: currentUsage,
+    };
   },
 });

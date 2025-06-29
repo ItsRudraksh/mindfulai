@@ -21,11 +21,28 @@ export default defineSchema({
     aboutMe: v.optional(v.string()),
     onboardingComplete: v.optional(v.boolean()),
     globalMemory: v.optional(v.string()),
+    // Enhanced subscription with usage tracking
     subscription: v.optional(
       v.object({
-        plan: v.string(),
-        status: v.string(),
+        plan: v.string(), // "free" or "pro"
+        planName: v.string(), // "The sad one" or "The depressed one"
+        status: v.string(), // "active", "cancelled", "expired"
         currentPeriodEnd: v.number(),
+        provider: v.optional(v.string()), // "razorpay" or "revenuecat"
+        subscriptionId: v.optional(v.string()), // External subscription ID
+        // Usage limits for free tier
+        limits: v.optional(v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+        })),
+        // Current usage tracking
+        usage: v.optional(v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+          lastResetDate: v.number(), // When usage was last reset
+        })),
       })
     ),
     preferences: v.optional(
@@ -209,4 +226,28 @@ export default defineSchema({
     isPrimary: v.boolean(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  // New table for payment transactions
+  paymentTransactions: defineTable({
+    userId: v.id("users"),
+    provider: v.string(), // "razorpay" or "revenuecat"
+    transactionId: v.string(), // External transaction ID
+    orderId: v.optional(v.string()), // Razorpay order ID
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("created"),
+      v.literal("authorized"),
+      v.literal("captured"),
+      v.literal("refunded"),
+      v.literal("failed")
+    ),
+    planName: v.string(), // "The sad one" or "The depressed one"
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_transaction_id", ["transactionId"])
+    .index("by_status", ["status"]),
 });

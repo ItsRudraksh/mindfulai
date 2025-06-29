@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { api } from "./_generated/api";
 
 export const createMessage = mutation({
   args: {
@@ -29,6 +30,17 @@ export const createMessage = mutation({
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation || conversation.userId !== userId) {
       throw new Error("Conversation not found or unauthorized");
+    }
+
+    // Check usage limits for free tier users (only for user messages)
+    if (args.sender === "user") {
+      const usageCheck = await ctx.runMutation(api.users.checkAndIncrementUsage, {
+        type: "chatMessages",
+      });
+
+      if (!usageCheck.allowed) {
+        throw new Error("You have reached your chat message limit. Upgrade to pro for unlimited messaging.");
+      }
     }
 
     const messageId = await ctx.db.insert("messages", {

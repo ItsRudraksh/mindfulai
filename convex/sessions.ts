@@ -23,6 +23,18 @@ export const createSession = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Check usage limits for free tier users
+    if (args.type === "video" || args.type === "voice") {
+      const usageType = args.type === "video" ? "videoSessions" : "voiceCalls";
+      const usageCheck = await ctx.runMutation(api.users.checkAndIncrementUsage, {
+        type: usageType,
+      });
+
+      if (!usageCheck.allowed) {
+        throw new Error(`You have reached your ${args.type} limit. Upgrade to pro for unlimited access.`);
+      }
+    }
+
     return await ctx.db.insert("sessions", {
       userId,
       ...args,
