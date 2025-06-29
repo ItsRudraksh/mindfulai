@@ -15,6 +15,8 @@ import type {
 } from "convex/server";
 import type * as auth from "../auth.js";
 import type * as chatConversations from "../chatConversations.js";
+import type * as crons from "../crons.js";
+import type * as email from "../email.js";
 import type * as globalMemory from "../globalMemory.js";
 import type * as http from "../http.js";
 import type * as journalEntries from "../journalEntries.js";
@@ -36,6 +38,8 @@ import type * as users from "../users.js";
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chatConversations: typeof chatConversations;
+  crons: typeof crons;
+  email: typeof email;
   globalMemory: typeof globalMemory;
   http: typeof http;
   journalEntries: typeof journalEntries;

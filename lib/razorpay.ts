@@ -106,7 +106,7 @@ export const createSubscription = async (options: {
 
 export const cancelSubscription = async (
   subscriptionId: string,
-  cancelAtCycleEnd: boolean = true
+  cancelAtCycleEnd: boolean = false
 ) => {
   try {
     const subscription = await razorpay.subscriptions.cancel(
@@ -161,6 +161,7 @@ export const fetchSubscriptionInvoices = async (subscriptionId: string) => {
     const invoices = await razorpay.invoices.all({
       subscription_id: subscriptionId,
     });
+    console.log("invoices: ", invoices);
     return invoices;
   } catch (error) {
     console.error("Error fetching Razorpay subscription invoices:", error);

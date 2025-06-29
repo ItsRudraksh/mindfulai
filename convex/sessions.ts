@@ -26,12 +26,17 @@ export const createSession = mutation({
     // Check usage limits for free tier users
     if (args.type === "video" || args.type === "voice") {
       const usageType = args.type === "video" ? "videoSessions" : "voiceCalls";
-      const usageCheck = await ctx.runMutation(api.users.checkAndIncrementUsage, {
-        type: usageType,
-      });
+      const usageCheck = await ctx.runMutation(
+        api.users.checkAndIncrementUsage,
+        {
+          type: usageType,
+        }
+      );
 
       if (!usageCheck.allowed) {
-        throw new Error(`You have reached your ${args.type} limit. Upgrade to pro for unlimited access.`);
+        throw new Error(
+          `You have reached your ${args.type} limit. Upgrade to pro for unlimited access.`
+        );
       }
     }
 
@@ -645,5 +650,17 @@ export const pollAndFetchVoiceSummary = internalAction({
         }
       );
     }
+  },
+});
+
+export const getSessionsForUserInLastWeek = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return await ctx.db
+      .query("sessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.gt(q.field("_creationTime"), oneWeekAgo))
+      .collect();
   },
 });

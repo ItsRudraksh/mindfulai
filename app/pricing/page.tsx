@@ -52,11 +52,9 @@ export default function PricingPage() {
         { name: '50 Chat Messages', limit: 'per month', included: true },
         { name: 'Unlimited Meditation', limit: '', included: true },
         { name: 'Unlimited Journaling', limit: '', included: true },
-        { name: 'Mood Tracking & Insights', limit: '', included: true },
-        { name: 'Emergency Resources', limit: '', included: true },
-        { name: 'Priority Support', limit: '', included: false },
-        { name: 'Advanced Analytics', limit: '', included: false },
-        { name: 'Custom AI Personas', limit: '', included: false },
+        { name: 'Advanced Mood Analytics', limit: '', included: true },
+        { name: 'Weekly Reports & Insights', limit: '', included: false },
+        { name: 'Custom AI Personas (coming soon)', limit: '', included: false },
       ],
       buttonText: 'Current Plan',
       buttonVariant: 'outline' as const,
@@ -75,10 +73,9 @@ export default function PricingPage() {
         { name: 'Unlimited Meditation', limit: '', included: true },
         { name: 'Unlimited Journaling', limit: '', included: true },
         { name: 'Advanced Mood Analytics', limit: '', included: true },
-        { name: 'Priority Support', limit: '', included: true },
-        { name: 'Custom AI Personas', limit: '', included: true },
-        { name: 'Export Your Data', limit: '', included: true },
-        { name: 'Early Access Features', limit: '', included: true },
+        { name: 'Weekly Reports & Insights', limit: '', included: true },
+        { name: 'Personalized Daily Emails', limit: '', included: true },
+        { name: 'Custom AI Personas (coming soon)', limit: '', included: true }
       ],
       buttonText: 'Upgrade Now',
       buttonVariant: 'default' as const,
@@ -414,8 +411,8 @@ export default function PricingPage() {
 
                       <div className="pt-6">
                         {currentPlan === plan.id ? (
-                          <Button 
-                            className="w-full therapeutic-hover" 
+                          <Button
+                            className="w-full therapeutic-hover"
                             variant={plan.buttonVariant}
                             disabled
                           >

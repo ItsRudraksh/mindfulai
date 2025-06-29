@@ -6,6 +6,7 @@ import {
   internalMutation,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 export const current = query({
   args: {},
@@ -111,10 +112,48 @@ export const updateSubscription = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.patch(args.userId, {
+    const { userId, subscription } = args;
+
+    // Get the user's current state BEFORE the update
+    const existingUser = await ctx.db.get(userId);
+    if (!existingUser) {
+      throw new Error("User not found");
+    }
+    const oldSubscription = existingUser.subscription;
+
+    await ctx.db.patch(args.userId, {
       subscription: args.subscription,
       updatedAt: Date.now(),
     });
+
+    // Check for subscription changes and trigger emails
+    if (existingUser.name && existingUser.email) {
+      // Pro upgrade: from non-pro to active pro
+      if (
+        subscription.plan === "pro" &&
+        subscription.status === "active" &&
+        oldSubscription?.plan !== "pro"
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendProWelcomeEmail, {
+          userName: existingUser.name,
+          userEmail: existingUser.email,
+        });
+      }
+
+      // Cancellation: from non-cancelled to cancelled
+      if (
+        subscription.status === "cancelled" &&
+        oldSubscription?.status !== "cancelled"
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
+          userName: existingUser.name,
+          userEmail: existingUser.email,
+          periodEnd: new Date(
+            subscription.currentPeriodEnd
+          ).toLocaleDateString(),
+        });
+      }
+    }
   },
 });
 
@@ -147,10 +186,48 @@ export const internalUpdateSubscription = internalMutation({
     }),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.patch(args.userId, {
+    const { userId, subscription } = args;
+
+    // Get the user's current state BEFORE the update
+    const existingUser = await ctx.db.get(userId);
+    if (!existingUser) {
+      throw new Error("User not found");
+    }
+    const oldSubscription = existingUser.subscription;
+
+    await ctx.db.patch(args.userId, {
       subscription: args.subscription,
       updatedAt: Date.now(),
     });
+
+    // Check for subscription changes and trigger emails
+    if (existingUser.name && existingUser.email) {
+      // Pro upgrade: from non-pro to active pro
+      if (
+        subscription.plan === "pro" &&
+        subscription.status === "active" &&
+        oldSubscription?.plan !== "pro"
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendProWelcomeEmail, {
+          userName: existingUser.name,
+          userEmail: existingUser.email,
+        });
+      }
+
+      // Cancellation: from non-cancelled to cancelled
+      if (
+        subscription.status === "cancelled" &&
+        oldSubscription?.status !== "cancelled"
+      ) {
+        await ctx.scheduler.runAfter(0, internal.email.sendCancellationEmail, {
+          userName: existingUser.name,
+          userEmail: existingUser.email,
+          periodEnd: new Date(
+            subscription.currentPeriodEnd
+          ).toLocaleDateString(),
+        });
+      }
+    }
   },
 });
 
@@ -170,6 +247,14 @@ export const updateUserProfileOnboarding = mutation({
     // Set up free tier subscription for new users
     const now = Date.now();
     const oneMonthFromNow = now + 30 * 24 * 60 * 60 * 1000;
+
+    const user = await ctx.db.get(userId);
+    if (user?.name && user.email) {
+      await ctx.scheduler.runAfter(0, internal.email.sendWelcomeEmail, {
+        userName: user.name,
+        userEmail: user.email,
+      });
+    }
 
     return await ctx.db.patch(userId, {
       ...args,
@@ -428,5 +513,61 @@ export const updateName = mutation({
       throw new Error("User not authenticated");
     }
     await ctx.db.patch(userId, { name: args.name, updatedAt: Date.now() });
+  },
+});
+
+export const getProUsers = internalQuery({
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter(
+      (user) =>
+        user.subscription?.plan === "pro" &&
+        user.subscription?.status === "active" &&
+        user.email
+    );
+  },
+});
+
+export const sendTestEmail = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated.");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    if (!user.email || !user.name || !user.globalMemory) {
+      throw new Error(
+        "User is missing required information (email, name, or global memory) to send an email."
+      );
+    }
+
+    await ctx.scheduler.runAfter(0, internal.email.sendEmail, {
+      userId: user._id,
+      userName: user.name,
+      userEmail: user.email,
+      globalMemory: user.globalMemory,
+    });
+
+    return "Test email scheduled successfully!";
+  },
+});
+
+export const sendWeeklyTestEmail = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated.");
+    }
+
+    await ctx.scheduler.runAfter(0, internal.email.sendWeeklyReportEmail, {
+      userId: userId,
+    });
+
+    return "Weekly test email scheduled successfully!";
   },
 });

@@ -26,11 +26,13 @@ export default defineSchema({
       v.object({
         plan: v.string(), // "free" or "pro"
         planName: v.string(), // "The sad one" or "The depressed one"
-        status: v.union(
-          v.literal("active"),
-          v.literal("cancelled"),
-          v.literal("expired"),
-          v.literal("paused")
+        status: v.optional(
+          v.union(
+            v.literal("active"),
+            v.literal("cancelled"),
+            v.literal("expired"),
+            v.literal("paused")
+          )
         ),
         currentPeriodEnd: v.number(),
         provider: v.optional(v.string()), // "razorpay" or "revenuecat"
@@ -44,14 +46,12 @@ export default defineSchema({
           })
         ),
         // Current usage tracking
-        usage: v.optional(
-          v.object({
-            videoSessions: v.number(),
-            voiceCalls: v.number(),
-            chatMessages: v.number(),
-            lastResetDate: v.number(), // When usage was last reset
-          })
-        ),
+        usage: v.object({
+          videoSessions: v.number(),
+          voiceCalls: v.number(),
+          chatMessages: v.number(),
+          lastResetDate: v.number(), // When usage was last reset
+        }),
       })
     ),
     preferences: v.optional(

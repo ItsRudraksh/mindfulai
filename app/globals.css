@@ -109,7 +109,7 @@
 
   /* Glassmorphism utility classes */
   .glass-card {
-    @apply backdrop-blur-therapeutic bg-card/75 border-glass border-border shadow-glass dark:shadow-glass-dark;
+    @apply backdrop-blur-therapeutic bg-card dark:bg-card/75 border-glass border-border shadow-glass dark:shadow-glass-dark;
   }
 
   .glass-header {

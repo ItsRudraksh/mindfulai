@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
 
     const subscriptionData = {
       plan_id: "plan_Qmqc4owHkiGBl6",
-      total_count: 12, // 12 monthly cycles (1 year)
+      total_count: 12,
       quantity: 1,
-      customer_notify: true,
+      customer_notify: false,
       notes: {
         description: "MindfulAI Pro Subscription",
       },

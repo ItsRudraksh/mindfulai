@@ -24,14 +24,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-// Placeholder for yearly plan ID
-const YEARLY_PLAN_ID = "plan_YOUR_YEARLY_PLAN_ID"; // Replace with your actual yearly plan ID from Razorpay
-
 export default function ProfilePage() {
   const user = useQuery(api.users.current);
   const [name, setName] = useState(user?.name || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isProcessingSub, setIsProcessingSub] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
 
   const updateName = useMutation(api.users.updateName);
   const updateStatus = useMutation(api.users.updateSubscriptionStatus);
@@ -54,7 +53,7 @@ export default function ProfilePage() {
   };
 
   const handleManageSubscription = async (
-    action: 'portal' | 'cancel' | 'pause' | 'resume' | 'update',
+    action: 'portal' | 'cancel' | 'pause' | 'resume' | 'update' | 'invoices',
     newPlanId?: string
   ) => {
     if (!user?.subscription?.subscriptionId) {
@@ -80,9 +79,15 @@ export default function ProfilePage() {
       if (data.success) {
         if (action === 'portal' && data.portal_url) {
           window.open(data.portal_url, '_blank');
+        } else if (action === 'invoices' && data.data.items) {
+          setInvoices(data.data.items);
+          setIsInvoiceDialogOpen(true);
+          toast.success("Invoices fetched successfully!");
         } else {
           toast.success(`Subscription action '${action}' processed successfully!`);
-          await updateStatus({ status: data.data.status });
+          if (data.data.status) {
+            await updateStatus({ status: data.data.status });
+          }
         }
       } else {
         throw new Error(data.error);
@@ -159,24 +164,24 @@ export default function ProfilePage() {
                     <form onSubmit={handleUpdateName} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Name</Label>
-                        <Input 
-                          id="name" 
-                          value={name} 
-                          onChange={(e) => setName(e.target.value)} 
+                        <Input
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
                           className="glass-input"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email" 
-                          value={user.email || ''} 
-                          disabled 
+                        <Input
+                          id="email"
+                          value={user.email || ''}
+                          disabled
                           className="glass-input"
                         />
                       </div>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         disabled={isUpdating}
                         className="therapeutic-hover"
                       >
@@ -186,7 +191,7 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="subscription">
                 <Card className="glass-card floating-card">
                   <CardHeader>
@@ -197,92 +202,81 @@ export default function ProfilePage() {
                     {!userSubscription || userSubscription.plan === 'free' ? (
                       <div className="text-center">
                         <p className="mb-4">You are currently on the free plan.</p>
-                        <Button asChild className="therapeutic-hover">
-                          <Link href="/pricing">Upgrade to Pro</Link>
-                        </Button>
+                        <div className="flex flex-col gap-4">
+                          <Button asChild className="therapeutic-hover">
+                            <Link href="/pricing">Upgrade to Pro</Link>
+                          </Button>
+                          <div className="p-4 bg-muted/30 rounded-lg">
+                            <h4 className="font-medium mb-2">Pro Plan Benefits</h4>
+                            <ul className="text-sm text-muted-foreground space-y-1">
+                              <li>• Unlimited access to all therapy modalities</li>
+                              <li>• Priority support and feature access</li>
+                              <li>• Advanced analytics and insights</li>
+                              <li>• Custom AI personas and preferences (coming soon)</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
                           <div>
                             <h3 className="font-semibold">{userSubscription.planName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Status: <Badge variant={userSubscription.status === 'active' ? 'default' : 'secondary'}>{userSubscription.status}</Badge>
+                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                              Status:
+                              <Badge
+                                variant={userSubscription.status === 'active' ? 'default' :
+                                  userSubscription.status === 'paused' ? 'secondary' : 'outline'}
+                                className={`capitalize ${userSubscription.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20' :
+                                  userSubscription.status === 'paused' ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20' :
+                                    'bg-slate-500/10 text-slate-600 hover:bg-slate-500/20 border-slate-500/20'
+                                  }`}
+                              >
+                                {userSubscription.status}
+                              </Badge>
                             </p>
                           </div>
                           <p className="text-sm">
                             Renews on: {new Date(userSubscription.currentPeriodEnd).toLocaleDateString()}
                           </p>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <Button 
-                            onClick={() => handleManageSubscription('portal')} 
+                          <Button
+                            onClick={() => handleManageSubscription('invoices')}
                             disabled={isProcessingSub}
                             className="therapeutic-hover"
                           >
                             View Invoices
                           </Button>
-                          
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                disabled={isProcessingSub || userSubscription.status !== 'active'}
-                                className="therapeutic-hover"
-                              >
-                                Change Plan
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="glass-card">
-                              <DialogHeader>
-                                <DialogTitle>Change Subscription Plan</DialogTitle>
-                                <DialogDescription>
-                                  Select a new plan to switch to at the end of your current billing cycle.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="py-4">
-                                <Button 
-                                  className="w-full therapeutic-hover" 
-                                  onClick={() => handleManageSubscription('update', YEARLY_PLAN_ID)}
-                                >
-                                  Switch to Yearly Plan
-                                </Button>
-                                <p className="text-xs text-muted-foreground mt-2 text-center">Save 20% with annual billing</p>
-                              </div>
-                              <DialogFooter>
-                                <Button variant="outline" className="therapeutic-hover">Cancel</Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          
+
                           {userSubscription.status === 'active' && (
-                            <Button 
-                              onClick={() => handleManageSubscription('pause')} 
-                              variant="outline" 
+                            <Button
+                              onClick={() => handleManageSubscription('pause')}
+                              variant="outline"
                               disabled={isProcessingSub}
                               className="therapeutic-hover"
                             >
                               Pause Subscription
                             </Button>
                           )}
-                          
+
                           {userSubscription.status === 'paused' && (
-                            <Button 
-                              onClick={() => handleManageSubscription('resume')} 
-                              variant="outline" 
+                            <Button
+                              onClick={() => handleManageSubscription('resume')}
+                              variant="outline"
                               disabled={isProcessingSub}
                               className="therapeutic-hover"
                             >
                               Resume Subscription
                             </Button>
                           )}
-                          
+
                           {userSubscription.status !== 'cancelled' && (
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
+                                <Button
+                                  variant="destructive"
                                   disabled={isProcessingSub}
                                   className="therapeutic-hover"
                                 >
@@ -302,14 +296,15 @@ export default function ProfilePage() {
                                   </p>
                                 </div>
                                 <DialogFooter>
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     className="therapeutic-hover"
+                                    onClick={() => setIsInvoiceDialogOpen(false)}
                                   >
                                     Keep Subscription
                                   </Button>
-                                  <Button 
-                                    variant="destructive" 
+                                  <Button
+                                    variant="destructive"
                                     onClick={() => handleManageSubscription('cancel')}
                                     className="therapeutic-hover"
                                   >
@@ -320,7 +315,7 @@ export default function ProfilePage() {
                             </Dialog>
                           )}
                         </div>
-                        
+
                         <div className="mt-4 p-4 bg-muted/30 rounded-lg">
                           <h4 className="font-medium mb-2">Subscription Benefits</h4>
                           <ul className="text-sm text-muted-foreground space-y-1">
@@ -335,7 +330,7 @@ export default function ProfilePage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="usage">
                 <Card className="glass-card floating-card">
                   <CardHeader>
@@ -352,8 +347,8 @@ export default function ProfilePage() {
                               {metric.used} / {metric.limit}
                             </p>
                           </div>
-                          <Progress 
-                            value={(metric.used / metric.limit) * 100} 
+                          <Progress
+                            value={(metric.used / metric.limit) * 100}
                             className="h-2"
                           />
                         </div>
@@ -382,7 +377,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {userSubscription?.plan === 'free' && (
                       <div className="text-center mt-6">
                         <p className="text-sm text-muted-foreground mb-4">
@@ -399,6 +394,55 @@ export default function ProfilePage() {
             </div>
           </Tabs>
         </div>
+        <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+          <DialogContent className="max-w-3xl glass-card">
+            <DialogHeader>
+              <DialogTitle>Your Invoices</DialogTitle>
+              <DialogDescription>
+                Here is a list of your past invoices.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 max-h-[60vh] overflow-y-auto">
+              {invoices.length > 0 ? (
+                <ul className="space-y-4">
+                  {invoices.map((invoice) => (
+                    <li key={invoice.id} className="p-4 bg-muted/30 rounded-lg flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">Invoice #{invoice.receipt || invoice.id}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Amount: ₹{invoice.amount_paid / 100}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Date: {new Date(invoice.paid_at * 1000).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Badge
+                          variant={invoice.status === 'paid' ? 'default' : 'secondary'}
+                          className={`capitalize ${invoice.status === 'paid' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20' :
+                            'bg-slate-500/10 text-slate-600 hover:bg-slate-500/20 border-slate-500/20'
+                            }`}
+                        >
+                          {invoice.status}
+                        </Badge>
+                        <Button asChild variant="outline" size="sm">
+                          <a href={invoice.short_url} target="_blank" rel="noopener noreferrer">View</a>
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No invoices found.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setIsInvoiceDialogOpen(false)} variant="outline">
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

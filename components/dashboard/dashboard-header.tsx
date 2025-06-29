@@ -14,6 +14,7 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { TestEmailButton } from "../testerButton";
 
 interface DashboardHeaderProps {
   user: {
@@ -45,13 +46,14 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
             MindfulAI
           </span>
+          {/* <TestEmailButton /> */}
         </Link>
-        
+
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
           </Button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -74,7 +76,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
