@@ -136,12 +136,11 @@ export default function ChatSession() {
     if (!newMessage.trim() || !chatState.currentConversationId) return;
 
     // Check usage before sending message
-    if (userUsage?.plan !== 'pro') {
-      if (userUsage.usage.chatMessages >= userUsage.limits.chatMessages) {
-        toast.error('You have reached your monthly chat message limit. Upgrade to Pro for unlimited messages.');
-        return;
-      }
+    if (userUsage && userUsage.plan !== 'pro' && userUsage.usage.chatMessages >= userUsage.limits.chatMessages) {
+      toast.error('You have reached your monthly chat message limit. Upgrade to Pro for unlimited messages.');
+      return;
     }
+
     try {
       // Create user message
       await createMessageMutation({

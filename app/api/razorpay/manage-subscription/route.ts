@@ -47,19 +47,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "portal") {
-      const portalLink = await razorpay.subscriptions.createAddon({
-        subscription_id: subscription_id,
-        addon: {
-          item: {
-            name: "Customer Portal",
-            amount: 0,
-            currency: "INR",
-          },
-        },
-      });
+      // const portalLink = await razorpay.subscriptions.createAddon({
+      //   subscription_id: subscription_id,
+      //   addon: {
+      //     item: {
+      //       name: "Customer Portal",
+      //       amount: 0,
+      //       currency: "INR",
+      //     },
+      //   },
+      // });
       return NextResponse.json({
         success: true,
-        portal_url: portalLink.short_url,
+        // portal_url: portalLink.short_url,
       });
     }
 

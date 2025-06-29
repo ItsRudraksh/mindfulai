@@ -86,11 +86,9 @@ export default function VoiceSession() {
     }
 
     // Check usage before initiating call
-    if (userUsage?.plan !== 'pro') {
-      if (userUsage.usage.voiceCalls >= userUsage.limits.voiceCalls) {
-        toast.error('You have reached your monthly voice call limit. Upgrade to Pro for unlimited sessions.');
-        return;
-      }
+    if (userUsage && userUsage.plan !== 'pro' && userUsage.usage.voiceCalls >= userUsage.limits.voiceCalls) {
+      toast.error('You have reached your monthly voice call limit. Upgrade to Pro for unlimited sessions.');
+      return;
     }
     try {
       const firstName = user.name?.split(' ')[0] || 'there';

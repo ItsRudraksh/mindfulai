@@ -145,8 +145,8 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
   }, [session, updateVoiceSessionSummaryMutation, triggerUpdateGlobalMemoryFromVoiceSession]);
 
   useEffect(() => {
-    if (done) {
-      triggerUpdateGlobalMemoryFromVoiceSession({ userId: session?.userId, sessionId: session?._id });
+    if (done && session?.userId && session._id) {
+      triggerUpdateGlobalMemoryFromVoiceSession({ userId: session.userId, sessionId: session._id });
     }
   }, [done, session, triggerUpdateGlobalMemoryFromVoiceSession]);
 

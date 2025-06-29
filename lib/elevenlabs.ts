@@ -96,7 +96,7 @@ class ElevenLabsVoiceClient {
     try {
       const response =
         await this.client.conversationalAi.conversations.get(conversationId);
-      return response as ConversationStatus;
+      return response as unknown as ConversationStatus;
     } catch (error) {
       console.error("💥 ElevenLabs conversation status error:", error);
       throw error;

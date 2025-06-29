@@ -90,7 +90,12 @@ export const updateSubscription = mutation({
     subscription: v.object({
       plan: v.string(),
       planName: v.string(),
-      status: v.string(),
+      status: v.union(
+        v.literal("active"),
+        v.literal("cancelled"),
+        v.literal("expired"),
+        v.literal("paused")
+      ),
       currentPeriodEnd: v.number(),
       provider: v.optional(v.string()),
       subscriptionId: v.optional(v.string()),
@@ -121,8 +126,12 @@ export const updateSubscription = mutation({
     }
     const oldSubscription = existingUser.subscription;
 
+    if (!oldSubscription) {
+      throw new Error("User subscription not found");
+    }
+
     await ctx.db.patch(args.userId, {
-      subscription: args.subscription,
+      subscription: { ...oldSubscription, ...subscription },
       updatedAt: Date.now(),
     });
 
@@ -164,7 +173,12 @@ export const internalUpdateSubscription = internalMutation({
     subscription: v.object({
       plan: v.string(),
       planName: v.string(),
-      status: v.string(),
+      status: v.union(
+        v.literal("active"),
+        v.literal("cancelled"),
+        v.literal("expired"),
+        v.literal("paused")
+      ),
       currentPeriodEnd: v.number(),
       provider: v.optional(v.string()),
       subscriptionId: v.optional(v.string()),
@@ -195,8 +209,12 @@ export const internalUpdateSubscription = internalMutation({
     }
     const oldSubscription = existingUser.subscription;
 
+    if (!oldSubscription) {
+      throw new Error("User subscription not found");
+    }
+
     await ctx.db.patch(args.userId, {
-      subscription: args.subscription,
+      subscription: { ...oldSubscription, ...subscription },
       updatedAt: Date.now(),
     });
 
@@ -482,7 +500,12 @@ export const getUserUsage = query({
 
 export const updateSubscriptionStatus = mutation({
   args: {
-    status: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("cancelled"),
+      v.literal("expired"),
+      v.literal("paused")
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -498,7 +521,7 @@ export const updateSubscriptionStatus = mutation({
     await ctx.db.patch(userId, {
       subscription: {
         ...user.subscription,
-        status: args.status as any,
+        status: args.status,
       },
       updatedAt: Date.now(),
     });

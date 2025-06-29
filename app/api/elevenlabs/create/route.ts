@@ -57,13 +57,16 @@ export async function POST(request: NextRequest) {
       setTimeout(() => reject(new Error("Request timeout")), 30000); // 30 second timeout
     });
 
-    const callResponse = await Promise.race([callPromise, timeoutPromise]);
+    const callResponse = (await Promise.race([
+      callPromise,
+      timeoutPromise,
+    ])) as any;
 
     return NextResponse.json({
       success: true,
-      conversation_id: callResponse.conversationId,
-      callSid: callResponse.callSid,
-      message: callResponse.message,
+      conversation_id: callResponse.conversationId as any,
+      callSid: callResponse.callSid as any,
+      message: callResponse.message as any,
     });
   } catch (error) {
     console.error("💥 ElevenLabs call creation error:", error);

@@ -116,21 +116,17 @@ export default function EmergencyResources() {
               >
                 <Card className="h-full glass-card floating-card therapeutic-hover">
                   <CardHeader className="text-center">
-                    <motion.div 
+                    <motion.div
                       className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${contact.type === 'emergency' ? 'bg-red-100 dark:bg-red-950/20' :
-                          contact.type === 'text' ? 'bg-blue-100 dark:bg-blue-950/20' : 'bg-green-100 dark:bg-green-950/20'
+                        contact.type === 'text' ? 'bg-blue-100 dark:bg-blue-950/20' : 'bg-green-100 dark:bg-green-950/20'
                         }`}
                       whileHover={{ rotate: 5 }}
                       transition={{ duration: 0.2 }}
                     >
                       {contact.type === 'text' ? (
-                        <MessageCircle className={`h-8 w-8 ${contact.type === 'emergency' ? 'text-red-600' :
-                            contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
-                          }`} />
+                        <MessageCircle className={`h-8 w-8 text-blue-600`} />
                       ) : (
-                        <Phone className={`h-8 w-8 ${contact.type === 'emergency' ? 'text-red-600' :
-                            contact.type === 'text' ? 'text-blue-600' : 'text-green-600'
-                          }`} />
+                        <Phone className={`h-8 w-8 text-red-600`} />
                       )}
                     </motion.div>
                     <CardTitle className="text-lg">{contact.name}</CardTitle>
@@ -139,12 +135,10 @@ export default function EmergencyResources() {
                   <CardContent className="text-center">
                     <Button
                       size="lg"
-                      className={`w-full text-lg font-bold ripple-effect ${contact.type === 'emergency' ? 'bg-red-600 hover:bg-red-700' :
-                          contact.type === 'text' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
-                        }`}
+                      className={`w-full text-lg font-bold ripple-effect bg-blue-600 hover:bg-blue-700`}
                       asChild
                     >
-                      <a href={contact.type === 'text' ? 'sms:741741' : `tel:${contact.number.replace(/\D/g, '')}`}>
+                      <a href={`tel:${contact.number.replace(/\D/g, '')}`}>
                         {contact.number}
                       </a>
                     </Button>

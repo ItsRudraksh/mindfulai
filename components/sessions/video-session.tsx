@@ -70,11 +70,9 @@ export default function VideoSession() {
     }
 
     // Check usage before creating session
-    if (userUsage?.plan !== 'pro') {
-      if (userUsage.usage.videoSessions >= userUsage.limits.videoSessions) {
-        toast.error('You have reached your monthly video session limit. Upgrade to Pro for unlimited sessions.');
-        return;
-      }
+    if (userUsage && userUsage.plan !== 'pro' && userUsage.usage.videoSessions >= userUsage.limits.videoSessions) {
+      toast.error('You have reached your monthly video session limit. Upgrade to Pro for unlimited sessions.');
+      return;
     }
     try {
       const firstName = user.name?.split(' ')[0] || 'there';
