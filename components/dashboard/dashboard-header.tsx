@@ -15,6 +15,8 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { TestEmailButton } from "../testerButton";
+import { useTheme } from 'next-themes';
+import Image from 'next/image';
 
 interface DashboardHeaderProps {
   user: {
@@ -27,6 +29,7 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   const { signOut } = useAuthActions();
+  const { theme } = useTheme();
 
   const handleSignOut = async () => {
     try {
@@ -42,7 +45,13 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
     <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <Heart className="h-8 w-8 text-primary" />
+          <Image
+            src={theme === 'dark' ? '/dark-logo.png' : '/light-logo.png'}
+            alt="MindfulAI Logo"
+            width={150}
+            height={40}
+            className="h-10 w-auto"
+          />
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
             MindfulAI
           </span>

@@ -9,8 +9,11 @@ import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Heart, Video, Phone, MessageCircle, Brain, Shield, Clock, Award } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
+import Image from 'next/image';
 
 export default function LandingPage() {
+  const { theme } = useTheme();
   const heroTexts = [
     "Your Personal AI Therapist",
     "Mental Health Companion",
@@ -116,10 +119,15 @@ export default function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-2 therapeutic-hover"
           >
-            <Heart className="h-8 w-8 text-primary animate-gentle-pulse" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-              MindfulAI
-            </span>
+            <Link href="/" className="flex items-center space-x-2">
+              <Image
+                src={theme === 'dark' ? '/dark-logo.png' : '/light-logo.png'}
+                alt="MindfulAI Logo"
+                width={150}
+                height={40}
+                className="h-10 w-auto"
+              />
+            </Link>
           </motion.div>
 
           <motion.div

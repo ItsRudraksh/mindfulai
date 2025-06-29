@@ -16,6 +16,21 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'MindfulAI - Your Mental Health Companion',
   description: 'AI-powered mental health support with video therapy, voice calls, and text chat',
+  icons: {
+    icon: [
+      {
+        media: '(prefers-color-scheme: light)',
+        url: '/light-logo.png',
+        href: '/light-logo.png',
+      },
+      {
+        media: '(prefers-color-scheme: dark)',
+        url: '/dark-logo.png',
+        href: '/dark-logo.png',
+      },
+    ],
+    shortcut: ['/light-logo.png'],
+  },
 };
 
 export default function RootLayout({

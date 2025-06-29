@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Heart, Mail, Lock, User } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
+import Image from 'next/image';
 
 export default function SignUpPage() {
   const [name, setName] = useState('');
@@ -18,6 +20,7 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuthActions();
   const router = useRouter();
+  const { theme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +69,13 @@ export default function SignUpPage() {
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
           >
-            <Heart className="h-12 w-12 text-primary animate-gentle-pulse" />
+            <Image
+              src={theme === 'dark' ? '/dark-logo.png' : '/light-logo.png'}
+              alt="MindfulAI Logo"
+              width={200}
+              height={50}
+              className="h-12 w-auto"
+            />
           </motion.div>
           <h1 className="text-3xl font-bold mb-2">Join MindfulAI</h1>
           <p className="text-muted-foreground">Start your journey to better mental health</p>
