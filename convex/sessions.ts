@@ -79,6 +79,22 @@ export const endSession = mutation({
 
     const duration = endTime - session.startTime;
 
+    // After successfully completing a session, update the user's goal progress
+    const sessionGoal = await ctx.db
+      .query("goals")
+      .withIndex("by_user_category", (q) =>
+        q.eq("userId", userId).eq("category", "sessions")
+      )
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first();
+
+    if (sessionGoal) {
+      const currentProgress = (sessionGoal.progress || 0) + 1;
+      await ctx.db.patch(sessionGoal._id, {
+        progress: currentProgress,
+      });
+    }
+
     return await ctx.db.patch(sessionId, {
       ...updates,
       endTime,

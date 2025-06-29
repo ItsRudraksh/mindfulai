@@ -2,7 +2,7 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Button } from '@/components/ui/button';
-import { Heart, Bell, Settings, LogOut, User } from 'lucide-react';
+import { Heart, Bell, Settings, LogOut, User, History, Shield, FileText, Undo2, Truck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -72,10 +72,41 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                   <span>Profile Settings</span>
                 </DropdownMenuItem>
               </Link>
+              <Link href="/sessions">
+                <DropdownMenuItem>
+                  <History className="mr-2 h-4 w-4" />
+                  <span>Sessions</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuItem>
                 <Bell className="mr-2 h-4 w-4" />
                 <span>Notifications</span>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <Link href="/privacy-policy">
+                <DropdownMenuItem>
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Privacy Policy</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/terms-and-conditions">
+                <DropdownMenuItem>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Terms & Conditions</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/refund-policy">
+                <DropdownMenuItem>
+                  <Undo2 className="mr-2 h-4 w-4" />
+                  <span>Refund Policy</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/shipping">
+                <DropdownMenuItem>
+                  <Truck className="mr-2 h-4 w-4" />
+                  <span>Shipping</span>
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuContent>
           </DropdownMenu>
 

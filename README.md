@@ -12,7 +12,7 @@
 
 **A revolutionary mental health platform combining AI therapy, real-time video sessions, voice calls, intelligent mood tracking, and personalized meditation with advanced global memory management.**
 
-[🚀 Live Demo](#) • [📖 Documentation](#features) • [🛠️ Installation](#installation) • [🤝 Contributing](#contributing)
+[🚀 Live Demo](https://mindfulai.app)
 
 </div>
 
@@ -558,23 +558,17 @@ TAVUS_PERSONA_ID="your-value-here"
 ELEVENLABS_API_KEY="your-value-here"
 ELEVENLABS_AGENT_PHONE_NUMBER_ID="your-value-here"
 ELEVENLABS_AGENT_ID="your-value-here"
-REVENUECAT_API_KEY="your-value-here"
-NEXT_PUBLIC_REVENUECAT_PUBLIC_KEY="your-value-here"
 OPENROUTER_API_KEY="your-value-here"
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER="your-value-here"
 SMTP_PASSWORD="your-value-here"
 ENCRYPTION_KEY="your-value-here"
-NODE_ENV=development
+NODE_ENV=development || production
 GEMINI_API_KEY="your-value-here"
 TAVUS_AWS_ARN="your-value-here"
 TAVUS_BUCKET_REGION="your-value-here"
 TAVUS_BUCKET_NAME="your-value-here"
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-value-here"
-CLOUDINARY_CLOUD_NAME="your-value-here"
-CLOUDINARY_API_KEY="your-value-here"
-CLOUDINARY_API_SECRET="your-value-here"
 RAZORPAY_KEY="your-value-here"
 RAZORPAY_KEY_SECRET="your-value-here"
 AUTH_GOOGLE_ID="your-value-here"

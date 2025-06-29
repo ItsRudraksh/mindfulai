@@ -204,6 +204,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     category: v.string(),
     targetDate: v.optional(v.number()),
+    target: v.optional(v.number()),
     status: v.union(
       v.literal("active"),
       v.literal("completed"),
@@ -224,7 +225,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_user_category", ["userId", "category"]),
 
   emergencyContacts: defineTable({
     userId: v.id("users"),

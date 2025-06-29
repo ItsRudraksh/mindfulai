@@ -9,6 +9,7 @@ import { VoiceSessionProvider } from '@/contexts/voice-session-context';
 import { ChatProvider } from '@/contexts/chat-context';
 import { GlobalMemoryProvider } from '@/contexts/global-memory-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen bg-gradient-to-br from-blue-50/30 via-white/50 to-green-50/30 dark:from-blue-950/30 dark:via-gray-900/50 dark:to-green-950/30`}>
+      <body className={`${inter.className} min-h-screen flex flex-col bg-gradient-to-br from-blue-50/30 via-white/50 to-green-50/30 dark:from-blue-950/30 dark:via-gray-900/50 dark:to-green-950/30`}>
         <ConvexProvider>
           <GlobalMemoryProvider>
             <ChatProvider>
@@ -37,10 +38,18 @@ export default function RootLayout({
                     disableTransitionOnChange
                   >
                     <TooltipProvider>
-                      <div className="relative min-h-screen backdrop-blur-therapeutic">
+                      <main className="relative flex-grow backdrop-blur-therapeutic">
                         {children}
-                      </div>
+                      </main>
                       <Toaster />
+                      <footer className="py-4 border-t bg-background/80 backdrop-blur-sm">
+                        <div className="container mx-auto flex justify-center items-center space-x-6">
+                          <Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
+                          <Link href="/terms-and-conditions" className="text-sm text-muted-foreground hover:text-primary">Terms & Conditions</Link>
+                          <Link href="/refund-policy" className="text-sm text-muted-foreground hover:text-primary">Refund Policy</Link>
+                          <Link href="/shipping" className="text-sm text-muted-foreground hover:text-primary">Shipping</Link>
+                        </div>
+                      </footer>
                     </TooltipProvider>
                   </ThemeProvider>
                 </VoiceSessionProvider>

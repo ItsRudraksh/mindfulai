@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Heart, ArrowRight, Calendar, Briefcase, User, Loader2 } from 'lucide-react';
+import { Heart, ArrowRight, Calendar, Briefcase, User, Loader2, Target } from 'lucide-react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import { Authenticated, Unauthenticated } from "convex/react";
+import { addOrUpdateGoal } from '@/convex/goals';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function OnboardingPage() {
   const hasCompletedOnboarding = useQuery(api.users.hasCompletedOnboarding);
   const updateUserProfileOnboarding = useMutation(api.users.updateUserProfileOnboarding);
   const createInitialGlobalMemory = useAction(api.globalMemory.createInitialGlobalMemory);
+  const addGoal = useMutation(api.goals.addOrUpdateGoal);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,6 +29,7 @@ export default function OnboardingPage() {
     dob: '',
     profession: '',
     aboutMe: '',
+    sessionGoal: '4',
   });
 
   // Redirect if user has already completed onboarding
@@ -50,6 +53,10 @@ export default function OnboardingPage() {
       toast.error('Please enter your profession');
       return;
     }
+    if (step === 3 && !formData.aboutMe.trim()) {
+      toast.error('Please tell us a bit about yourself');
+      return;
+    }
     setStep(prev => prev + 1);
   };
 
@@ -59,12 +66,47 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
-    if (!formData.aboutMe.trim()) {
-      toast.error('Please tell us a bit about yourself');
-      return;
+    try {
+      // Update user profile with onboarding data
+      await updateUserProfileOnboarding({
+        dob: formData.dob,
+        profession: formData.profession,
+        aboutMe: formData.aboutMe,
+      });
+
+      // Create initial global memory and goal
+      if (user) {
+        await createInitialGlobalMemory({
+          userId: user._id,
+          dob: formData.dob,
+          profession: formData.profession,
+          aboutMe: formData.aboutMe,
+        });
+
+        // Add or update session goal
+        await addGoal({
+          title: "Weekly Sessions",
+          category: "sessions",
+          target: parseInt(formData.sessionGoal, 10),
+        });
+      }
+
+      toast.success('Profile created successfully!');
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error during onboarding:', error);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
+  const handleSkipAndSubmit = async () => {
+    // Set a default or skip the goal
+    setFormData(prev => ({ ...prev, sessionGoal: '0' })); // '0' or some other indicator of skipping
+    // Then submit. We create a new handler to avoid form event issues.
     setIsSubmitting(true);
 
     try {
@@ -83,6 +125,8 @@ export default function OnboardingPage() {
           profession: formData.profession,
           aboutMe: formData.aboutMe,
         });
+
+        // No goal is set if skipped
       }
 
       toast.success('Profile created successfully!');
@@ -129,7 +173,7 @@ export default function OnboardingPage() {
               <CardHeader>
                 <CardTitle>Complete Your Profile</CardTitle>
                 <CardDescription>
-                  Step {step} of 3 - {step === 1 ? 'Basic Information' : step === 2 ? 'Professional Background' : 'About You'}
+                  Step {step} of 4 - {step === 1 ? 'Basic Information' : step === 2 ? 'Professional Background' : step === 3 ? 'About You' : 'Set Your Goals'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -245,6 +289,44 @@ export default function OnboardingPage() {
                     </motion.div>
                   )}
 
+                  {/* Step 4: Set Your Goals */}
+                  {step === 4 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Target className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Set Your Weekly Goal</h3>
+                          <p className="text-sm text-muted-foreground">How many sessions would you like to complete each week?</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="sessionGoal">Weekly Session Goal</Label>
+                        <Input
+                          id="sessionGoal"
+                          name="sessionGoal"
+                          type="number"
+                          min="1"
+                          max="14"
+                          value={formData.sessionGoal}
+                          onChange={handleChange}
+                          className="glass-input"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Setting a realistic goal helps you stay motivated. We recommend 2-4 sessions per week.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* Navigation Buttons */}
                   <div className="flex justify-between pt-4">
                     {step > 1 ? (
@@ -261,33 +343,35 @@ export default function OnboardingPage() {
                       <div></div> // Empty div for spacing
                     )}
 
-                    {step < 3 ? (
+                    {step < 4 ? (
                       <Button
                         type="button"
                         onClick={handleNext}
-                        className="therapeutic-hover ripple-effect"
+                        className="w-32"
+                        aria-label="Next step"
                       >
-                        Next
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        Next <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     ) : (
-                      <Button
-                        type="submit"
-                        className="therapeutic-hover ripple-effect"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating Profile...
-                          </>
-                        ) : (
-                          <>
-                            Complete Setup
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex gap-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSkipAndSubmit}
+                          className="w-32"
+                          disabled={isSubmitting}
+                        >
+                          Skip & Finish
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="w-32"
+                          disabled={isSubmitting}
+                          aria-label="Submit onboarding form"
+                        >
+                          {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : 'Finish'}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </form>

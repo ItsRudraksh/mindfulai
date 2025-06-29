@@ -344,7 +344,7 @@ export const sendWelcomeEmail = internalAction({
         <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 20px;">Welcome to Mindful AI, ${userName}!</h1>
         <p style="font-size: 16px; margin-bottom: 15px;">We are so grateful to have you join our community. Your journey towards a more mindful and balanced life is important, and we're here to support you every step of the way.</p>
         <p style="font-size: 16px; margin-bottom: 25px;">Feel free to explore the different sessions, start a journal, or simply check in with your mood. There's no right or wrong way to begin.</p>
-        <a href="https://your-app-url.com/dashboard" style="background-color: #007bff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">Go to Your Dashboard</a>
+        <a href="https://mindfulai.app/dashboard" style="background-color: #007bff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">Go to Your Dashboard</a>
         <p style="font-size: 14px; margin-top: 30px; color: #777;">If you have any questions, don't hesitate to reach out.</p>
         <p style="font-size: 16px; margin-top: 20px;">With warmth,<br/><strong>The Mindful AI Team</strong></p>
       </div>
@@ -390,7 +390,7 @@ export const sendProWelcomeEmail = internalAction({
         <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 20px;">Welcome to Mindful AI Pro, ${userName}!</h1>
         <p style="font-size: 16px; margin-bottom: 15px;">Thank you for upgrading! You've just unlocked unlimited access to all our features, including video sessions, voice calls, and in-depth analytics.</p>
         <p style="font-size: 16px; margin-bottom: 25px;">We're excited to be a bigger part of your mental wellness journey. Explore your new benefits and continue to grow.</p>
-        <a href="https://your-app-url.com/dashboard" style="background-color: #007bff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">Explore Pro Features</a>
+        <a href="https://mindfulai.app/dashboard" style="background-color: #007bff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">Explore Pro Features</a>
         <p style="font-size: 16px; margin-top: 30px;">With warmth,<br/><strong>The Mindful AI Team</strong></p>
       </div>
     `;

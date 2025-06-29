@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, BarChart2, Settings } from 'lucide-react';
+import { User, CreditCard, BarChart2, Settings, Target } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,14 +26,26 @@ import {
 
 export default function ProfilePage() {
   const user = useQuery(api.users.current);
+  const sessionGoal = useQuery(api.goals.getGoalsByCategory, { category: 'sessions' });
   const [name, setName] = useState(user?.name || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingGoal, setIsUpdatingGoal] = useState(false);
+  const [weeklySessionGoal, setWeeklySessionGoal] = useState('4');
+
   const [isProcessingSub, setIsProcessingSub] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
 
   const updateName = useMutation(api.users.updateName);
   const updateStatus = useMutation(api.users.updateSubscriptionStatus);
+  const addOrUpdateGoal = useMutation(api.goals.addOrUpdateGoal);
+
+  useEffect(() => {
+    if (user && user.name) setName(user.name);
+    if (sessionGoal && sessionGoal.length > 0) {
+      setWeeklySessionGoal(String(sessionGoal[0].target));
+    }
+  }, [user, sessionGoal]);
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +61,23 @@ export default function ProfilePage() {
       toast.error("Failed to update profile.");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingGoal(true);
+    try {
+      await addOrUpdateGoal({
+        title: "Weekly Sessions",
+        category: "sessions",
+        target: parseInt(weeklySessionGoal, 10)
+      });
+      toast.success("Goal updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update goal.");
+    } finally {
+      setIsUpdatingGoal(false);
     }
   };
 
@@ -151,6 +180,9 @@ export default function ProfilePage() {
               <TabsTrigger value="usage" className="w-full justify-start p-4 data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm">
                 <BarChart2 className="mr-3" /> Usage Data
               </TabsTrigger>
+              <TabsTrigger value="goals" className="w-full justify-start p-4 data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm">
+                <Target className="mr-3" /> Goals
+              </TabsTrigger>
             </TabsList>
 
             <div className="flex-1">
@@ -249,81 +281,41 @@ export default function ProfilePage() {
                           >
                             View Invoices
                           </Button>
-
+                          <Button
+                            onClick={() => handleManageSubscription('portal')}
+                            disabled={isProcessingSub}
+                            className="therapeutic-hover"
+                          >
+                            Customer Portal
+                          </Button>
                           {userSubscription.status === 'active' && (
                             <Button
                               onClick={() => handleManageSubscription('pause')}
-                              variant="outline"
                               disabled={isProcessingSub}
+                              variant="secondary"
                               className="therapeutic-hover"
                             >
                               Pause Subscription
                             </Button>
                           )}
-
                           {userSubscription.status === 'paused' && (
                             <Button
                               onClick={() => handleManageSubscription('resume')}
-                              variant="outline"
                               disabled={isProcessingSub}
+                              variant="secondary"
                               className="therapeutic-hover"
                             >
                               Resume Subscription
                             </Button>
                           )}
-
-                          {userSubscription.status !== 'cancelled' && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  disabled={isProcessingSub}
-                                  className="therapeutic-hover"
-                                >
-                                  Cancel Subscription
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="glass-card">
-                                <DialogHeader>
-                                  <DialogTitle>Cancel Your Subscription</DialogTitle>
-                                  <DialogDescription>
-                                    Are you sure you want to cancel your subscription? You'll lose access to premium features at the end of your current billing period.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                  <p className="text-sm text-muted-foreground mb-4">
-                                    Your subscription will remain active until {new Date(userSubscription.currentPeriodEnd).toLocaleDateString()}, after which you'll be downgraded to the free plan.
-                                  </p>
-                                </div>
-                                <DialogFooter>
-                                  <Button
-                                    variant="outline"
-                                    className="therapeutic-hover"
-                                    onClick={() => setIsInvoiceDialogOpen(false)}
-                                  >
-                                    Keep Subscription
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => handleManageSubscription('cancel')}
-                                    className="therapeutic-hover"
-                                  >
-                                    Confirm Cancellation
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          )}
-                        </div>
-
-                        <div className="mt-4 p-4 bg-muted/30 rounded-lg">
-                          <h4 className="font-medium mb-2">Subscription Benefits</h4>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Unlimited access to all therapy modalities</li>
-                            <li>• Priority support and feature access</li>
-                            <li>• Advanced analytics and insights</li>
-                            <li>• Custom AI personas and preferences</li>
-                          </ul>
+                          <Button
+                            onClick={() => handleManageSubscription('cancel')}
+                            disabled={isProcessingSub}
+                            variant="destructive"
+                            className="therapeutic-hover"
+                          >
+                            Cancel Subscription
+                          </Button>
                         </div>
                       </>
                     )}
@@ -335,59 +327,66 @@ export default function ProfilePage() {
                 <Card className="glass-card floating-card">
                   <CardHeader>
                     <CardTitle>Usage Data</CardTitle>
-                    <CardDescription>Track your platform usage and limits</CardDescription>
+                    <CardDescription>
+                      {userSubscription?.plan === 'free' ?
+                        'Track your usage for the current billing cycle.' :
+                        'You have unlimited usage with the Pro plan.'
+                      }
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent>
                     {userSubscription?.plan === 'free' ? (
-                      usageMetrics.map((metric) => (
-                        <div key={metric.name}>
-                          <div className="flex justify-between items-center mb-2">
-                            <p className="font-medium">{metric.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {metric.used} / {metric.limit}
-                            </p>
+                      <div className="space-y-4">
+                        {usageMetrics.map((metric) => (
+                          <div key={metric.name}>
+                            <div className="flex justify-between text-sm">
+                              <p>{metric.name}</p>
+                              <p>{metric.used} / {metric.limit}</p>
+                            </div>
+                            <Progress value={(metric.used / metric.limit) * 100} className="h-2 mt-1" />
                           </div>
-                          <Progress
-                            value={(metric.used / metric.limit) * 100}
-                            className="h-2"
-                          />
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
-                      <div className="text-center py-6">
-                        <Badge variant="default" className="mb-4 px-3 py-1">
-                          Unlimited Access
-                        </Badge>
-                        <p className="text-muted-foreground">
-                          You're on the pro plan with unlimited usage of all features.
-                        </p>
-                        <div className="grid grid-cols-3 gap-4 mt-6">
-                          <div className="text-center p-4 bg-muted/30 rounded-lg">
-                            <h4 className="font-medium">Video Sessions</h4>
-                            <p className="text-2xl font-bold text-primary mt-2">Unlimited</p>
-                          </div>
-                          <div className="text-center p-4 bg-muted/30 rounded-lg">
-                            <h4 className="font-medium">Voice Calls</h4>
-                            <p className="text-2xl font-bold text-primary mt-2">Unlimited</p>
-                          </div>
-                          <div className="text-center p-4 bg-muted/30 rounded-lg">
-                            <h4 className="font-medium">Chat Messages</h4>
-                            <p className="text-2xl font-bold text-primary mt-2">Unlimited</p>
-                          </div>
-                        </div>
+                      <div className="text-center py-8">
+                        <p>You have unlimited access to all features on the Pro plan.</p>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                    {userSubscription?.plan === 'free' && (
-                      <div className="text-center mt-6">
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Upgrade to Pro for unlimited access to all features
+              <TabsContent value="goals">
+                <Card className="glass-card floating-card">
+                  <CardHeader>
+                    <CardTitle>Goal Management</CardTitle>
+                    <CardDescription>Update your weekly goals to stay on track</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleUpdateGoal} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="weeklySessionGoal">Weekly Session Goal</Label>
+                        <Input
+                          id="weeklySessionGoal"
+                          type="number"
+                          min="1"
+                          max="14"
+                          value={weeklySessionGoal}
+                          onChange={(e) => setWeeklySessionGoal(e.target.value)}
+                          className="glass-input"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Set a realistic goal for the number of sessions you want to complete each week.
                         </p>
-                        <Button asChild className="therapeutic-hover">
-                          <Link href="/pricing">Upgrade Now</Link>
-                        </Button>
                       </div>
-                    )}
+                      <Button
+                        type="submit"
+                        disabled={isUpdatingGoal}
+                        className="therapeutic-hover"
+                      >
+                        {isUpdatingGoal ? "Saving..." : "Save Goal"}
+                      </Button>
+                    </form>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -395,51 +394,29 @@ export default function ProfilePage() {
           </Tabs>
         </div>
         <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
-          <DialogContent className="max-w-3xl glass-card">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Your Invoices</DialogTitle>
+              <DialogTitle>Invoices</DialogTitle>
               <DialogDescription>
-                Here is a list of your past invoices.
+                Here are your recent invoices.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 max-h-[60vh] overflow-y-auto">
+            <div className="grid gap-4 py-4">
               {invoices.length > 0 ? (
-                <ul className="space-y-4">
-                  {invoices.map((invoice) => (
-                    <li key={invoice.id} className="p-4 bg-muted/30 rounded-lg flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold">Invoice #{invoice.receipt || invoice.id}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Amount: ₹{invoice.amount_paid / 100}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Date: {new Date(invoice.paid_at * 1000).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Badge
-                          variant={invoice.status === 'paid' ? 'default' : 'secondary'}
-                          className={`capitalize ${invoice.status === 'paid' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20' :
-                            'bg-slate-500/10 text-slate-600 hover:bg-slate-500/20 border-slate-500/20'
-                            }`}
-                        >
-                          {invoice.status}
-                        </Badge>
-                        <Button asChild variant="outline" size="sm">
-                          <a href={invoice.short_url} target="_blank" rel="noopener noreferrer">View</a>
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                invoices.map((invoice) => (
+                  <div key={invoice.id} className="flex justify-between items-center">
+                    <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                      Invoice #{invoice.invoice_number}
+                    </a>
+                    <span>₹{invoice.amount / 100}</span>
+                  </div>
+                ))
               ) : (
                 <p>No invoices found.</p>
               )}
             </div>
             <DialogFooter>
-              <Button onClick={() => setIsInvoiceDialogOpen(false)} variant="outline">
-                Close
-              </Button>
+              <Button onClick={() => setIsInvoiceDialogOpen(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
