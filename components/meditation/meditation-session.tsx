@@ -47,6 +47,10 @@ export default function MeditationSession() {
     customRequest: '',
   });
 
+  const [jobId, setJobId] = useState<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [isScriptExpanded, setIsScriptExpanded] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const user = useQuery(api.users.current);
   const globalMemory = user?.globalMemory;
@@ -91,8 +95,10 @@ export default function MeditationSession() {
     }
 
     setState(prev => ({ ...prev, isGenerating: true }));
+    setJobId(null);
 
     try {
+      // Start job
       const response = await fetch('/api/meditation/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,29 +112,59 @@ export default function MeditationSession() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate meditation');
+        throw new Error('Failed to start meditation generation');
       }
 
       const data = await response.json();
-
-      if (data.success) {
-        setState(prev => ({
-          ...prev,
-          script: data.script,
-          audioUrl: data.audioUrl,
-          sessionCompleted: false,
-        }));
-        toast.success('Meditation session generated successfully!');
-      } else {
-        throw new Error(data.error || 'Failed to generate meditation');
+      if (!data.jobId) {
+        throw new Error('No jobId returned');
       }
+      setJobId(data.jobId);
+      pollForResult(data.jobId);
     } catch (error) {
-      console.error('Error generating meditation:', error);
-      toast.error('Failed to generate meditation session');
-    } finally {
+      console.error('Error starting meditation generation:', error);
+      toast.error('Failed to start meditation session');
       setState(prev => ({ ...prev, isGenerating: false }));
     }
   };
+
+  // Polling function
+  const pollForResult = (jobId: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/meditation/generate?jobId=${jobId}`);
+        const data = await res.json();
+        if (data.status === 'done') {
+          setState(prev => ({
+            ...prev,
+            script: data.script,
+            audioUrl: data.audioUrl,
+            sessionCompleted: false,
+            isGenerating: false,
+          }));
+          toast.success('Meditation session generated successfully!');
+          setJobId(null);
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        } else if (data.status === 'error') {
+          toast.error(data.error || 'Failed to generate meditation session');
+          setState(prev => ({ ...prev, isGenerating: false }));
+          setJobId(null);
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+        // else: still pending, keep polling
+      } catch (err) {
+        // Ignore polling errors, will retry
+      }
+    }, 2000);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const playPause = () => {
     const audio = audioRef.current;
@@ -465,6 +501,21 @@ export default function MeditationSession() {
                             <Volume2 className="h-4 w-4" />
                           )}
                         </Button>
+
+                        {/* Download Button */}
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="icon"
+                          className="border-white/30 text-white hover:bg-white/20"
+                          title="Download Audio"
+                        >
+                          <a href={state.audioUrl} download="meditation.mp3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4m-7 7h10" />
+                            </svg>
+                          </a>
+                        </Button>
                       </div>
 
                       {/* Volume Control */}
@@ -570,8 +621,15 @@ export default function MeditationSession() {
                 </CardHeader>
                 <CardContent>
                   <div className="max-h-60 overflow-y-auto">
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                      {state.script.substring(0, 300)}...
+                    <p
+                      className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line cursor-pointer select-text"
+                      onClick={() => setIsScriptExpanded((prev) => !prev)}
+                      title={isScriptExpanded ? 'Click to collapse' : 'Click to expand'}
+                    >
+                      {isScriptExpanded ? state.script : `${state.script.substring(0, 300)}...`}
+                      <span className="ml-2 text-xs text-blue-400 underline">
+                        {isScriptExpanded ? 'Show less' : 'Show more'}
+                      </span>
                     </p>
                   </div>
                 </CardContent>

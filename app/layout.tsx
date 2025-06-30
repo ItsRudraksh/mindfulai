@@ -67,7 +67,7 @@ export default function RootLayout({
                           <Link href={"https://bolt.new/"}>
                             <span className="flex items-center space-x-2">
                               <Badge variant="secondary" className="text-xs">
-                                BUILT WITH BOLT
+                                BUILT WITH BOLT.NEW
                               </Badge>
                             </span>
                           </Link>
