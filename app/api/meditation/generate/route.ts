@@ -33,11 +33,13 @@ export async function POST(request: NextRequest) {
     // Start async generation
     (async () => {
       try {
+        console.log("Generating meditation script...");
         const script = await generatePersonalizedMeditation(
           globalMemory,
           preferences
         );
         if (!script) throw new Error("Failed to generate meditation script");
+        console.log("Script generated, calling ElevenLabs...");
         const audioResponse = await fetch(
           "https://api.elevenlabs.io/v1/text-to-speech/rfkTsdZrVWEVhDycUYn9",
           {
@@ -59,19 +61,37 @@ export async function POST(request: NextRequest) {
             }),
           }
         );
-        if (!audioResponse.ok)
-          throw new Error(`ElevenLabs API error: ${audioResponse.status}`);
+        if (!audioResponse.ok) {
+          const errorText = await audioResponse.text();
+          console.error(
+            "ElevenLabs API error:",
+            audioResponse.status,
+            errorText
+          );
+          throw new Error(
+            `ElevenLabs API error: ${audioResponse.status} - ${errorText}`
+          );
+        }
         const audioBuffer = await audioResponse.arrayBuffer();
-        const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+        let audioBase64;
+        try {
+          // @ts-ignore
+          audioBase64 = Buffer.from(audioBuffer).toString("base64");
+        } catch (err) {
+          console.error("Buffer is not available in this environment:", err);
+          throw new Error("Buffer is not available for base64 conversion");
+        }
         const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
         jobStore.set(jobId, {
           status: "done",
           result: { success: true, script, audioUrl },
         });
+        console.log("Job done for", jobId);
       } catch (error) {
+        console.error("Meditation generation error (async):", error);
         jobStore.set(jobId, {
           status: "error",
-          error: "Failed to generate meditation session",
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     })();
