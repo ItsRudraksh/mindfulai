@@ -764,7 +764,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Auto-refresh</span>
                     <span className="text-xs">
-                      {canAutoRefresh.attemptsRemaining}/3 remaining
+                      {canAutoRefresh.attemptsRemaining}/5 remaining
                     </span>
                   </div>
                 )}

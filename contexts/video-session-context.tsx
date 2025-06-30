@@ -169,6 +169,47 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
     };
   }, [state.isConnected]);
 
+  // Poll Tavus conversation status when connected
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    const conversationId = state.tavusConversation?.conversation_id || state.conversationId;
+
+    async function checkTavusStatus() {
+      if (!conversationId) return;
+      try {
+        const response = await fetch('/api/tavus/conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'status',
+            conversationId,
+          }),
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.conversation) {
+          // If status is not active, end session
+          if (data.conversation.status !== 'active') {
+            await endSession();
+          } else {
+            // Optionally update Tavus conversation in state
+            dispatch({ type: 'SET_TAVUS_CONVERSATION', payload: data.conversation });
+          }
+        }
+      } catch (err) {
+        // Ignore polling errors
+      }
+    }
+
+    if (state.isConnected && conversationId) {
+      checkTavusStatus(); // Initial check
+      interval = setInterval(checkTavusStatus, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [state.isConnected, state.tavusConversation, state.conversationId]);
+
   // Restore session from database if we have sessionId but no conversation details
   const restoreSession = async () => {
     if (!activeSession) return;
@@ -239,7 +280,7 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
         enhancedContext = `${enhancedContext}\n\nHere is some additional context about the user and their past conversations, please use this to have a better and more informed conversation:\n${conversationContext}`;
       }
 
-      // Create Tavus conversation
+      // Start Tavus conversation job
       const response = await fetch('/api/tavus/conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,32 +292,44 @@ export function VideoSessionProvider({ children }: { children: React.ReactNode }
       });
 
       const data = await response.json();
-
-      if (data.success) {
-        // Create session record in Convex
-        const newSessionId = await createSessionMutation({
-          type: "video",
-          startTime: Date.now(),
-          mood: stateDescription.trim(),
-        });
-
-        // Update session with Tavus conversation ID
-        await updateSessionMetadata({
-          sessionId: newSessionId,
-          metadata: {
-            tavusSessionId: data.conversation.conversation_id,
-          },
-        });
-
-        dispatch({ type: 'SET_TAVUS_CONVERSATION', payload: data.conversation });
-        dispatch({ type: 'SET_CONVERSATION_URL', payload: data.conversation.conversation_url });
-        dispatch({ type: 'SET_CONVERSATION_ID', payload: data.conversation.conversation_id });
-        dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
-        dispatch({ type: 'SET_CONNECTED', payload: true });
-        dispatch({ type: 'SET_STATE_DESCRIPTION', payload: stateDescription });
-      } else {
-        throw new Error(data.error || 'Failed to generate conversation link');
+      if (!data.jobId) {
+        throw new Error('No jobId returned');
       }
+      // Poll for job result
+      let jobResult = null;
+      for (let i = 0; i < 60; i++) { // up to 2 minutes
+        const pollRes = await fetch(`/api/tavus/conversation?jobId=${data.jobId}`);
+        const pollData = await pollRes.json();
+        if (pollData.status === 'done') {
+          jobResult = pollData;
+          break;
+        } else if (pollData.status === 'error') {
+          throw new Error(pollData.error || 'Failed to create Tavus conversation');
+        }
+        await new Promise(res => setTimeout(res, 2000));
+      }
+      if (!jobResult || !jobResult.conversation) {
+        throw new Error('Tavus conversation creation timed out');
+      }
+      // Create session record in Convex
+      const newSessionId = await createSessionMutation({
+        type: "video",
+        startTime: Date.now(),
+        mood: stateDescription.trim(),
+      });
+      // Update session with Tavus conversation ID
+      await updateSessionMetadata({
+        sessionId: newSessionId,
+        metadata: {
+          tavusSessionId: jobResult.conversation.conversation_id,
+        },
+      });
+      dispatch({ type: 'SET_TAVUS_CONVERSATION', payload: jobResult.conversation });
+      dispatch({ type: 'SET_CONVERSATION_URL', payload: jobResult.conversation.conversation_url });
+      dispatch({ type: 'SET_CONVERSATION_ID', payload: jobResult.conversation.conversation_id });
+      dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
+      dispatch({ type: 'SET_CONNECTED', payload: true });
+      dispatch({ type: 'SET_STATE_DESCRIPTION', payload: stateDescription });
     } catch (error) {
       console.error('Error creating session:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to create session' });

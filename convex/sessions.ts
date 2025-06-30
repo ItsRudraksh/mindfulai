@@ -414,12 +414,12 @@ export const canAutoRefreshSession = query({
     // 4. Missing any of the required events
     return {
       canRefresh:
-        attempts < 3 &&
+        attempts < 5 &&
         timeSinceLastRefresh > 30000 &&
         session.type === "video" &&
         session.metadata?.tavusSessionId &&
         !hasRequiredEvents, // Only refresh if missing events
-      attemptsRemaining: Math.max(0, 3 - attempts),
+      attemptsRemaining: Math.max(0, 5 - attempts),
       timeSinceLastRefresh,
       hasRequiredEvents: !!hasRequiredEvents,
       missingEvents:

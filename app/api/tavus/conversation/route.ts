@@ -7,6 +7,12 @@ import { ConvexHttpClient } from "convex/browser";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+// In-memory job store (jobId -> { status, result, error })
+const jobStore = new Map();
+function generateJobId() {
+  return Math.random().toString(36).substring(2, 12) + Date.now();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -17,52 +23,60 @@ export async function POST(request: NextRequest) {
       userId,
     } = await request.json();
 
-    let userPlan = "free";
-    if (userId) {
-      try {
-        const user = await convex.query(api.users.current, {});
-        if (user?.subscription?.plan === "pro") {
-          userPlan = "pro";
-        }
-      } catch (e) {
-        // fallback to free
-      }
-    }
-
     if (action === "create") {
-      // Create custom greeting
-      const customGreeting = `Hey there ${firstName || "there"} how are you today?`;
+      // Create job
+      const jobId = generateJobId();
+      jobStore.set(jobId, { status: "pending" });
 
-      // Set max_call_duration based on plan
-      const maxCallDuration = userPlan === "pro" ? 3600 : 1800;
-
-      // Create new Tavus conversation with conversational context and custom greeting
-      const conversationRequest: any = {
-        replica_id: process.env.TAVUS_REPLICA_ID!,
-        persona_id: process.env.TAVUS_PERSONA_ID!,
-        conversational_context: conversational_context,
-        custom_greeting: customGreeting,
-        conversation_name: `Therapy Session - ${new Date().toISOString()}`,
-        properties: {
-          enable_recording: true,
-          recording_s3_bucket_name: `${process.env.TAVUS_BUCKET_NAME}`,
-          recording_s3_bucket_region: `${process.env.TAVUS_BUCKET_REGION}`,
-          aws_assume_role_arn: `${process.env.TAVUS_AWS_ARN}`,
-          max_call_duration: maxCallDuration,
-          language: "multilingual",
-        },
-      };
-
-      console.log(conversationRequest);
-
-      const conversation =
-        await tavusClient.createConversation(conversationRequest);
-
-      // Return the conversation data
-      return NextResponse.json({
-        success: true,
-        conversation: conversation,
-      });
+      // Start async Tavus conversation creation
+      (async () => {
+        let userPlan = "free";
+        if (userId) {
+          try {
+            const user = await convex.query(api.users.current, {});
+            if (user?.subscription?.plan === "pro") {
+              userPlan = "pro";
+            }
+          } catch (e) {
+            // fallback to free
+          }
+        }
+        try {
+          // Create custom greeting
+          const customGreeting = `Hey there ${firstName || "there"} how are you today?`;
+          // Set max_call_duration based on plan
+          const maxCallDuration = userPlan === "pro" ? 3600 : 1800;
+          // Create new Tavus conversation with conversational context and custom greeting
+          const conversationRequest = {
+            replica_id: process.env.TAVUS_REPLICA_ID!,
+            persona_id: process.env.TAVUS_PERSONA_ID!,
+            conversational_context: conversational_context,
+            custom_greeting: customGreeting,
+            conversation_name: `Therapy Session - ${new Date().toISOString()}`,
+            properties: {
+              enable_recording: true,
+              recording_s3_bucket_name: `${process.env.TAVUS_BUCKET_NAME}`,
+              recording_s3_bucket_region: `${process.env.TAVUS_BUCKET_REGION}`,
+              aws_assume_role_arn: `${process.env.TAVUS_AWS_ARN}`,
+              max_call_duration: maxCallDuration,
+              language: "multilingual" as const,
+            },
+          };
+          const conversation =
+            await tavusClient.createConversation(conversationRequest);
+          jobStore.set(jobId, {
+            status: "done",
+            result: { success: true, conversation },
+          });
+        } catch (error) {
+          jobStore.set(jobId, {
+            status: "error",
+            error: "Failed to create Tavus conversation",
+          });
+        }
+      })();
+      // Respond immediately with jobId
+      return NextResponse.json({ jobId });
     }
 
     if (action === "end" && conversationId) {
@@ -99,4 +113,26 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get("jobId");
+  if (!jobId) {
+    return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
+  }
+  const job = jobStore.get(jobId);
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+  if (job.status === "pending") {
+    return NextResponse.json({ status: "pending" });
+  }
+  if (job.status === "done") {
+    return NextResponse.json({ status: "done", ...job.result });
+  }
+  if (job.status === "error") {
+    return NextResponse.json({ status: "error", error: job.error });
+  }
+  return NextResponse.json({ error: "Unknown job status" }, { status: 500 });
 }
