@@ -86,7 +86,7 @@ class TavusClient {
 }
 
 export const tavusClient = new TavusClient({
-  apiKey: `${process.env.TAVUS_API_KEY}`,
+  apiKey: `${process.env.NEXT_PUBLIC_TAVUS_API_KEY}`,
 });
 
 export type { TavusConversation, TavusConversationRequest };
