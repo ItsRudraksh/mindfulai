@@ -137,6 +137,7 @@ export default function ProfilePage() {
   }
 
   const userSubscription = user.subscription;
+  const isOneTimePayment = userSubscription && typeof userSubscription.planName === 'string' && userSubscription.planName.toLowerCase().includes('one-time');
 
   const usageMetrics = userSubscription && userSubscription.plan === 'free' ? [
     {
@@ -249,6 +250,10 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       </div>
+                    ) : isOneTimePayment ? (
+                      <div className="text-center">
+                        <p className="mb-4">You have a one-time payment. No subscription management options are available.</p>
+                      </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
@@ -280,13 +285,6 @@ export default function ProfilePage() {
                             className="therapeutic-hover"
                           >
                             View Invoices
-                          </Button>
-                          <Button
-                            onClick={() => handleManageSubscription('portal')}
-                            disabled={isProcessingSub}
-                            className="therapeutic-hover"
-                          >
-                            Customer Portal
                           </Button>
                           {userSubscription.status === 'active' && (
                             <Button
