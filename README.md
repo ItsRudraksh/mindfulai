@@ -46,7 +46,7 @@ graph TB
     end
 
     subgraph "AI Services Layer"
-        H[Claude 3.5 Sonnet]
+        H[Claude Sonnet 4]
         I[Gemini 2.5 Flash]
         J[Content Guardrails]
         K[Global Memory System]
