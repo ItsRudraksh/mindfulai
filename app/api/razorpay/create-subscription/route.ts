@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const subscriptionData = {
-      plan_id: "plan_QnOsvZeQp2d6Ht",
+      plan_id: "plan_Qmqc4owHkiGBl6",
       total_count: 12,
       quantity: 1,
       customer_notify: false,
