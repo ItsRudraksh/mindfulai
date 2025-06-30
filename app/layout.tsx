@@ -11,6 +11,7 @@ import { GlobalMemoryProvider } from '@/contexts/global-memory-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { DeveloperNote } from '@/components/dashboard/DeveloperNote';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -58,21 +59,6 @@ export default function RootLayout({
                         {children}
                       </main>
                       <Toaster />
-                      <footer className="py-4 border-t bg-background/80 backdrop-blur-sm">
-                        <div className="container mx-auto flex justify-center items-center space-x-6">
-                          <Link href="/privacy-policy" className="text-sm text-muted-foreground hover:text-primary">Privacy Policy</Link>
-                          <Link href="/terms-and-conditions" className="text-sm text-muted-foreground hover:text-primary">Terms & Conditions</Link>
-                          <Link href="/refund-policy" className="text-sm text-muted-foreground hover:text-primary">Refund Policy</Link>
-                          <Link href="/shipping" className="text-sm text-muted-foreground hover:text-primary">Shipping</Link>
-                          <Link href={"https://bolt.new/"}>
-                            <span className="flex items-center space-x-2">
-                              <Badge variant="secondary" className="text-xs">
-                                BUILT WITH BOLT.NEW
-                              </Badge>
-                            </span>
-                          </Link>
-                        </div>
-                      </footer>
                     </TooltipProvider>
                   </ThemeProvider>
                 </VoiceSessionProvider>
