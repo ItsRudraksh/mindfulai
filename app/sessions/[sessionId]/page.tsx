@@ -27,11 +27,17 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
   const [currentRating, setCurrentRating] = useState<any>(null);
   const [done, setDone] = useState(false);
   const [sessionId, setSessionId] = useState<Id<"sessions"> | null>(null);
+  const [autoRefreshDisabled, setAutoRefreshDisabled] = useState(false);
+  const [manualRefreshDisabled, setManualRefreshDisabled] = useState(false);
+  const autoRefreshAttempts = useRef(0);
+  const autoRefreshTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [localSessionId, setLocalSessionId] = useState<string | null>(null);
 
   // Resolve params Promise
   useEffect(() => {
     params.then(({ sessionId: id }) => {
       setSessionId(id as Id<"sessions">);
+      setLocalSessionId(id);
     });
   }, [params]);
 
@@ -50,10 +56,47 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
     setCurrentRating(sessionRating);
   }, [sessionRating]);
 
+  // On mount, check localStorage for cooldown (per session)
+  useEffect(() => {
+    if (!localSessionId) return;
+    const AUTO_REFRESH_KEY = `mindfulai_auto_refresh_disabled_${localSessionId}`;
+    const AUTO_REFRESH_UNTIL_KEY = `mindfulai_auto_refresh_until_${localSessionId}`;
+    const disabled = localStorage.getItem(AUTO_REFRESH_KEY);
+    const until = localStorage.getItem(AUTO_REFRESH_UNTIL_KEY);
+    if (disabled === 'true' && until) {
+      const untilTime = parseInt(until, 10);
+      const now = Date.now();
+      if (now < untilTime) {
+        setAutoRefreshDisabled(true);
+        setManualRefreshDisabled(true);
+        const timeout = setTimeout(() => {
+          setAutoRefreshDisabled(false);
+          setManualRefreshDisabled(false);
+          autoRefreshAttempts.current = 0;
+          localStorage.removeItem(AUTO_REFRESH_KEY);
+          localStorage.removeItem(AUTO_REFRESH_UNTIL_KEY);
+          toast.info('You can now try refreshing session data again.');
+        }, untilTime - now);
+        autoRefreshTimeout.current = timeout;
+      } else {
+        // Cooldown expired
+        setAutoRefreshDisabled(false);
+        setManualRefreshDisabled(false);
+        autoRefreshAttempts.current = 0;
+        localStorage.removeItem(AUTO_REFRESH_KEY);
+        localStorage.removeItem(AUTO_REFRESH_UNTIL_KEY);
+      }
+    }
+    // Cleanup on unmount
+    return () => {
+      if (autoRefreshTimeout.current) clearTimeout(autoRefreshTimeout.current);
+    };
+  }, [localSessionId]);
+
   // Auto-refresh logic for video sessions
   useEffect(() => {
     const performAutoRefresh = async () => {
-      if (!session || !canAutoRefresh?.canRefresh || isAutoRefreshing) return;
+      if (!session || !canAutoRefresh?.canRefresh || isAutoRefreshing || autoRefreshDisabled) return;
 
       setIsAutoRefreshing(true);
       try {
@@ -75,17 +118,42 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
               isAutoRefresh: true,
             });
             toast.success('Session data updated automatically');
+            autoRefreshAttempts.current = 0; // reset on success
+          } else {
+            autoRefreshAttempts.current += 1;
           }
+        } else {
+          autoRefreshAttempts.current += 1;
         }
       } catch (error) {
+        autoRefreshAttempts.current += 1;
         console.error('Auto-refresh error:', error);
       } finally {
         setIsAutoRefreshing(false);
+        // If 3 attempts out of 5 fail, disable auto/manual refresh for 2 minutes
+        if (autoRefreshAttempts.current >= 3 && canAutoRefresh?.attemptsRemaining <= 2 && !autoRefreshDisabled && localSessionId) {
+          const AUTO_REFRESH_KEY = `mindfulai_auto_refresh_disabled_${localSessionId}`;
+          const AUTO_REFRESH_UNTIL_KEY = `mindfulai_auto_refresh_until_${localSessionId}`;
+          setAutoRefreshDisabled(true);
+          setManualRefreshDisabled(true);
+          toast.error('Session data could not be refreshed. Please wait 2 minutes before trying again.');
+          const until = Date.now() + 2 * 60 * 1000;
+          localStorage.setItem(AUTO_REFRESH_KEY, 'true');
+          localStorage.setItem(AUTO_REFRESH_UNTIL_KEY, until.toString());
+          autoRefreshTimeout.current = setTimeout(() => {
+            setAutoRefreshDisabled(false);
+            setManualRefreshDisabled(false);
+            autoRefreshAttempts.current = 0;
+            localStorage.removeItem(AUTO_REFRESH_KEY);
+            localStorage.removeItem(AUTO_REFRESH_UNTIL_KEY);
+            toast.info('You can now try refreshing session data again.');
+          }, 2 * 60 * 1000);
+        }
       }
     };
 
     // Only auto-refresh if we can and should
-    if (canAutoRefresh?.canRefresh && session?.type === 'video' && session?.metadata?.tavusSessionId) {
+    if (canAutoRefresh?.canRefresh && session?.type === 'video' && session?.metadata?.tavusSessionId && !autoRefreshDisabled) {
       // Check if we have incomplete data (missing any required events)
       const hasIncompleteData = !canAutoRefresh.hasRequiredEvents;
 
@@ -95,7 +163,10 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
         return () => clearTimeout(timer);
       }
     }
-  }, [session, canAutoRefresh, isAutoRefreshing, storeTavusConversationDataMutation]);
+    return () => {
+      if (autoRefreshTimeout.current) clearTimeout(autoRefreshTimeout.current);
+    };
+  }, [session, canAutoRefresh, isAutoRefreshing, storeTavusConversationDataMutation, autoRefreshDisabled, localSessionId]);
 
   // Voice session summary loading
   const fetchConversationDetails = async () => {
@@ -241,7 +312,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
   };
 
   const handleManualRefresh = async () => {
-    if (!session?.metadata?.tavusSessionId || isAutoRefreshing) return;
+    if (!session?.metadata?.tavusSessionId || isAutoRefreshing || manualRefreshDisabled) return;
 
     setIsAutoRefreshing(true);
     try {
@@ -399,7 +470,7 @@ export default function SessionDetailsPage({ params }: { params: Promise<{ sessi
                   variant="outline"
                   size="sm"
                   onClick={handleManualRefresh}
-                  disabled={isAutoRefreshing}
+                  disabled={isAutoRefreshing || manualRefreshDisabled}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh ({canAutoRefresh.attemptsRemaining} left)
