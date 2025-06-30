@@ -137,7 +137,6 @@ function GlobalMemoryManager({ state, clearTrigger }: { state: MemoryUpdateState
       try {
         toast.info("Updating memory with your latest chat insights...");
         await triggerUpdateFromChat({ userId: user._id, conversationId });
-        toast.success("Memory updated with chat summary.");
       } catch (error) {
         console.error("[GlobalMemoryManager] Error in chat summary memory update flow:", error);
         toast.error("An error occurred while updating memory from chat.");

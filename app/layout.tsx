@@ -10,6 +10,7 @@ import { ChatProvider } from '@/contexts/chat-context';
 import { GlobalMemoryProvider } from '@/contexts/global-memory-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -48,8 +49,8 @@ export default function RootLayout({
                 <VoiceSessionProvider>
                   <ThemeProvider
                     attribute="class"
-                    defaultTheme="system"
-                    enableSystem
+                    defaultTheme="dark"
+                    enableSystem={false}
                     disableTransitionOnChange
                   >
                     <TooltipProvider>
@@ -63,6 +64,13 @@ export default function RootLayout({
                           <Link href="/terms-and-conditions" className="text-sm text-muted-foreground hover:text-primary">Terms & Conditions</Link>
                           <Link href="/refund-policy" className="text-sm text-muted-foreground hover:text-primary">Refund Policy</Link>
                           <Link href="/shipping" className="text-sm text-muted-foreground hover:text-primary">Shipping</Link>
+                          <Link href={"https://bolt.new/"}>
+                            <span className="flex items-center space-x-2">
+                              <Badge variant="secondary" className="text-xs">
+                                BUILT WITH BOLT
+                              </Badge>
+                            </span>
+                          </Link>
                         </div>
                       </footer>
                     </TooltipProvider>

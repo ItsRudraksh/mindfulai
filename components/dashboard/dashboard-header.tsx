@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { TestEmailButton } from "../testerButton";
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
+import { Badge } from "../ui/badge";
 
 interface DashboardHeaderProps {
   user: {
@@ -55,6 +56,13 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
             MindfulAI
           </span>
+          <Link href={"https://bolt.new/"}>
+            <span className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-xs">
+                BUILT WITH BOLT
+              </Badge>
+            </span>
+          </Link>
           {/* <TestEmailButton /> */}
         </Link>
 
