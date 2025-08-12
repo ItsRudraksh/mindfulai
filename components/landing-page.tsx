@@ -129,9 +129,9 @@ export default function LandingPage() {
               />
             </Link>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-              MindfulAI X Bolt Hackathon
+              MindfulAI
             </span>
-            <Link href={"https://bolt.new"} target="_blank" className="flex items-center space-x-2">
+            {/* <Link href={"https://bolt.new"} target="_blank" className="flex items-center space-x-2">
               <Image
                 src={theme === 'dark' ? '/bolt-black.png' : '/bolt-white.png'}
                 alt="MindfulAI Logo"
@@ -139,7 +139,7 @@ export default function LandingPage() {
                 height={40}
                 className="h-10 w-auto"
               />
-            </Link>
+            </Link> */}
           </motion.div>
 
           <motion.div

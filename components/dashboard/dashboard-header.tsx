@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { TestEmailButton } from "../testerButton";
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import { DeveloperNote } from './DeveloperNote';
+// import { DeveloperNote } from './DeveloperNote';
 
 interface DashboardHeaderProps {
   user: {
@@ -57,7 +57,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
             MindfulAI
           </span>
         </Link>
-        <DeveloperNote />
+        {/* <DeveloperNote /> */}
         {/* <TestEmailButton /> */}
 
         <div className="flex items-center space-x-4">
